@@ -123,7 +123,9 @@ export function App(): React.ReactElement {
   const [pendingByPath, setPendingByPath] = useState<Record<string, PendingState>>({})
   const [metadataByPath, setMetadataByPath] = useState<Record<string, Record<string, unknown>>>({})
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null)
-  const [status, setStatus] = useState<string>('')
+  const [commitModal, setCommitModal] = useState<
+    null | { phase: 'writing'; current: number; total: number; fileBase: string } | { phase: 'done'; ok: number; total: number }
+  >(null)
   const [presetEditor, setPresetEditor] = useState<{
     mode: 'new' | 'edit'
     category: Cat
@@ -390,6 +392,16 @@ export function App(): React.ReactElement {
   }, [managePresetsOpen, presetEditor])
 
   useEffect(() => {
+    if (!commitModal || commitModal.phase !== 'done') return
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setCommitModal(null)
+    }
+    document.addEventListener('keydown', onEsc)
+    return () => document.removeEventListener('keydown', onEsc)
+  }, [commitModal])
+
+  useEffect(() => {
     const onDocKeyDown = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey
       if (!mod) return
@@ -530,12 +542,17 @@ export function App(): React.ReactElement {
       return
     }
     if (!confirm(t('ui.commitConfirm', { count: todo.length }))) return
-    setStatus(t('ui.statusWriting'))
+    const total = todo.length
+    const successfulPaths: string[] = []
     let ok = 0
-    for (const { path, payload } of todo) {
+    for (let i = 0; i < todo.length; i++) {
+      const { path, payload } = todo[i]!
+      const fileBase = path.split(/[/\\]/).pop() ?? path
+      setCommitModal({ phase: 'writing', current: i + 1, total, fileBase })
       try {
         await api.applyExif(path, payload)
         ok++
+        successfulPaths.push(path)
       } catch (e) {
         alert(
           t('ui.applyError', {
@@ -545,7 +562,27 @@ export function App(): React.ReactElement {
         )
       }
     }
-    setStatus(t('ui.statusCommitted', { ok, total: todo.length }))
+    if (successfulPaths.length > 0) {
+      const metaUpdates: Record<string, Record<string, unknown>> = {}
+      for (const path of successfulPaths) {
+        try {
+          metaUpdates[path] = await api.readMetadata(path)
+        } catch {
+          metaUpdates[path] = {}
+        }
+      }
+      setMetadataByPath((prev) => ({ ...prev, ...metaUpdates }))
+      setPendingByPath((prev) => {
+        const next = { ...prev }
+        for (const path of successfulPaths) {
+          const md = metaUpdates[path] ?? {}
+          const desc = imageDescriptionFromMetadata(md)
+          next[pathKey(path)] = { ...emptyPending(), notesText: desc, notesBaseline: desc }
+        }
+        return next
+      })
+    }
+    setCommitModal({ phase: 'done', ok, total })
   }
 
   const staging = stagingPaths
@@ -847,7 +884,46 @@ export function App(): React.ReactElement {
           </div>
         </div>
       </div>
-      <div className="status-bar">{status}</div>
+      {commitModal ? (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (commitModal.phase !== 'done') return
+            if (e.target === e.currentTarget) setCommitModal(null)
+          }}
+        >
+          <div className="modal modal-commit" onMouseDown={(e) => e.stopPropagation()}>
+            {commitModal.phase === 'writing' ? (
+              <>
+                <h3 className="modal-commit-title">{t('ui.commitModalWritingTitle')}</h3>
+                <p className="modal-commit-progress-text">
+                  {t('ui.commitModalProgress', { current: commitModal.current, total: commitModal.total })}
+                </p>
+                <p className="modal-commit-file-name" title={commitModal.fileBase}>
+                  {truncateMiddle(commitModal.fileBase, 48)}
+                </p>
+                <div className="modal-commit-progress-track" aria-hidden>
+                  <div
+                    className="modal-commit-progress-fill"
+                    style={{ width: `${(commitModal.current / Math.max(commitModal.total, 1)) * 100}%` }}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="modal-commit-title">{t('ui.commitModalDoneTitle')}</h3>
+                <p className="modal-commit-done-summary">{t('ui.commitModalDoneSummary', { ok: commitModal.ok, total: commitModal.total })}</p>
+                <div className="modal-commit-actions">
+                  <button type="button" className="btn btn-primary" onClick={() => setCommitModal(null)}>
+                    {t('ui.closePanel')}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
       {managePresetsOpen && catalog && (
         <ManagePresetsPanel
           catalog={catalog}

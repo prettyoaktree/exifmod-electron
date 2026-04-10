@@ -631,12 +631,55 @@ button.preset-slideout-close:focus-visible {
   white-space: nowrap;
 }
 
-.status-bar {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.75rem;
+.modal.modal-commit {
+  width: min(400px, 92vw);
+  padding: 1.25rem;
+}
+
+.modal-commit-title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.modal-commit-progress-text {
+  margin: 0 0 0.35rem;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.modal-commit-file-name {
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
   color: var(--muted);
-  border-top: 1px solid var(--border);
-  background: var(--panel);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modal-commit-progress-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.modal-commit-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.modal-commit-done-summary {
+  margin: 0 0 1.25rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.modal-commit-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .modal-backdrop {
