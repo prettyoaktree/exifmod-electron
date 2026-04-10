@@ -105,6 +105,11 @@ function idKeyForCategory(cat: Cat): keyof PendingState {
 
 const META_FIELD_COUNT = 7
 
+const FILES_PANE_WIDTH_MIN_PCT = 12
+const FILES_PANE_WIDTH_MAX_PCT = 88
+const FILE_LIST_AREA_MIN_PCT = 18
+const FILE_LIST_AREA_MAX_PCT = 82
+
 export function App(): React.ReactElement {
   const { t } = useTranslation()
   const noneDisplay = t('ui.doNotModify')
@@ -135,7 +140,13 @@ export function App(): React.ReactElement {
   const [exifPreviewOpen, setExifPreviewOpen] = useState(false)
   const [exifPreviewBody, setExifPreviewBody] = useState('')
   const [exifPreviewLoading, setExifPreviewLoading] = useState(false)
+  /** Horizontal split: files pane width as % of main content area (default 30%). */
+  const [filesPaneWidthPct, setFilesPaneWidthPct] = useState(30)
+  /** Vertical split within files pane: file list + actions region height % (default 60%). */
+  const [fileListAreaPct, setFileListAreaPct] = useState(60)
 
+  const appBodyRef = useRef<HTMLDivElement>(null)
+  const filesPaneStackRef = useRef<HTMLDivElement>(null)
   const fileListRef = useRef<HTMLUListElement>(null)
   const openFolderPrimaryRef = useRef<HTMLButtonElement>(null)
   const rowRefs = useRef<(HTMLLIElement | null)[]>([])
@@ -144,6 +155,48 @@ export function App(): React.ReactElement {
 
   const bindMetaRef = useCallback((index: number) => (el: HTMLElement | null) => {
     metaFieldRefs.current[index] = el
+  }, [])
+
+  const onPaneResizeHorizontalStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    const move = (ev: MouseEvent) => {
+      const r = appBodyRef.current?.getBoundingClientRect()
+      if (!r) return
+      let pct = ((ev.clientX - r.left) / r.width) * 100
+      pct = Math.min(FILES_PANE_WIDTH_MAX_PCT, Math.max(FILES_PANE_WIDTH_MIN_PCT, pct))
+      setFilesPaneWidthPct(pct)
+    }
+    const up = () => {
+      document.removeEventListener('mousemove', move)
+      document.removeEventListener('mouseup', up)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', move)
+    document.addEventListener('mouseup', up)
+  }, [])
+
+  const onPaneResizeVerticalStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    const move = (ev: MouseEvent) => {
+      const r = filesPaneStackRef.current?.getBoundingClientRect()
+      if (!r) return
+      let pct = ((ev.clientY - r.top) / r.height) * 100
+      pct = Math.min(FILE_LIST_AREA_MAX_PCT, Math.max(FILE_LIST_AREA_MIN_PCT, pct))
+      setFileListAreaPct(pct)
+    }
+    const up = () => {
+      document.removeEventListener('mousemove', move)
+      document.removeEventListener('mouseup', up)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    document.body.style.cursor = 'row-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', move)
+    document.addEventListener('mouseup', up)
   }, [])
 
   const reloadCatalog = useCallback(async () => {
@@ -186,6 +239,13 @@ export function App(): React.ReactElement {
       })()
     })
   }, [])
+
+  /** When a folder session starts, focus the file list so arrows / Space work without tabbing. */
+  useEffect(() => {
+    if (openedFolderPath == null) return
+    const id = window.setTimeout(() => fileListRef.current?.focus(), 0)
+    return () => window.clearTimeout(id)
+  }, [openedFolderPath])
 
   const stagingPaths = useMemo(
     () => getStagingPaths(files, selectedIndices, currentIndex),
@@ -249,6 +309,10 @@ export function App(): React.ReactElement {
   }, [stagingKey])
 
   useEffect(() => {
+    if (selectedIndices.size > 1) {
+      setPreviewDataUrl(null)
+      return
+    }
     const path = currentIndex != null && files[currentIndex!] != null ? files[currentIndex!] : stagingPaths[0]
     if (!path) {
       setPreviewDataUrl(null)
@@ -263,7 +327,7 @@ export function App(): React.ReactElement {
         setPreviewDataUrl(null)
       }
     })()
-  }, [currentIndex, files, stagingPaths])
+  }, [currentIndex, files, stagingPaths, selectedIndices])
 
   const buildMergedPayloadForState = useCallback(
     async (st: PendingState): Promise<{ payload: Record<string, unknown> | null; err: string | null }> => {
@@ -471,6 +535,21 @@ export function App(): React.ReactElement {
   }
 
   const onFileListKeyDown = (e: React.KeyboardEvent<HTMLUListElement>) => {
+    if (e.key === ' ' || e.code === 'Space') {
+      e.preventDefault()
+      const n = files.length
+      if (!n) return
+      const i = currentIndex != null ? currentIndex : 0
+      setSelectedIndices((prev) => {
+        const next = new Set(prev)
+        if (next.has(i)) next.delete(i)
+        else next.add(i)
+        return next
+      })
+      setCurrentIndex(i)
+      selectionAnchorRef.current = i
+      return
+    }
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
     const n = files.length
     if (!n) return
@@ -620,8 +699,14 @@ export function App(): React.ReactElement {
       <header className="app-header">
         <h1>{t('app.title')}</h1>
       </header>
-      <div className="app-body">
-        <div className="file-panel">
+      <div className="app-body" ref={appBodyRef}>
+        <div
+          className="file-panel"
+          style={{
+            flex: `0 0 ${filesPaneWidthPct}%`,
+            maxWidth: `${FILES_PANE_WIDTH_MAX_PCT}%`
+          }}
+        >
           {openedFolderPath == null ? (
             <div className="file-panel-empty">
               <button
@@ -649,67 +734,94 @@ export function App(): React.ReactElement {
                   …
                 </button>
               </div>
-              <ul
-                ref={fileListRef}
-                className="file-list"
-                tabIndex={FILE_LIST_TAB_INDEX}
-                role="listbox"
-                aria-label={t('app.title')}
-                onKeyDown={onFileListKeyDown}
-              >
-                {files.map((f, i) => {
-                  const base = f.split(/[/\\]/).pop() ?? f
-                  const displayName = truncateMiddle(base, 36)
-                  const sel = selectedIndices.has(i)
-                  const cur = currentIndex === i
-                  const pk = pathKey(f)
-                  const pend = pendingByPath[pk]
-                  const hasPend =
-                    pend &&
-                    (pend.cameraId != null ||
-                      pend.lensId != null ||
-                      pend.filmId != null ||
-                      pend.authorId != null ||
-                      pend.exposureTime.trim() !== '' ||
-                      pend.fNumberText.trim() !== '' ||
-                      (pend.notesText.trim() !== pend.notesBaseline.trim() && pend.notesText.trim() !== ''))
-                  return (
-                    <li
-                      key={f}
-                      ref={(el) => {
-                        rowRefs.current[i] = el
-                      }}
-                      className={`file-list-row ${sel ? 'selected' : ''} ${cur ? 'current' : ''}`}
-                      role="option"
-                      aria-selected={sel}
-                      onClick={(e) => onRowClick(i, e)}
-                    >
-                      <span className="file-list-name" title={base}>
-                        {displayName}
-                      </span>
-                      {hasPend ? <span className="badge">{t('ui.pending')}</span> : null}
-                    </li>
-                  )
-                })}
-              </ul>
-              <div className="file-panel-actions">
-                <button type="button" className="btn" onClick={selectAllFiles} disabled={!files.length}>
-                  {t('ui.selectAll')}
-                </button>
-                <button type="button" className="btn" onClick={selectNoneFiles} disabled={!files.length}>
-                  {t('ui.deselectAll')}
-                </button>
+              <div className="files-pane-stack" ref={filesPaneStackRef}>
+                <div
+                  className="files-pane-list-region"
+                  style={{
+                    flex: `0 0 ${fileListAreaPct}%`,
+                    minHeight: 0
+                  }}
+                >
+                  <ul
+                    ref={fileListRef}
+                    className="file-list"
+                    tabIndex={FILE_LIST_TAB_INDEX}
+                    role="listbox"
+                    aria-multiselectable="true"
+                    aria-label={t('app.title')}
+                    onKeyDown={onFileListKeyDown}
+                  >
+                    {files.map((f, i) => {
+                      const base = f.split(/[/\\]/).pop() ?? f
+                      const displayName = truncateMiddle(base, 36)
+                      const sel = selectedIndices.has(i)
+                      const cur = currentIndex === i
+                      const pk = pathKey(f)
+                      const pend = pendingByPath[pk]
+                      const hasPend =
+                        pend &&
+                        (pend.cameraId != null ||
+                          pend.lensId != null ||
+                          pend.filmId != null ||
+                          pend.authorId != null ||
+                          pend.exposureTime.trim() !== '' ||
+                          pend.fNumberText.trim() !== '' ||
+                          (pend.notesText.trim() !== pend.notesBaseline.trim() && pend.notesText.trim() !== ''))
+                      return (
+                        <li
+                          key={f}
+                          ref={(el) => {
+                            rowRefs.current[i] = el
+                          }}
+                          className={`file-list-row ${sel ? 'selected' : ''} ${cur ? 'current' : ''}`}
+                          role="option"
+                          aria-selected={sel}
+                          onClick={(e) => onRowClick(i, e)}
+                        >
+                          <span className="file-list-name" title={base}>
+                            {displayName}
+                          </span>
+                          {hasPend ? <span className="badge">{t('ui.pending')}</span> : null}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  <div className="file-panel-actions">
+                    <button type="button" className="btn" onClick={selectAllFiles} disabled={!files.length}>
+                      {t('ui.selectAll')}
+                    </button>
+                    <button type="button" className="btn" onClick={selectNoneFiles} disabled={!files.length}>
+                      {t('ui.deselectAll')}
+                    </button>
+                  </div>
+                </div>
+                <div
+                  className="splitter splitter-h"
+                  role="separator"
+                  aria-orientation="horizontal"
+                  aria-label={t('ui.resizeListPreview')}
+                  onMouseDown={onPaneResizeVerticalStart}
+                />
+                <div className="preview-panel preview-panel--embedded" tabIndex={-1}>
+                  {selectedIndices.size > 1 ? (
+                    <div className="preview-placeholder preview-placeholder--multi">{t('ui.previewMultipleSelected')}</div>
+                  ) : previewDataUrl ? (
+                    <img src={previewDataUrl} alt={t('ui.previewAlt')} />
+                  ) : (
+                    <div className="preview-placeholder">{t('ui.previewPlaceholder')}</div>
+                  )}
+                </div>
               </div>
             </>
           )}
         </div>
-        <div className="preview-panel" tabIndex={-1}>
-          {previewDataUrl ? (
-            <img src={previewDataUrl} alt={t('ui.previewAlt')} />
-          ) : (
-            <div className="preview-placeholder">{t('ui.previewPlaceholder')}</div>
-          )}
-        </div>
+        <div
+          className="splitter splitter-v"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={t('ui.resizeFilesMetadata')}
+          onMouseDown={onPaneResizeHorizontalStart}
+        />
         <div className="meta-panel">
           <div className="meta-section">
             <div className="meta-section-head">
@@ -745,10 +857,15 @@ export function App(): React.ReactElement {
             )}
             <div className="meta-roving-block" onKeyDown={onMetaFieldsKeyDown}>
               <table className="mapping mapping-slim">
+                <colgroup>
+                  <col className="mapping-col-attribute" />
+                  <col className="mapping-col-current" />
+                  <col className="mapping-col-new" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th>{t('ui.attribute')}</th>
-                    <th>{t('ui.current')}</th>
+                    <th>{t('ui.currentValue')}</th>
                     <th>{t('ui.newValue')}</th>
                   </tr>
                 </thead>
