@@ -6,6 +6,9 @@
   --muted: #71717a;
   --accent: #2563eb;
   --danger: #b91c1c;
+  --pending-badge-bg: #fee2e2;
+  --pending-badge-text: #991b1b;
+  --pending-control-ring: rgba(220, 38, 38, 0.45);
   /** Manage Presets slideout + preset modal + main window panel headers (keep in sync). */
   --shaded-panel-header-bg: linear-gradient(180deg, #eef2f7 0%, #e8edf4 100%);
   --shaded-panel-header-inset: inset 0 -1px 0 rgba(24, 24, 27, 0.06);
@@ -200,6 +203,8 @@ button.btn-sm {
   border-bottom: 1px solid var(--border);
   background: var(--panel);
   transition: background-color 0.12s ease;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .file-list-row:hover {
@@ -226,8 +231,17 @@ button.btn-sm {
   font-weight: 600;
   padding: 0.15rem 0.4rem;
   border-radius: 6px;
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--pending-badge-bg);
+  color: var(--pending-badge-text);
+}
+
+.meta-panel select.input.meta-value-pending:not(:focus),
+.meta-panel input.input.meta-value-pending:not(:focus) {
+  box-shadow: 0 0 0 1px var(--pending-control-ring);
+}
+
+.meta-panel .notes-area.meta-value-pending:not(:focus) {
+  box-shadow: 0 0 0 1px var(--pending-control-ring);
 }
 
 .preview-panel {
@@ -298,8 +312,11 @@ button.btn-sm {
 }
 
 .meta-panel > .meta-section:first-child .meta-section-head h2 {
+  flex: 1;
+  min-width: 0;
   font-size: 1rem;
   font-weight: 600;
+  line-height: 1.35;
   text-transform: none;
   letter-spacing: -0.01em;
   color: var(--text);
@@ -371,6 +388,10 @@ button.btn-meta-gear:focus-visible {
   outline: none;
 }
 
+.meta-roving-block:focus-visible {
+  outline: none;
+}
+
 .meta-notes-wrap {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
@@ -384,6 +405,9 @@ button.btn-meta-gear:focus-visible {
 .meta-section-commit {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
   padding: 0.9rem 1rem 1rem;
   margin-top: auto;
   border-top: 1px solid var(--border);
@@ -468,6 +492,19 @@ table.mapping tbody tr:last-child td {
   cursor: pointer;
 }
 
+.meta-panel input.input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.meta-panel select.input.input--neutral-value {
+  color: var(--muted);
+}
+
+.meta-current-value-muted {
+  color: var(--muted);
+}
+
 .meta-panel .input:hover,
 .notes-area:hover {
   border-color: #d4d4d8;
@@ -522,10 +559,35 @@ button.btn-primary:hover {
   color: #fff;
 }
 
-.meta-section-commit .btn-primary {
+.meta-section-commit .btn-clear-pending,
+.meta-section-commit .btn-pending-write {
   min-width: 8.5rem;
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
+}
+
+button.btn-pending-write {
+  background: var(--pending-badge-bg);
+  color: var(--pending-badge-text);
+  border-color: rgba(153, 27, 27, 0.38);
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--pending-control-ring);
+}
+
+button.btn-pending-write:hover:not(:disabled) {
+  background: #fecaca;
+  border-color: rgba(153, 27, 27, 0.5);
+  color: #7f1d1d;
+}
+
+button.btn-pending-write:disabled {
+  box-shadow: none;
+}
+
+button.btn-clear-pending:disabled,
+button.btn-pending-write:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
 }
 
 button.btn-danger {
@@ -876,6 +938,34 @@ button.preset-slideout-close:focus-visible {
 .modal-commit-actions {
   display: flex;
   justify-content: flex-end;
+}
+
+.modal.modal-dialog-confirm {
+  width: min(400px, 92vw);
+  padding: 1.25rem;
+}
+
+.modal-confirm-heading {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.modal-confirm-detail {
+  margin: 0 0 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.modal-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .modal-backdrop {

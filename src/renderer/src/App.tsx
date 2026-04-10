@@ -31,8 +31,8 @@ const CAT_I18N: Record<Cat, 'category.camera' | 'category.lens' | 'category.film
   Author: 'category.author'
 }
 
-/** Tab order: Open Folder / folder row / Select All|None controls, then this scrollable list (see Commit ↹ handoff). */
-const FILE_LIST_TAB_INDEX = 0
+/** Main window tab order is only: file list → metadata fields (one roving group) → Clear pending → Write pending (see tab handlers). */
+const MAIN_TAB_INDEX = 0
 
 interface PendingState {
   cameraId: number | null
@@ -103,6 +103,73 @@ function idKeyForCategory(cat: Cat): keyof PendingState {
   return cat === 'Camera' ? 'cameraId' : cat === 'Lens' ? 'lensId' : cat === 'Film' ? 'filmId' : 'authorId'
 }
 
+function notesPendingForState(pend: PendingState): boolean {
+  return pend.notesText.trim() !== pend.notesBaseline.trim() && pend.notesText.trim() !== ''
+}
+
+/** Per staged path(s), which metadata attributes have uncommitted edits (for table row highlights). */
+function aggregatePendingAttributeHighlights(
+  paths: string[],
+  pendingByPath: Record<string, PendingState>
+): Record<Cat, boolean> & { shutter: boolean; aperture: boolean; notes: boolean } {
+  const cats: Cat[] = ['Camera', 'Lens', 'Film', 'Author']
+  const out = {
+    Camera: false,
+    Lens: false,
+    Film: false,
+    Author: false,
+    shutter: false,
+    aperture: false,
+    notes: false
+  }
+  for (const path of paths) {
+    const pend = pendingByPath[pathKey(path)]
+    if (!pend) continue
+    for (const cat of cats) {
+      const id = pend[idKeyForCategory(cat)]
+      if (id != null) out[cat] = true
+    }
+    if (pend.exposureTime.trim() !== '') out.shutter = true
+    if (pend.fNumberText.trim() !== '') out.aperture = true
+    if (notesPendingForState(pend)) out.notes = true
+  }
+  return out
+}
+
+/** Values shown in New Value controls: when multiple files are staged, only show a pending value if it is identical on every staged file. */
+function mergePendingStateForNewValueUi(
+  paths: string[],
+  pendingByPath: Record<string, PendingState>
+): PendingState {
+  if (paths.length === 0) return emptyPending()
+  if (paths.length === 1) {
+    return pendingByPath[pathKey(paths[0]!)] ?? emptyPending()
+  }
+  const states = paths.map((p) => pendingByPath[pathKey(p)] ?? emptyPending())
+  const mergeId = (key: 'cameraId' | 'lensId' | 'filmId' | 'authorId'): number | null => {
+    const vals = states.map((s) => s[key])
+    return new Set(vals).size === 1 ? vals[0]! : null
+  }
+  const expTrim = states.map((s) => s.exposureTime.trim())
+  const expSame = new Set(expTrim).size === 1
+  const fnTrim = states.map((s) => s.fNumberText.trim())
+  const fnSame = new Set(fnTrim).size === 1
+  const notesVals = states.map((s) => s.notesText)
+  const notesSame = new Set(notesVals).size === 1
+  const baselineVals = states.map((s) => s.notesBaseline)
+  const baselineSame = new Set(baselineVals).size === 1
+  return {
+    cameraId: mergeId('cameraId'),
+    lensId: mergeId('lensId'),
+    filmId: mergeId('filmId'),
+    authorId: mergeId('authorId'),
+    exposureTime: expSame ? states[0]!.exposureTime : '',
+    fNumberText: fnSame ? states[0]!.fNumberText : '',
+    notesText: notesSame ? states[0]!.notesText : '',
+    notesBaseline: baselineSame ? states[0]!.notesBaseline : ''
+  }
+}
+
 const META_FIELD_COUNT = 7
 
 const FILES_PANE_WIDTH_MIN_PCT = 12
@@ -140,6 +207,12 @@ export function App(): React.ReactElement {
   const [exifPreviewOpen, setExifPreviewOpen] = useState(false)
   const [exifPreviewBody, setExifPreviewBody] = useState('')
   const [exifPreviewLoading, setExifPreviewLoading] = useState(false)
+  /** True when at least one file in the folder has a non-empty merged write payload (matches Write action). */
+  const [hasPendingToWrite, setHasPendingToWrite] = useState(false)
+  const [writeConfirmTodo, setWriteConfirmTodo] = useState<
+    { path: string; payload: Record<string, unknown> }[] | null
+  >(null)
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
   /** Horizontal split: files pane width as % of main content area (default 30%). */
   const [filesPaneWidthPct, setFilesPaneWidthPct] = useState(30)
   /** Vertical split within files pane: file list + actions region height % (default 60%). */
@@ -148,6 +221,9 @@ export function App(): React.ReactElement {
   const appBodyRef = useRef<HTMLDivElement>(null)
   const filesPaneStackRef = useRef<HTMLDivElement>(null)
   const fileListRef = useRef<HTMLUListElement>(null)
+  const clearPendingButtonRef = useRef<HTMLButtonElement>(null)
+  const commitButtonRef = useRef<HTMLButtonElement>(null)
+  const metaRovingBlockRef = useRef<HTMLDivElement>(null)
   const openFolderPrimaryRef = useRef<HTMLButtonElement>(null)
   const rowRefs = useRef<(HTMLLIElement | null)[]>([])
   const selectionAnchorRef = useRef<number | null>(null)
@@ -156,6 +232,59 @@ export function App(): React.ReactElement {
   const bindMetaRef = useCallback((index: number) => (el: HTMLElement | null) => {
     metaFieldRefs.current[index] = el
   }, [])
+
+  const focusFirstEnabledMetaField = useCallback((): boolean => {
+    for (let i = 0; i < META_FIELD_COUNT; i++) {
+      const el = metaFieldRefs.current[i] as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null
+      if (el && !el.disabled) {
+        el.focus()
+        return true
+      }
+    }
+    return false
+  }, [])
+
+  const onMetaRovingBlockFocus = useCallback(
+    (e: React.FocusEvent<HTMLDivElement>) => {
+      if (e.target !== e.currentTarget) return
+      void focusFirstEnabledMetaField()
+    },
+    [focusFirstEnabledMetaField]
+  )
+
+  const onMetaFieldTabKeyDown = useCallback((fieldIndex: number) => (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.key !== 'Tab') return
+    e.preventDefault()
+    const refs = metaFieldRefs.current
+    const nextEnabled = (from: number, delta: 1 | -1): void => {
+      let i = from + delta
+      while (i >= 0 && i < META_FIELD_COUNT) {
+        const el = refs[i] as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null
+        if (el && !el.disabled) {
+          el.focus()
+          return
+        }
+        i += delta
+      }
+    }
+    if (e.shiftKey) {
+      if (fieldIndex === 0) {
+        if (fileListRef.current) fileListRef.current.focus()
+        else if (hasPendingToWrite) commitButtonRef.current?.focus()
+        else metaRovingBlockRef.current?.focus()
+      } else {
+        nextEnabled(fieldIndex, -1)
+      }
+    } else {
+      if (fieldIndex < META_FIELD_COUNT - 1) {
+        nextEnabled(fieldIndex, 1)
+      } else if (hasPendingToWrite) {
+        clearPendingButtonRef.current?.focus()
+      } else {
+        fileListRef.current?.focus()
+      }
+    }
+  }, [hasPendingToWrite])
 
   const onPaneResizeHorizontalStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -232,7 +361,7 @@ export function App(): React.ReactElement {
         const folder = list.length > 0 ? parentDir(list[0]!) : parentDir(p)
         setOpenedFolderPath(folder)
         setFiles(list)
-        setSelectedIndices(new Set(list.length ? [0] : []))
+        setSelectedIndices(new Set())
         setCurrentIndex(list.length ? 0 : null)
         setMetadataByPath({})
         setPendingByPath({})
@@ -252,15 +381,17 @@ export function App(): React.ReactElement {
     [files, selectedIndices, currentIndex]
   )
 
-  const stagingKey = stagingPaths.join('\0')
-
-  const ensurePending = useCallback(
-    (path: string): PendingState => {
-      const k = pathKey(path)
-      return pendingByPath[k] ?? emptyPending()
-    },
-    [pendingByPath]
+  const pendingAttributeHighlights = useMemo(
+    () => aggregatePendingAttributeHighlights(stagingPaths, pendingByPath),
+    [stagingPaths, pendingByPath]
   )
+
+  const formPending = useMemo(
+    () => mergePendingStateForNewValueUi(stagingPaths, pendingByPath),
+    [stagingPaths, pendingByPath]
+  )
+
+  const stagingKey = stagingPaths.join('\0')
 
   const updatePendingForPaths = useCallback((paths: string[], updater: (p: PendingState) => PendingState) => {
     setPendingByPath((prev) => {
@@ -376,6 +507,7 @@ export function App(): React.ReactElement {
           if (!cancelled) {
             setExifPreviewBody('')
             setExifPreviewLoading(false)
+            setHasPendingToWrite(false)
           }
           return
         }
@@ -394,6 +526,7 @@ export function App(): React.ReactElement {
         if (!cancelled) {
           setExifPreviewBody(parts.join('\n\n'))
           setExifPreviewLoading(false)
+          setHasPendingToWrite(parts.length > 0)
         }
       })()
     }, 250)
@@ -420,7 +553,7 @@ export function App(): React.ReactElement {
 
   const lensFilter = useMemo(() => {
     if (!catalog) return { allowed: [] as string[], state: 'readonly' as const }
-    const camName = presetNameForId(catalog, 'Camera', ensurePending(stagingPaths[0] ?? '').cameraId)
+    const camName = presetNameForId(catalog, 'Camera', formPending.cameraId)
     const camId = catalog.camera_file_map[camName]
     return filterLensValues(
       catalog.lens_values,
@@ -429,7 +562,7 @@ export function App(): React.ReactElement {
       catalog.camera_metadata_map,
       catalog.lens_metadata_map
     )
-  }, [catalog, stagingPaths, ensurePending])
+  }, [catalog, formPending])
 
   const selectAllFiles = useCallback(() => {
     setSelectedIndices(new Set(files.map((_, i) => i)))
@@ -495,7 +628,7 @@ export function App(): React.ReactElement {
     const list = await api.listImagesInDir(dir)
     setOpenedFolderPath(dir)
     setFiles(list)
-    setSelectedIndices(new Set(list.length ? [0] : []))
+    setSelectedIndices(new Set())
     setCurrentIndex(list.length ? 0 : null)
     setMetadataByPath({})
     setPendingByPath({})
@@ -597,7 +730,60 @@ export function App(): React.ReactElement {
     updatePendingForPaths(stagingPaths, (s) => ({ ...s, [key]: id }))
   }
 
-  const onCommit = async () => {
+  const runWritePending = useCallback(
+    async (todo: { path: string; payload: Record<string, unknown> }[]) => {
+      setWriteConfirmTodo(null)
+      const api = window.exifmod
+      if (!api) {
+        alert(t('ui.preloadUnavailable'))
+        return
+      }
+      const total = todo.length
+      const successfulPaths: string[] = []
+      let ok = 0
+      for (let i = 0; i < todo.length; i++) {
+        const { path, payload } = todo[i]!
+        const fileBase = path.split(/[/\\]/).pop() ?? path
+        setCommitModal({ phase: 'writing', current: i + 1, total, fileBase })
+        try {
+          await api.applyExif(path, payload)
+          ok++
+          successfulPaths.push(path)
+        } catch (e) {
+          alert(
+            t('ui.applyError', {
+              path,
+              message: e instanceof Error ? e.message : String(e)
+            })
+          )
+        }
+      }
+      if (successfulPaths.length > 0) {
+        const metaUpdates: Record<string, Record<string, unknown>> = {}
+        for (const path of successfulPaths) {
+          try {
+            metaUpdates[path] = await api.readMetadata(path)
+          } catch {
+            metaUpdates[path] = {}
+          }
+        }
+        setMetadataByPath((prev) => ({ ...prev, ...metaUpdates }))
+        setPendingByPath((prev) => {
+          const next = { ...prev }
+          for (const path of successfulPaths) {
+            const md = metaUpdates[path] ?? {}
+            const desc = imageDescriptionFromMetadata(md)
+            next[pathKey(path)] = { ...emptyPending(), notesText: desc, notesBaseline: desc }
+          }
+          return next
+        })
+      }
+      setCommitModal({ phase: 'done', ok, total })
+    },
+    [t]
+  )
+
+  const openWriteConfirm = useCallback(async () => {
     const api = window.exifmod
     if (!api) {
       alert(t('ui.preloadUnavailable'))
@@ -620,52 +806,22 @@ export function App(): React.ReactElement {
       alert(t('ui.noStagedChanges'))
       return
     }
-    if (!confirm(t('ui.commitConfirm', { count: todo.length }))) return
-    const total = todo.length
-    const successfulPaths: string[] = []
-    let ok = 0
-    for (let i = 0; i < todo.length; i++) {
-      const { path, payload } = todo[i]!
-      const fileBase = path.split(/[/\\]/).pop() ?? path
-      setCommitModal({ phase: 'writing', current: i + 1, total, fileBase })
-      try {
-        await api.applyExif(path, payload)
-        ok++
-        successfulPaths.push(path)
-      } catch (e) {
-        alert(
-          t('ui.applyError', {
-            path,
-            message: e instanceof Error ? e.message : String(e)
-          })
-        )
+    setWriteConfirmTodo(todo)
+  }, [files, pendingByPath, buildMergedPayloadForState, t])
+
+  const onClearPending = useCallback(() => {
+    setPendingByPath((prev) => {
+      const next = { ...prev }
+      for (const path of files) {
+        const k = pathKey(path)
+        const desc = imageDescriptionFromMetadata(metadataByPath[k] ?? {})
+        next[k] = { ...emptyPending(), notesText: desc, notesBaseline: desc }
       }
-    }
-    if (successfulPaths.length > 0) {
-      const metaUpdates: Record<string, Record<string, unknown>> = {}
-      for (const path of successfulPaths) {
-        try {
-          metaUpdates[path] = await api.readMetadata(path)
-        } catch {
-          metaUpdates[path] = {}
-        }
-      }
-      setMetadataByPath((prev) => ({ ...prev, ...metaUpdates }))
-      setPendingByPath((prev) => {
-        const next = { ...prev }
-        for (const path of successfulPaths) {
-          const md = metaUpdates[path] ?? {}
-          const desc = imageDescriptionFromMetadata(md)
-          next[pathKey(path)] = { ...emptyPending(), notesText: desc, notesBaseline: desc }
-        }
-        return next
-      })
-    }
-    setCommitModal({ phase: 'done', ok, total })
-  }
+      return next
+    })
+  }, [files, metadataByPath])
 
   const staging = stagingPaths
-  const st = staging[0] ? ensurePending(staging[0]) : emptyPending()
 
   const exposureCurrent = staging.map((p) => formatExposureTimeForUi(exposureTimeRawFromMetadata(metadataByPath[p] ?? {})))
   const fnCurrent = staging.map((p) => formatFnumberForUi(fnumberRawFromMetadata(metadataByPath[p] ?? {})))
@@ -712,6 +868,7 @@ export function App(): React.ReactElement {
               <button
                 ref={openFolderPrimaryRef}
                 type="button"
+                tabIndex={-1}
                 className="btn btn-primary file-panel-open-folder"
                 onClick={() => void onOpenFolder()}
               >
@@ -726,6 +883,7 @@ export function App(): React.ReactElement {
                 </span>
                 <button
                   type="button"
+                  tabIndex={-1}
                   className="btn btn-icon"
                   title={t('ui.changeFolder')}
                   aria-label={t('ui.changeFolder')}
@@ -745,7 +903,7 @@ export function App(): React.ReactElement {
                   <ul
                     ref={fileListRef}
                     className="file-list"
-                    tabIndex={FILE_LIST_TAB_INDEX}
+                    tabIndex={MAIN_TAB_INDEX}
                     role="listbox"
                     aria-multiselectable="true"
                     aria-label={t('app.title')}
@@ -787,10 +945,10 @@ export function App(): React.ReactElement {
                     })}
                   </ul>
                   <div className="file-panel-actions">
-                    <button type="button" className="btn" onClick={selectAllFiles} disabled={!files.length}>
+                    <button type="button" tabIndex={-1} className="btn" onClick={selectAllFiles} disabled={!files.length}>
                       {t('ui.selectAll')}
                     </button>
-                    <button type="button" className="btn" onClick={selectNoneFiles} disabled={!files.length}>
+                    <button type="button" tabIndex={-1} className="btn" onClick={selectNoneFiles} disabled={!files.length}>
                       {t('ui.deselectAll')}
                     </button>
                   </div>
@@ -798,6 +956,7 @@ export function App(): React.ReactElement {
                 <div
                   className="splitter splitter-h"
                   role="separator"
+                  tabIndex={-1}
                   aria-orientation="horizontal"
                   aria-label={t('ui.resizeListPreview')}
                   onMouseDown={onPaneResizeVerticalStart}
@@ -818,6 +977,7 @@ export function App(): React.ReactElement {
         <div
           className="splitter splitter-v"
           role="separator"
+          tabIndex={-1}
           aria-orientation="vertical"
           aria-label={t('ui.resizeFilesMetadata')}
           onMouseDown={onPaneResizeHorizontalStart}
@@ -825,9 +985,16 @@ export function App(): React.ReactElement {
         <div className="meta-panel">
           <div className="meta-section">
             <div className="meta-section-head">
-              <h2>{t('ui.metadata')}</h2>
+              <h2>
+                {selectedIndices.size > 0
+                  ? selectedIndices.size === 1
+                    ? t('ui.metadataOneFileSelected')
+                    : t('ui.metadataFilesSelected', { count: selectedIndices.size })
+                  : t('ui.metadata')}
+              </h2>
               <button
                 type="button"
+                tabIndex={-1}
                 className="btn-meta-gear"
                 aria-label={t('ui.managePresets')}
                 title={t('ui.managePresets')}
@@ -855,7 +1022,13 @@ export function App(): React.ReactElement {
             {catalogIssues.length > 0 && (
               <p style={{ fontSize: '0.75rem', color: '#b45309' }}>{catalogIssues.join(' ')}</p>
             )}
-            <div className="meta-roving-block" onKeyDown={onMetaFieldsKeyDown}>
+            <div
+              ref={metaRovingBlockRef}
+              className="meta-roving-block"
+              tabIndex={MAIN_TAB_INDEX}
+              onFocus={onMetaRovingBlockFocus}
+              onKeyDown={onMetaFieldsKeyDown}
+            >
               <table className="mapping mapping-slim">
                 <colgroup>
                   <col className="mapping-col-attribute" />
@@ -871,7 +1044,7 @@ export function App(): React.ReactElement {
                 </thead>
                 <tbody>
                   {CATS.map((cat, idx) => {
-                    const id = st[idKeyForCategory(cat)] as number | null
+                    const id = formPending[idKeyForCategory(cat)] as number | null
                     const name = catalog ? presetNameForId(catalog, cat, id) : 'None'
                     const options =
                       cat === 'Lens'
@@ -884,14 +1057,27 @@ export function App(): React.ReactElement {
                     return (
                       <tr key={cat}>
                         <td>{catLabel(cat)}</td>
-                        <td>{inferredRow[cat] === 'Multiple' ? t('ui.multiple') : inferredRow[cat]}</td>
+                        <td>
+                          {inferredRow[cat] === 'Multiple' ? (
+                            <span className="meta-current-value-muted">{t('ui.multiple')}</span>
+                          ) : (
+                            inferredRow[cat]
+                          )}
+                        </td>
                         <td>
                           <select
                             ref={bindMetaRef(idx)}
-                            className="input"
+                            tabIndex={-1}
+                            className={[
+                              id == null ? 'input input--neutral-value' : 'input',
+                              pendingAttributeHighlights[cat] ? 'meta-value-pending' : ''
+                            ]
+                              .filter(Boolean)
+                              .join(' ')}
                             disabled={!staging.length || !catalog || (cat === 'Lens' && lensFilter.state === 'disabled')}
                             value={internalToDisplay(name)}
                             onChange={(e) => setCategoryPreset(cat, e.target.value)}
+                            onKeyDown={onMetaFieldTabKeyDown(idx)}
                           >
                             {(options ?? ['None']).map((opt) => (
                               <option key={opt} value={internalToDisplay(opt)}>
@@ -905,33 +1091,49 @@ export function App(): React.ReactElement {
                   })}
                   <tr>
                     <td>{t('ui.shutterSpeed')}</td>
-                    <td>{exposureCurrentDisplay}</td>
+                    <td>
+                      {exposureCurrentDisplay === t('ui.multiple') ? (
+                        <span className="meta-current-value-muted">{exposureCurrentDisplay}</span>
+                      ) : (
+                        exposureCurrentDisplay
+                      )}
+                    </td>
                     <td>
                       <input
                         ref={bindMetaRef(4)}
-                        className="input"
+                        tabIndex={-1}
+                        className={['input', pendingAttributeHighlights.shutter ? 'meta-value-pending' : ''].filter(Boolean).join(' ')}
                         placeholder={noneDisplay}
                         disabled={!staging.length}
-                        value={st.exposureTime}
+                        value={formPending.exposureTime}
                         onChange={(e) =>
                           updatePendingForPaths(staging, (s) => ({ ...s, exposureTime: e.target.value }))
                         }
+                        onKeyDown={onMetaFieldTabKeyDown(4)}
                       />
                     </td>
                   </tr>
                   <tr>
                     <td>{t('ui.apertureFStop')}</td>
-                    <td>{fnCurrentDisplay}</td>
+                    <td>
+                      {fnCurrentDisplay === t('ui.multiple') ? (
+                        <span className="meta-current-value-muted">{fnCurrentDisplay}</span>
+                      ) : (
+                        fnCurrentDisplay
+                      )}
+                    </td>
                     <td>
                       <input
                         ref={bindMetaRef(5)}
-                        className="input"
+                        tabIndex={-1}
+                        className={['input', pendingAttributeHighlights.aperture ? 'meta-value-pending' : ''].filter(Boolean).join(' ')}
                         placeholder={noneDisplay}
                         disabled={!staging.length}
-                        value={st.fNumberText}
+                        value={formPending.fNumberText}
                         onChange={(e) =>
                           updatePendingForPaths(staging, (s) => ({ ...s, fNumberText: e.target.value }))
                         }
+                        onKeyDown={onMetaFieldTabKeyDown(5)}
                       />
                     </td>
                   </tr>
@@ -942,14 +1144,16 @@ export function App(): React.ReactElement {
                 <h2>{t('ui.notesImageDescription')}</h2>
                 <textarea
                   ref={bindMetaRef(6)}
-                  className="notes-area"
+                  tabIndex={-1}
+                  className={['notes-area', pendingAttributeHighlights.notes ? 'meta-value-pending' : ''].filter(Boolean).join(' ')}
                   disabled={!staging.length}
                   placeholder={t('ui.notesPlaceholder')}
-                  value={st.notesText}
+                  value={formPending.notesText}
                   onChange={(e) => {
                     const nextNotes = clampUtf8ByBytes(e.target.value)
                     updatePendingForPaths(staging, (s) => ({ ...s, notesText: nextNotes }))
                   }}
+                  onKeyDown={onMetaFieldTabKeyDown(6)}
                 />
               </div>
             </div>
@@ -958,6 +1162,7 @@ export function App(): React.ReactElement {
           <div className="meta-section exif-preview-section" tabIndex={-1}>
             <button
               type="button"
+              tabIndex={-1}
               className="exif-preview-toggle"
               aria-expanded={exifPreviewOpen}
               onClick={() => setExifPreviewOpen((o) => !o)}
@@ -985,22 +1190,137 @@ export function App(): React.ReactElement {
 
           <div className="meta-section meta-section-commit">
             <button
+              ref={clearPendingButtonRef}
               type="button"
-              className="btn btn-primary"
-              onClick={() => void onCommit()}
+              tabIndex={MAIN_TAB_INDEX}
+              className="btn btn-clear-pending"
+              disabled={!hasPendingToWrite}
+              onClick={() => setClearConfirmOpen(true)}
               onKeyDown={(e) => {
-                if (e.key === 'Tab' && !e.shiftKey) {
-                  e.preventDefault()
-                  if (openedFolderPath != null) fileListRef.current?.focus()
-                  else openFolderPrimaryRef.current?.focus()
+                if (e.key !== 'Tab') return
+                e.preventDefault()
+                if (e.shiftKey) {
+                  let i = META_FIELD_COUNT - 1
+                  while (i >= 0) {
+                    const el = metaFieldRefs.current[i] as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null
+                    if (el && !el.disabled) {
+                      el.focus()
+                      return
+                    }
+                    i--
+                  }
+                  if (fileListRef.current) fileListRef.current.focus()
+                  else metaRovingBlockRef.current?.focus()
+                  return
                 }
+                if (hasPendingToWrite) commitButtonRef.current?.focus()
               }}
             >
-              {t('ui.commitChanges')}
+              {t('ui.clearPendingChanges')}
+            </button>
+            <button
+              ref={commitButtonRef}
+              type="button"
+              tabIndex={MAIN_TAB_INDEX}
+              className="btn btn-pending-write"
+              disabled={!hasPendingToWrite}
+              onClick={() => void openWriteConfirm()}
+              onKeyDown={(e) => {
+                if (e.key !== 'Tab') return
+                e.preventDefault()
+                if (e.shiftKey) {
+                  if (hasPendingToWrite) clearPendingButtonRef.current?.focus()
+                  else {
+                    let i = META_FIELD_COUNT - 1
+                    while (i >= 0) {
+                      const el = metaFieldRefs.current[i] as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null
+                      if (el && !el.disabled) {
+                        el.focus()
+                        return
+                      }
+                      i--
+                    }
+                    if (fileListRef.current) fileListRef.current.focus()
+                    else metaRovingBlockRef.current?.focus()
+                  }
+                  return
+                }
+                if (fileListRef.current) fileListRef.current.focus()
+                else metaRovingBlockRef.current?.focus()
+              }}
+            >
+              {t('ui.writePendingChanges')}
             </button>
           </div>
         </div>
       </div>
+      {writeConfirmTodo ? (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setWriteConfirmTodo(null)
+          }}
+        >
+          <div
+            className="modal modal-dialog-confirm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="write-confirm-title"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <h3 id="write-confirm-title" className="modal-confirm-heading">
+              {t('ui.writeConfirmLead', { count: writeConfirmTodo.length })}
+            </h3>
+            <p className="modal-confirm-detail">{t('ui.writeConfirmDetail')}</p>
+            <div className="modal-confirm-actions">
+              <button type="button" className="btn" onClick={() => setWriteConfirmTodo(null)}>
+                {t('dialog.buttonCancel')}
+              </button>
+              <button type="button" className="btn btn-primary" onClick={() => void runWritePending(writeConfirmTodo)}>
+                {t('ui.writePendingChanges')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {clearConfirmOpen ? (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setClearConfirmOpen(false)
+          }}
+        >
+          <div
+            className="modal modal-dialog-confirm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="clear-confirm-title"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <h3 id="clear-confirm-title" className="modal-confirm-heading">
+              {t('ui.clearConfirmLead')}
+            </h3>
+            <p className="modal-confirm-detail">{t('ui.clearConfirmDetail')}</p>
+            <div className="modal-confirm-actions">
+              <button type="button" className="btn" onClick={() => setClearConfirmOpen(false)}>
+                {t('dialog.buttonCancel')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => {
+                  setClearConfirmOpen(false)
+                  onClearPending()
+                }}
+              >
+                {t('ui.clearPendingChanges')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {commitModal ? (
         <div
           className="modal-backdrop"
