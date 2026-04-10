@@ -1,3 +1,4 @@
+import './setAppName.js'
 import { app, BrowserWindow, ipcMain, dialog, Menu, nativeImage } from 'electron'
 import { i18next, initMainI18n } from './i18n.js'
 import { localizePreflightIssues, localizeIssueLine } from './localizePreflight.js'
@@ -34,9 +35,6 @@ import { spawnExiftool } from './exiftoolRunner.js'
 import type { CreatePresetInput, UpdatePresetInput } from '../shared/types.js'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
-
-/** Must run before `app.whenReady()` so the macOS menu bar shows this name instead of "Electron". */
-app.setName('ExifMod')
 
 /** Window / taskbar icon: packaged copies `build/icon.png` to Resources; dev uses repo `build/icon.png`. */
 function resolveAppIconPath(): string | undefined {
