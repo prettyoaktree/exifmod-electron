@@ -147,9 +147,12 @@ export function inferCategoryValues(
     }
   }
 
+  const lensModelHint =
+    metadataFirstTag(meta, ['LensModel', 'Lens', 'EXIF:LensModel'] as const) ?? ''
+
   return {
     Camera: String(meta['Model'] ?? meta['Make'] ?? ''),
-    Lens: String(meta['LensModel'] ?? meta['Lens'] ?? ''),
+    Lens: String(lensModelHint),
     Film: filmFromKeywords,
     Author: String(meta['Author Name'] ?? meta['Creator'] ?? meta['Artist'] ?? '')
   }
