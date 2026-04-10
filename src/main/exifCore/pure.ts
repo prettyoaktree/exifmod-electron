@@ -3,12 +3,18 @@ import {
   LEGACY_LENS_MOUNT_TO_DISPLAY,
   WRITE_EXCLUDED_FIELDS
 } from './constants.js'
+import { formatCopyrightForExif } from '../../shared/copyrightFormat.js'
 import type { CameraMetadata, ConfigCatalog, LensMetadata } from '../../shared/types.js'
 
 export function sanitizeWritePayload(payload: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(payload)) {
     if (!WRITE_EXCLUDED_FIELDS.has(k)) out[k] = v
+  }
+  if (Object.prototype.hasOwnProperty.call(out, 'Copyright')) {
+    const formatted = formatCopyrightForExif(String(out['Copyright'] ?? ''))
+    if (formatted === null) delete out['Copyright']
+    else out['Copyright'] = formatted
   }
   return out
 }

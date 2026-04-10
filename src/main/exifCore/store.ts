@@ -53,7 +53,8 @@ function filmNameFromKeywords(data: Record<string, unknown>): string {
 
 function displayNameForRecord(category: string, data: Record<string, unknown>, fallback: string): string {
   if (category === 'camera') return String(data['Model'] ?? '').trim() || fallback
-  if (category === 'lens') return String(data['Lens'] ?? data['LensModel'] ?? '').trim() || fallback
+  if (category === 'lens')
+    return String(data['LensModel'] ?? data['Lens'] ?? data['LensMake'] ?? '').trim() || fallback
   if (category === 'author')
     return String(data['Author Name'] ?? data['Creator'] ?? data['Artist'] ?? '').trim() || fallback
   if (category === 'film') {
@@ -406,8 +407,8 @@ export async function loadCatalog(paths: DataPaths): Promise<{ catalog: ConfigCa
         lens_adaptable: row.lens_adaptable != null ? Boolean(row.lens_adaptable) : false,
         fixed_lens_display:
           String(payload['LensModel'] ?? '').trim() ||
+          String(payload['LensMake'] ?? '').trim() ||
           String(payload['Lens'] ?? '').trim() ||
-          String(payload['LensID'] ?? '').trim() ||
           'None'
       }
     } else if (category === 'lens') {

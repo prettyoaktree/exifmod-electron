@@ -5,6 +5,15 @@ describe('sanitizeWritePayload', () => {
   it('removes Film and Film Maker', () => {
     expect(sanitizeWritePayload({ Make: 'X', Film: 'y', 'Film Maker': 'z' })).toEqual({ Make: 'X' })
   })
+
+  it('formats Copyright with ©, year, and user text', () => {
+    const y = new Date().getFullYear()
+    expect(sanitizeWritePayload({ Copyright: '  Acme Co  ' })).toEqual({ Copyright: `© ${y} Acme Co` })
+  })
+
+  it('drops blank Copyright', () => {
+    expect(sanitizeWritePayload({ Make: 'X', Copyright: '  ' })).toEqual({ Make: 'X' })
+  })
 })
 
 describe('buildApplyCommand', () => {
