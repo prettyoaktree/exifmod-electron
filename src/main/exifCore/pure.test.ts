@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildApplyCommand, filterLensValues, sanitizeWritePayload } from './pure.js'
+import { buildApplyCommand, filterLensValues, sanitizeWritePayload, stripWriteExcludedFields } from './pure.js'
 
 describe('sanitizeWritePayload', () => {
   it('removes Film and Film Maker', () => {
@@ -13,6 +13,21 @@ describe('sanitizeWritePayload', () => {
 
   it('drops blank Copyright', () => {
     expect(sanitizeWritePayload({ Make: 'X', Copyright: '  ' })).toEqual({ Make: 'X' })
+  })
+
+  it('does not double-prefix Copyright that already has © and year', () => {
+    const y = new Date().getFullYear()
+    const already = `© ${y} Alon Yaffe. All rights reserved.`
+    expect(sanitizeWritePayload({ Copyright: already })).toEqual({ Copyright: already })
+  })
+})
+
+describe('stripWriteExcludedFields', () => {
+  it('removes Film keys but does not format Copyright', () => {
+    expect(stripWriteExcludedFields({ Make: 'X', Film: 'y', Copyright: 'Acme' })).toEqual({
+      Make: 'X',
+      Copyright: 'Acme'
+    })
   })
 })
 

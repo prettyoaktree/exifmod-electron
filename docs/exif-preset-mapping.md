@@ -4,7 +4,7 @@ This document describes how EXIF tag names relate to **preset categories** (Came
 
 Implementation references:
 
-- Merge and sanitization: `src/main/exifCore/store.ts` (`mergeSelectedPayloads`, `readConfigPayload`), `src/main/exifCore/pure.ts` (`sanitizeWritePayload`, `buildApplyCommand`)
+- Merge and sanitization: `src/main/exifCore/store.ts` (`mergeSelectedPayloads` strips `Film` / `Film Maker` only; raw user Copyright), `src/main/exifCore/pure.ts` (`sanitizeWritePayload` at ExifTool apply, `buildApplyCommand`)
 - Constants: `src/main/exifCore/constants.ts` (`CONTROL_FIELDS`, `WRITE_EXCLUDED_FIELDS`)
 - Main grid / commit: `src/renderer/src/App.tsx` (`buildMergedPayloadForState`, metadata table, notes, shutter/aperture)
 - “Current” column hints: `src/renderer/src/exif/infer.ts` (`inferCategoryValues`, exposure/aperture helpers)
