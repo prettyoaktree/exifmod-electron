@@ -94,6 +94,35 @@ body {
   min-height: 0;
 }
 
+.panel-pane-title-stack {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.panel-pane-title-stack .panel-pane-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.panel-pane-shortcut-hint {
+  margin: 0.2rem 0 0;
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  user-select: none;
+}
+
 .splitter {
   flex-shrink: 0;
   background: var(--border);
@@ -140,7 +169,6 @@ button.file-panel-open-folder {
   align-items: center;
   gap: 0.35rem;
   padding: 0.75rem 1rem;
-  font-size: 0.8rem;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   background: var(--shaded-panel-header-bg);
@@ -148,11 +176,10 @@ button.file-panel-open-folder {
 }
 
 .file-panel-folder-name {
-  flex: 1;
-  min-width: 0;
-  color: var(--text);
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .file-panel-actions {
@@ -282,7 +309,7 @@ button.btn-sm {
   display: flex;
   flex-direction: column;
   background: var(--panel);
-  overflow: auto;
+  overflow: hidden;
   min-height: 0;
   border: 1px solid var(--chrome-border);
   border-radius: var(--chrome-radius);
@@ -299,6 +326,9 @@ button.btn-sm {
 }
 
 .meta-panel > .meta-section:first-child {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
   padding: 0;
   border-bottom: 1px solid var(--border);
 }
@@ -309,17 +339,6 @@ button.btn-sm {
   background: var(--shaded-panel-header-bg);
   box-shadow: var(--shaded-panel-header-inset);
   border-bottom: 1px solid var(--border);
-}
-
-.meta-panel > .meta-section:first-child .meta-section-head h2 {
-  flex: 1;
-  min-width: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.35;
-  text-transform: none;
-  letter-spacing: -0.01em;
-  color: var(--text);
 }
 
 .meta-panel > .meta-section:first-child > p {
@@ -403,6 +422,7 @@ button.btn-meta-gear:focus-visible {
 }
 
 .meta-section-commit {
+  flex-shrink: 0;
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -605,7 +625,6 @@ button.btn-danger:hover {
 pre.preview-json {
   margin: 0;
   font-size: 0.7rem;
-  max-height: 180px;
   overflow: auto;
   background: #f4f4f6;
   padding: 0.65rem 0.75rem;
@@ -614,7 +633,26 @@ pre.preview-json {
 }
 
 .exif-preview-section {
+  flex-shrink: 0;
   outline: none;
+  background: linear-gradient(180deg, #eef2f7 0%, #e4e9f3 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -1px 0 rgba(24, 24, 27, 0.05);
+}
+
+.exif-preview-section--expanded {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.exif-preview-section--expanded .preview-json {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
 }
 
 .exif-preview-toggle {
@@ -631,14 +669,15 @@ pre.preview-json {
   color: var(--muted);
   background: transparent;
   border: none;
-  padding: 0.2rem 0;
-  cursor: pointer;
+  padding: 0.25rem 0.35rem;
   margin-bottom: 0.35rem;
+  cursor: pointer;
   border-radius: 6px;
 }
 
 .exif-preview-toggle:hover {
   color: var(--accent);
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .exif-preview-toggle:focus-visible {
@@ -663,7 +702,6 @@ pre.preview-json {
 }
 
 .exif-preview-pre {
-  max-height: 220px;
   margin-top: 0.35rem;
 }
 

@@ -640,6 +640,32 @@ export function App(): React.ReactElement {
     return parts[parts.length - 1] || openedFolderPath
   }, [openedFolderPath])
 
+  const shortcutModifier = useMemo((): '⌘' | 'Ctrl' => {
+    if (typeof navigator === 'undefined') return 'Ctrl'
+    const p = navigator.platform ?? ''
+    const ua = navigator.userAgent ?? ''
+    if (/Mac|iPhone|iPod|iPad/.test(p)) return '⌘'
+    if (/\bMac OS X\b/.test(ua) || /\bMacintosh\b/.test(ua)) return '⌘'
+    return 'Ctrl'
+  }, [])
+
+  const fileListShortcutHint = shortcutModifier === '⌘' ? '\u2318 1' : 'Ctrl+1'
+  const metadataShortcutHint = shortcutModifier === '⌘' ? '\u2318 2' : 'Ctrl+2'
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return
+      if (e.altKey || e.shiftKey) return
+      if (e.key !== '1' && e.key !== '2') return
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.key === '1') fileListRef.current?.focus()
+      else metaRovingBlockRef.current?.focus()
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [])
+
   const onRowClick = (i: number, ev: React.MouseEvent) => {
     if (ev.shiftKey) {
       const anchor = selectionAnchorRef.current ?? currentIndex ?? i
@@ -878,9 +904,12 @@ export function App(): React.ReactElement {
           ) : (
             <>
               <div className="file-panel-folder-row">
-                <span className="file-panel-folder-name" title={openedFolderPath}>
-                  {truncateMiddle(folderTitle, 28)}
-                </span>
+                <div className="panel-pane-title-stack">
+                  <span className="panel-pane-title file-panel-folder-name" title={openedFolderPath}>
+                    {truncateMiddle(folderTitle, 36)}
+                  </span>
+                  <p className="panel-pane-shortcut-hint">{fileListShortcutHint}</p>
+                </div>
                 <button
                   type="button"
                   tabIndex={-1}
@@ -906,7 +935,7 @@ export function App(): React.ReactElement {
                     tabIndex={MAIN_TAB_INDEX}
                     role="listbox"
                     aria-multiselectable="true"
-                    aria-label={t('app.title')}
+                    aria-label={`${folderTitle} (${fileListShortcutHint})`}
                     onKeyDown={onFileListKeyDown}
                   >
                     {files.map((f, i) => {
@@ -985,13 +1014,16 @@ export function App(): React.ReactElement {
         <div className="meta-panel">
           <div className="meta-section">
             <div className="meta-section-head">
-              <h2>
-                {selectedIndices.size > 0
-                  ? selectedIndices.size === 1
-                    ? t('ui.metadataOneFileSelected')
-                    : t('ui.metadataFilesSelected', { count: selectedIndices.size })
-                  : t('ui.metadata')}
-              </h2>
+              <div className="panel-pane-title-stack">
+                <h2 className="panel-pane-title">
+                  {selectedIndices.size > 0
+                    ? selectedIndices.size === 1
+                      ? t('ui.metadataOneFileSelected')
+                      : t('ui.metadataFilesSelected', { count: selectedIndices.size })
+                    : t('ui.metadata')}
+                </h2>
+                <p className="panel-pane-shortcut-hint">{metadataShortcutHint}</p>
+              </div>
               <button
                 type="button"
                 tabIndex={-1}
@@ -1159,7 +1191,10 @@ export function App(): React.ReactElement {
             </div>
           </div>
 
-          <div className="meta-section exif-preview-section" tabIndex={-1}>
+          <div
+            className={`meta-section exif-preview-section${exifPreviewOpen ? ' exif-preview-section--expanded' : ''}`}
+            tabIndex={-1}
+          >
             <button
               type="button"
               tabIndex={-1}
