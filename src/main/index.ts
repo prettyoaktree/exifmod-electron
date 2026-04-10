@@ -1,6 +1,8 @@
 import { app, BrowserWindow, ipcMain, dialog, Menu, nativeImage } from 'electron'
+import { execFile as execFileCb } from 'node:child_process'
 import { dirname, extname, join } from 'node:path'
-import { readFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import type { MergeImportResult } from '../shared/types.js'
 import { fileURLToPath } from 'node:url'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
@@ -60,12 +62,51 @@ const LEGACY_PREVIEW_MAX_BYTES = 48 * 1024 * 1024
 
 const LEGACY_DATA_URL_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif'])
 
+function execFileAsync(command: string, args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    execFileCb(command, args, (err) => (err ? reject(err) : resolve()))
+  })
+}
+
+/** macOS: rasterize TIFF to JPEG via `sips` (handles many 8/16‑bit and layered TIFFs Quick Look mishandles). */
+async function previewTiffWithSips(filePath: string): Promise<string | null> {
+  let dir: string | undefined
+  try {
+    dir = await mkdtemp(join(tmpdir(), 'exifmod-preview-'))
+    const outJpg = join(dir, 'preview.jpg')
+    await execFileAsync('sips', ['-s', 'format', 'jpeg', '-Z', String(PREVIEW_MAX_EDGE), filePath, '--out', outJpg])
+    const buf = await readFile(outJpg)
+    if (buf.length < 32) return null
+    return `data:image/jpeg;base64,${buf.toString('base64')}`
+  } catch {
+    return null
+  } finally {
+    if (dir) {
+      try {
+        await rm(dir, { recursive: true, force: true })
+      } catch {
+        /* */
+      }
+    }
+  }
+}
+
 /**
- * Build a JPEG data URL the renderer can always show. Chromium does not reliably decode TIFF (and
- * huge base64 payloads fail); use NativeImage + thumbnail API where available.
+ * Build a JPEG data URL the renderer can always show. Chromium does not decode TIFF in img tags;
+ * use NativeImage / platform tools. On macOS, Quick Look thumbnails for TIFF often return a generic
+ * document icon — avoid `createThumbnailFromPath` for .tif/.tiff and prefer `sips` first.
  */
 async function readImagePreviewDataUrl(filePath: string): Promise<string> {
-  if (process.platform === 'darwin' || process.platform === 'win32') {
+  const ext = extname(filePath).toLowerCase()
+  const tiff = ext === '.tif' || ext === '.tiff'
+
+  if (tiff && process.platform === 'darwin') {
+    const fromSips = await previewTiffWithSips(filePath)
+    if (fromSips) return fromSips
+  }
+
+  const skipQuickLookThumb = tiff && process.platform === 'darwin'
+  if (!skipQuickLookThumb && (process.platform === 'darwin' || process.platform === 'win32')) {
     try {
       const thumb = await nativeImage.createThumbnailFromPath(filePath, {
         width: PREVIEW_MAX_EDGE,
@@ -96,7 +137,6 @@ async function readImagePreviewDataUrl(filePath: string): Promise<string> {
     return `data:image/jpeg;base64,${buf.toString('base64')}`
   }
 
-  const ext = extname(filePath).toLowerCase()
   if (!LEGACY_DATA_URL_EXTS.has(ext)) {
     throw new Error(
       'Preview could not be decoded. For TIFF and other raw formats, ensure the file is readable.'
