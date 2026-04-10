@@ -25,6 +25,7 @@ export interface ExifmodApi {
   suggestedLensMounts: () => Promise<string[]>
   resolveImageList: (targetPath: string) => Promise<string[]>
   listImagesInDir: (dirPath: string) => Promise<string[]>
+  isFile: (filePath: string) => Promise<boolean>
   readImageDataUrl: (filePath: string) => Promise<string>
   onPresetsImported: (cb: () => void) => () => void
   onStartupPath: (cb: (p: string) => void) => () => void

@@ -67,6 +67,11 @@ function parentDir(p: string): string {
   return i <= 0 ? p : p.slice(0, i)
 }
 
+/** Compare paths for matching an opened file to listImagesInDir entries (macOS may vary separators). */
+function pathsEqualForList(a: string, b: string): boolean {
+  return a.replace(/\\/g, '/').toLowerCase() === b.replace(/\\/g, '/').toLowerCase()
+}
+
 function presetNameForId(catalog: ConfigCatalog, category: Cat, id: number | null): string {
   if (id == null) return 'None'
   const map =
@@ -357,12 +362,24 @@ export function App(): React.ReactElement {
     if (!api) return
     return api.onStartupPath((p) => {
       void (async () => {
-        const list = await api.resolveImageList(p)
+        let list: string[]
+        let selectIndex = 0
+
+        if (await api.isFile(p)) {
+          const folder = parentDir(p)
+          list = await api.listImagesInDir(folder)
+          const idx = list.findIndex((f) => pathsEqualForList(f, p))
+          selectIndex = idx >= 0 ? idx : 0
+        } else {
+          list = await api.resolveImageList(p)
+          selectIndex = 0
+        }
+
         const folder = list.length > 0 ? parentDir(list[0]!) : parentDir(p)
         setOpenedFolderPath(folder)
         setFiles(list)
-        setSelectedIndices(new Set())
-        setCurrentIndex(list.length ? 0 : null)
+        setSelectedIndices(list.length ? new Set([selectIndex]) : new Set())
+        setCurrentIndex(list.length ? selectIndex : null)
         setMetadataByPath({})
         setPendingByPath({})
       })()

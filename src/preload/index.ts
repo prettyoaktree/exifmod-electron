@@ -1,6 +1,18 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { ConfigCatalog, CreatePresetInput, PresetRecord, UpdatePresetInput } from '../shared/types.js'
 
+/** Paths sent before React subscribes (cold Open With: main emits on did-finish-load, listener was not ready yet). */
+const pendingStartupPaths: string[] = []
+const startupPathSubscribers = new Set<(p: string) => void>()
+
+ipcRenderer.on('startup:path', (_e, p: string) => {
+  if (startupPathSubscribers.size === 0) {
+    pendingStartupPaths.push(p)
+    return
+  }
+  for (const cb of startupPathSubscribers) cb(p)
+})
+
 const api = {
   getPaths: () =>
     ipcRenderer.invoke('app:getPaths') as Promise<{ dataDir: string; dbPath: string; configDir: string }>,
@@ -29,6 +41,7 @@ const api = {
     ipcRenderer.invoke('fs:resolveImageList', targetPath) as Promise<string[]>,
   listImagesInDir: (dirPath: string) =>
     ipcRenderer.invoke('fs:listImagesInDir', dirPath) as Promise<string[]>,
+  isFile: (filePath: string) => ipcRenderer.invoke('fs:isFile', filePath) as Promise<boolean>,
   readImageDataUrl: (filePath: string) => ipcRenderer.invoke('fs:readImageDataUrl', filePath) as Promise<string>,
   onPresetsImported: (cb: () => void) => {
     const fn = (): void => cb()
@@ -36,9 +49,12 @@ const api = {
     return () => ipcRenderer.removeListener('presets:imported', fn)
   },
   onStartupPath: (cb: (p: string) => void) => {
-    const fn = (_e: Electron.IpcRendererEvent, p: string): void => cb(p)
-    ipcRenderer.on('startup:path', fn)
-    return () => ipcRenderer.removeListener('startup:path', fn)
+    startupPathSubscribers.add(cb)
+    const queued = pendingStartupPaths.splice(0, pendingStartupPaths.length)
+    for (const p of queued) cb(p)
+    return () => {
+      startupPathSubscribers.delete(cb)
+    }
   }
 }
 
