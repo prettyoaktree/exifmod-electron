@@ -10,6 +10,17 @@ With `npm run dev`, the process is the prebuilt **Electron.app** from `node_modu
 
 **Optional (dev only):** advanced users can change `CFBundleName` / `CFBundleDisplayName` under `node_modules/electron/dist/Electron.app/Contents/Info.plist` (re-apply after upgrading Electron; tools like `patch-package` can persist the edit).
 
+## macOS: Finder and Dock
+
+- **Open With (supported images):** After a release install, Finder can open `.jpg`, `.jpeg`, `.tif`, and `.tiff` with ExifMod. The app loads the **parent folder** as the session and **selects** the file you opened. Selecting **multiple** files and using Open With shows a dialog and does not load a session.
+- **Dock:** Dropping a supported image onto the ExifMod icon should behave like Open With when the system passes a single file path.
+
+### Manual checks (release build)
+
+1. **File:** In Finder, use Open With → ExifMod on a `.jpg` in a folder with several images; the sidebar lists all supported images in that folder and the opened row is selected.
+2. **Multi-select files** + Open With → short native dialog, no partial load.
+3. **Running app:** With ExifMod already open, Open With another image → session updates with the new folder and selection.
+
 ## Localization
 
 - User-facing strings live under `locales/` as JSON per language (e.g. `en.json`, `fr.json`). Keys are nested (`menu.file`, `ui.commitChanges`, …).

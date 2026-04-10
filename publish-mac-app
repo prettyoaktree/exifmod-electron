@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+cd "$ROOT"
+
+if [[ "$(uname -s)" != "Darwin" ]]; then
+  echo "publish-mac-app: this script only runs on macOS." >&2
+  exit 1
+fi
+
+echo "Building release…"
+npm run build
+
+if [[ ! -d "$ROOT/release" ]]; then
+  echo "publish-mac-app: no release/ directory after build." >&2
+  exit 1
+fi
+
+APP="$(find "$ROOT/release" -name 'ExifMod.app' -type d 2>/dev/null | head -1)"
+if [[ -z "$APP" ]] || [[ ! -d "$APP" ]]; then
+  echo "publish-mac-app: could not find ExifMod.app under release/. Check electron-builder output." >&2
+  exit 1
+fi
+
+DEST="/Applications/ExifMod.app"
+echo "Installing: $APP → $DEST"
+if [[ -d "$DEST" ]]; then
+  echo "Removing existing $DEST"
+  rm -rf "$DEST"
+fi
+
+ditto "$APP" "$DEST"
+echo "Done. ExifMod is in /Applications."

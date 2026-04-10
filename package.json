@@ -58,6 +58,18 @@
       "target": [
         "dmg"
       ]
-    }
+    },
+    "fileAssociations": [
+      {
+        "ext": [
+          "jpg",
+          "jpeg",
+          "tif",
+          "tiff"
+        ],
+        "name": "Image",
+        "role": "Editor"
+      }
+    ]
   }
 }

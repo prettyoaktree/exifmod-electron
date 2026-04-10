@@ -6,7 +6,7 @@ import { localizeSkipReason, localizeMergeErrorMessage, localizeExportErrorMessa
 import { localizeThrownPresetError } from './localizeStoreError.js'
 import { resolveLocaleTag } from '../shared/i18n/resolveLocale.js'
 import { execFile as execFileCb } from 'node:child_process'
-import { dirname, extname, join } from 'node:path'
+import { dirname, extname, join, resolve as resolvePath } from 'node:path'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import type { MergeImportResult } from '../shared/types.js'
@@ -56,6 +56,111 @@ function resolvePreloadScript(): string {
 }
 
 let mainWindow: BrowserWindow | null = null
+
+/** macOS: paths queued before BrowserWindow exists (e.g. open-file before ready). */
+const preReadyOpenPaths: string[] = []
+
+/** Debounce batching for Finder multi-select via repeated open-file (darwin). */
+const OPEN_FILE_DEBOUNCE_MS = 280
+let openFileBuffer: string[] = []
+let openFileDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+/** Suppress duplicate open-file right after cold-start delivery (macOS often sends both argv and open-file). */
+let suppressOpenFileDuplicatePath: string | null = null
+let suppressOpenFileDuplicateUntil = 0
+
+function collectPositionalArgvPaths(): string[] {
+  const slice = process.argv.slice(app.isPackaged ? 1 : 2)
+  const out: string[] = []
+  for (const a of slice) {
+    if (!a || a.startsWith('-')) continue
+    try {
+      out.push(resolvePath(a))
+    } catch {
+      /* */
+    }
+  }
+  return out
+}
+
+function deliverOpenPathToRenderer(absolutePath: string): void {
+  const resolved = resolvePath(absolutePath)
+
+  const send = (): void => {
+    mainWindow?.webContents.send('startup:path', resolved)
+  }
+
+  if (!mainWindow) return
+
+  const wc = mainWindow.webContents
+  if (wc.isLoading()) {
+    wc.once('did-finish-load', send)
+  } else {
+    send()
+  }
+}
+
+function showFinderMultiPathDialog(): void {
+  void dialog.showMessageBox({
+    type: 'warning',
+    message: i18next.t('ipc.finderMultiPathTitle'),
+    detail: i18next.t('ipc.finderMultiPathDetail')
+  })
+}
+
+function flushOpenFileBuffer(): void {
+  openFileDebounceTimer = null
+  if (openFileBuffer.length === 0) return
+  const uniq = [...new Set(openFileBuffer.map((p) => resolvePath(p)))]
+  openFileBuffer = []
+  if (uniq.length > 1) {
+    showFinderMultiPathDialog()
+    return
+  }
+  if (uniq.length === 1) {
+    const r = uniq[0]!
+    const resolved = resolvePath(r)
+    if (
+      suppressOpenFileDuplicatePath != null &&
+      suppressOpenFileDuplicatePath === resolved &&
+      Date.now() < suppressOpenFileDuplicateUntil
+    ) {
+      return
+    }
+    deliverOpenPathToRenderer(r)
+  }
+}
+
+function processLaunchPathsFromArgvAndPreReady(): void {
+  const fromArgv = collectPositionalArgvPaths()
+  const fromPre = preReadyOpenPaths.map((p) => resolvePath(p))
+  preReadyOpenPaths.length = 0
+
+  const combined = [...new Set([...fromArgv, ...fromPre])]
+  if (combined.length > 1) {
+    showFinderMultiPathDialog()
+    return
+  }
+  if (combined.length === 1) {
+    const p = combined[0]!
+    suppressOpenFileDuplicatePath = resolvePath(p)
+    suppressOpenFileDuplicateUntil = Date.now() + 2000
+    deliverOpenPathToRenderer(p)
+  }
+}
+
+if (process.platform === 'darwin') {
+  app.on('open-file', (event, filePath) => {
+    event.preventDefault()
+    if (!app.isReady()) {
+      preReadyOpenPaths.push(filePath)
+      return
+    }
+    openFileBuffer.push(filePath)
+    if (openFileDebounceTimer) clearTimeout(openFileDebounceTimer)
+    openFileDebounceTimer = setTimeout(flushOpenFileBuffer, OPEN_FILE_DEBOUNCE_MS)
+  })
+}
 
 /** Max longest edge for preview (pixels). Keeps IPC payload small and memory stable. */
 const PREVIEW_MAX_EDGE = 2048
@@ -489,14 +594,13 @@ function setupIpc(): void {
   })
 
   ipcMain.handle('fs:readImageDataUrl', async (_e, filePath: string) => readImagePreviewDataUrl(filePath))
-}
 
-function sendStartupPathIfAny(): void {
-  const argv = process.argv.slice(app.isPackaged ? 1 : 2)
-  const pathArg = argv.find((a) => !a.startsWith('-') && a.length > 0)
-  if (!pathArg || !mainWindow) return
-  mainWindow.webContents.once('did-finish-load', () => {
-    mainWindow?.webContents.send('startup:path', pathArg)
+  ipcMain.handle('fs:isFile', (_e, filePath: string) => {
+    try {
+      return statSync(filePath).isFile()
+    } catch {
+      return false
+    }
   })
 }
 
@@ -520,12 +624,11 @@ app.whenReady().then(async () => {
     app.dock.setIcon(dockIcon)
   }
   createWindow()
-  sendStartupPathIfAny()
+  processLaunchPathsFromArgvAndPreReady()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
-      sendStartupPathIfAny()
     }
   })
 })

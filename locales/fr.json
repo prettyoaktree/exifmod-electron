@@ -52,7 +52,9 @@
   },
   "ipc": {
     "exiftoolNotFound": "exiftool introuvable",
-    "exiftoolExit": "exiftool s’est terminé avec le code {{code}}"
+    "exiftoolExit": "exiftool s’est terminé avec le code {{code}}",
+    "finderMultiPathTitle": "ExifMod",
+    "finderMultiPathDetail": "N’ouvrez qu’un seul fichier ou dossier à la fois."
   },
   "store": {
     "unsupportedCategory": "Catégorie de préréglage non prise en charge : {{category}}",

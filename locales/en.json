@@ -52,7 +52,9 @@
   },
   "ipc": {
     "exiftoolNotFound": "exiftool not found",
-    "exiftoolExit": "exiftool exited with {{code}}"
+    "exiftoolExit": "exiftool exited with {{code}}",
+    "finderMultiPathTitle": "ExifMod",
+    "finderMultiPathDetail": "Open only one file or folder at a time."
   },
   "store": {
     "unsupportedCategory": "Unsupported preset category: {{category}}",
