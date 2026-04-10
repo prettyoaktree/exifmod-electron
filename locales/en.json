@@ -76,9 +76,11 @@
     "deselectAll": "Deselect all",
     "previewAlt": "Preview",
     "previewPlaceholder": "Select an image to preview",
+    "previewMultipleSelected": "Multiple files selected",
     "metadataMapping": "Metadata mapping",
     "category": "Category",
     "current": "Current",
+    "currentValue": "Current Value",
     "preset": "Preset",
     "actions": "Actions",
     "new": "New",
@@ -91,8 +93,8 @@
     "shutterAndAperture": "Shutter and aperture",
     "attribute": "Attribute",
     "newValue": "New Value",
-    "shutterSpeed": "Shutter speed",
-    "apertureFStop": "Aperture (f-stop)",
+    "shutterSpeed": "Shutter Speed",
+    "apertureFStop": "Aperture",
     "notesImageDescription": "Notes",
     "notesPlaceholder": "Optional image description.",
     "metadata": "Metadata",
@@ -111,7 +113,9 @@
     "preloadUnavailable": "Electron preload unavailable (IPC missing).",
     "noStagedChanges": "No staged changes to commit.",
     "commitConfirm": "Commit metadata to {{count}} file(s)? This will modify originals.",
-    "applyError": "{{path}}: {{message}}"
+    "applyError": "{{path}}: {{message}}",
+    "resizeFilesMetadata": "Resize files and metadata panels",
+    "resizeListPreview": "Resize file list and image preview"
   },
   "category": {
     "camera": "Camera",

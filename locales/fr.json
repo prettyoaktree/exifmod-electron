@@ -76,9 +76,11 @@
     "deselectAll": "Tout désélectionner",
     "previewAlt": "Aperçu",
     "previewPlaceholder": "Sélectionnez une image pour l’aperçu",
+    "previewMultipleSelected": "Plusieurs fichiers sélectionnés",
     "metadataMapping": "Correspondance des métadonnées",
     "category": "Catégorie",
     "current": "Actuel",
+    "currentValue": "Valeur actuelle",
     "preset": "Préréglage",
     "actions": "Actions",
     "new": "Nouveau",
@@ -92,7 +94,7 @@
     "attribute": "Attribut",
     "newValue": "Nouvelle valeur",
     "shutterSpeed": "Vitesse d’obturation",
-    "apertureFStop": "Ouverture (f)",
+    "apertureFStop": "Ouverture",
     "notesImageDescription": "Notes",
     "notesPlaceholder": "Description d’image facultative.",
     "metadata": "Métadonnées",
@@ -111,7 +113,9 @@
     "preloadUnavailable": "Préchargement Electron indisponible (IPC manquant).",
     "noStagedChanges": "Aucune modification à valider.",
     "commitConfirm": "Enregistrer les métadonnées sur {{count}} fichier(s) ? Les originaux seront modifiés.",
-    "applyError": "{{path}} : {{message}}"
+    "applyError": "{{path}} : {{message}}",
+    "resizeFilesMetadata": "Redimensionner les volets fichiers et métadonnées",
+    "resizeListPreview": "Redimensionner la liste et l’aperçu"
   },
   "category": {
     "camera": "Appareil",
