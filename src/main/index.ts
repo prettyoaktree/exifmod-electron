@@ -1,4 +1,9 @@
 import { app, BrowserWindow, ipcMain, dialog, Menu, nativeImage } from 'electron'
+import { i18next, initMainI18n } from './i18n.js'
+import { localizePreflightIssues, localizeIssueLine } from './localizePreflight.js'
+import { localizeSkipReason, localizeMergeErrorMessage, localizeExportErrorMessage } from './localizeMerge.js'
+import { localizeThrownPresetError } from './localizeStoreError.js'
+import { resolveLocaleTag } from '../shared/i18n/resolveLocale.js'
 import { execFile as execFileCb } from 'node:child_process'
 import { dirname, extname, join } from 'node:path'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
@@ -138,13 +143,11 @@ async function readImagePreviewDataUrl(filePath: string): Promise<string> {
   }
 
   if (!LEGACY_DATA_URL_EXTS.has(ext)) {
-    throw new Error(
-      'Preview could not be decoded. For TIFF and other raw formats, ensure the file is readable.'
-    )
+    throw new Error(i18next.t('preview.decodeFailed'))
   }
   const sz = statSync(filePath).size
   if (sz > LEGACY_PREVIEW_MAX_BYTES) {
-    throw new Error('Image is too large to preview without decoding.')
+    throw new Error(i18next.t('preview.tooLarge'))
   }
   const buf = await readFile(filePath)
   const mime =
@@ -193,7 +196,7 @@ function createWindow(): void {
       nodeIntegration: false,
       sandbox: false
     },
-    title: 'ExifMod'
+    title: i18next.t('app.title')
   })
 
   if (process.env['ELECTRON_RENDERER_URL']) {
@@ -209,14 +212,14 @@ function createWindow(): void {
   const template: Electron.MenuItemConstructorOptions[] = [
     ...(process.platform === 'darwin' ? [{ role: 'appMenu' as const }] : []),
     {
-      label: 'File',
+      label: i18next.t('menu.file'),
       submenu: [
         {
-          label: 'Import Preset Database…',
+          label: i18next.t('menu.importPresetDatabase'),
           click: () => void handleImportDatabasePickFile()
         },
         {
-          label: 'Export Preset Database…',
+          label: i18next.t('menu.exportPresetDatabase'),
           click: () => void handleExportPresetDatabase()
         },
         { type: 'separator' },
@@ -234,25 +237,36 @@ async function runMergeImport(sourcePath: string, win: BrowserWindow | null | un
     const result: MergeImportResult = await mergePresetsFromSqliteFile(sourcePath, paths)
     mainWindow?.webContents.send('presets:imported')
     const detailParts: string[] = [
-      `Imported ${result.imported} preset(s) from previously exported database:\n${sourcePath}`
+      i18next.t('importExport.importDetail', { count: result.imported, path: sourcePath })
     ]
     if (result.skipped.length > 0) {
       detailParts.push(
-        `\n\nNot imported (${result.skipped.length}):\n` +
-          result.skipped.map((s) => `• ${s.category} / "${s.name}": ${s.reason}`).join('\n')
+        '\n\n' +
+          i18next.t('importExport.notImportedHeader', { count: result.skipped.length }) +
+          '\n' +
+          result.skipped
+            .map((s) =>
+              i18next.t('importExport.skippedLine', {
+                category: s.category,
+                name: s.name,
+                reason: localizeSkipReason(s)
+              })
+            )
+            .join('\n')
       )
     }
     const detail = detailParts.join('')
     await dialog.showMessageBox(win ?? undefined, {
       type: result.imported === 0 && result.skipped.length > 0 ? 'warning' : 'info',
-      message: 'Preset import finished',
+      message: i18next.t('importExport.importFinished'),
       detail
     })
   } catch (e) {
+    const raw = e instanceof Error ? e.message : String(e)
     await dialog.showMessageBox(win ?? undefined, {
       type: 'error',
-      message: 'Import failed',
-      detail: e instanceof Error ? e.message : String(e)
+      message: i18next.t('importExport.importFailed'),
+      detail: localizeMergeErrorMessage(raw)
     })
   }
 }
@@ -260,10 +274,10 @@ async function runMergeImport(sourcePath: string, win: BrowserWindow | null | un
 async function handleImportDatabasePickFile(): Promise<void> {
   const win = mainWindow ?? BrowserWindow.getFocusedWindow()
   const r = await dialog.showOpenDialog(win ?? undefined, {
-    title: 'Import Previously Exported Preset Database',
+    title: i18next.t('dialog.importPresetTitle'),
     defaultPath: app.getPath('documents'),
     properties: ['openFile'],
-    filters: [{ name: 'SQLite database', extensions: ['sqlite3', 'sqlite', 'db'] }]
+    filters: [{ name: i18next.t('dialog.sqliteDatabase'), extensions: ['sqlite3', 'sqlite', 'db'] }]
   })
   if (r.canceled || !r.filePaths[0]) return
   await runMergeImport(r.filePaths[0], win)
@@ -272,10 +286,10 @@ async function handleImportDatabasePickFile(): Promise<void> {
 async function handleExportPresetDatabase(): Promise<void> {
   const win = mainWindow ?? BrowserWindow.getFocusedWindow()
   const r = await dialog.showOpenDialog(win ?? undefined, {
-    title: 'Export Preset Database',
+    title: i18next.t('dialog.exportPresetTitle'),
     defaultPath: app.getPath('documents'),
     properties: ['openDirectory', 'createDirectory'],
-    message: 'Choose a folder. The preset database will be saved as presets.sqlite3.'
+    message: i18next.t('dialog.exportChooseFolder')
   })
   if (r.canceled || !r.filePaths[0]) return
   const dir = r.filePaths[0]
@@ -283,11 +297,11 @@ async function handleExportPresetDatabase(): Promise<void> {
   if (existsSync(destPath)) {
     const confirm = await dialog.showMessageBox(win ?? undefined, {
       type: 'question',
-      buttons: ['Replace', 'Cancel'],
+      buttons: [i18next.t('dialog.buttonReplace'), i18next.t('dialog.buttonCancel')],
       defaultId: 1,
       cancelId: 1,
-      message: 'Replace existing presets.sqlite3?',
-      detail: `A file named presets.sqlite3 already exists in:\n${dir}`
+      message: i18next.t('dialog.replaceSqliteMessage'),
+      detail: i18next.t('dialog.replaceSqliteDetail', { dir })
     })
     if (confirm.response !== 0) return
   }
@@ -296,14 +310,15 @@ async function handleExportPresetDatabase(): Promise<void> {
     await exportPresetDatabaseFile(destPath, paths)
     await dialog.showMessageBox(win ?? undefined, {
       type: 'info',
-      message: 'Preset Database Exported',
+      message: i18next.t('importExport.exportSuccess'),
       detail: destPath
     })
   } catch (e) {
+    const raw = e instanceof Error ? e.message : String(e)
     await dialog.showMessageBox(win ?? undefined, {
       type: 'error',
-      message: 'Export failed',
-      detail: e instanceof Error ? e.message : String(e)
+      message: i18next.t('importExport.exportFailed'),
+      detail: localizeExportErrorMessage(raw)
     })
   }
 }
@@ -311,9 +326,11 @@ async function handleExportPresetDatabase(): Promise<void> {
 function setupIpc(): void {
   ipcMain.handle('app:getPaths', () => getDataPaths())
 
+  ipcMain.handle('app:getLocale', () => resolveLocaleTag(app.getLocale()))
+
   ipcMain.handle('app:preflight', async () => {
     const paths = getDataPaths()
-    return preflightIssues(paths)
+    return localizePreflightIssues(await preflightIssues(paths))
   })
 
   ipcMain.handle('dialog:openFolder', async () => {
@@ -334,7 +351,10 @@ function setupIpc(): void {
     const r = await dialog.showOpenDialog(win ?? undefined, {
       properties: ['openFile', 'multiSelections'],
       filters: [
-        { name: 'Images', extensions: ['jpg', 'jpeg', 'tif', 'tiff', 'JPG', 'JPEG', 'TIF', 'TIFF'] }
+        {
+          name: i18next.t('dialog.imagesFilter'),
+          extensions: ['jpg', 'jpeg', 'tif', 'tiff', 'JPG', 'JPEG', 'TIF', 'TIFF']
+        }
       ]
     })
     if (r.canceled) return [] as string[]
@@ -343,17 +363,21 @@ function setupIpc(): void {
 
   ipcMain.handle('exif:resolveTool', () => resolveExiftoolPath())
 
-  ipcMain.handle('exif:validateTool', (_e, path?: string) => validateExiftool(path))
+  ipcMain.handle('exif:validateTool', (_e, path?: string) => {
+    const msg = validateExiftool(path)
+    return msg ? localizeIssueLine(msg) : null
+  })
 
   ipcMain.handle('catalog:load', async () => {
     const paths = getDataPaths()
     await ensureDatabaseInitialized(paths)
-    return loadCatalog(paths)
+    const { catalog, loadIssues } = await loadCatalog(paths)
+    return { catalog, loadIssues: localizePreflightIssues(loadIssues) }
   })
 
   ipcMain.handle('exif:readMetadata', async (_e, filePath: string) => {
     const tool = resolveExiftoolPath()
-    if (!tool) throw new Error('exiftool not found')
+    if (!tool) throw new Error(i18next.t('ipc.exiftoolNotFound'))
     return readExifMetadata(tool, filePath)
   })
 
@@ -371,39 +395,47 @@ function setupIpc(): void {
 
   ipcMain.handle('exif:apply', async (_e, filePath: string, payload: Record<string, unknown>) => {
     const tool = resolveExiftoolPath()
-    if (!tool) throw new Error('exiftool not found')
+    if (!tool) throw new Error(i18next.t('ipc.exiftoolNotFound'))
     const args = buildApplyCommand(tool, filePath, payload)
     const { stderr, code } = await spawnExiftool(args, { timeoutMs: 120_000 })
-    if (code !== 0) throw new Error(stderr || `exiftool exited with ${code}`)
+    if (code !== 0) throw new Error(stderr || i18next.t('ipc.exiftoolExit', { code }))
     return { ok: true }
   })
 
   ipcMain.handle('presets:create', async (_e, input: CreatePresetInput) => {
     const paths = getDataPaths()
     await ensureDatabaseInitialized(paths)
-    return createPreset(
-      paths,
-      input.category,
-      input.name,
-      input.payload,
-      input.lens_system,
-      input.lens_mount,
-      input.lens_adaptable
-    )
+    try {
+      return await createPreset(
+        paths,
+        input.category,
+        input.name,
+        input.payload,
+        input.lens_system,
+        input.lens_mount,
+        input.lens_adaptable
+      )
+    } catch (e) {
+      throw localizeThrownPresetError(e)
+    }
   })
 
   ipcMain.handle('presets:update', async (_e, input: UpdatePresetInput) => {
     const paths = getDataPaths()
     await ensureDatabaseInitialized(paths)
-    return updatePreset(
-      paths,
-      input.id,
-      input.name,
-      input.payload,
-      input.lens_system,
-      input.lens_mount,
-      input.lens_adaptable
-    )
+    try {
+      return await updatePreset(
+        paths,
+        input.id,
+        input.name,
+        input.payload,
+        input.lens_system,
+        input.lens_mount,
+        input.lens_adaptable
+      )
+    } catch (e) {
+      throw localizeThrownPresetError(e)
+    }
   })
 
   ipcMain.handle('presets:get', async (_e, id: number) => {
@@ -471,6 +503,7 @@ function sendStartupPathIfAny(): void {
 }
 
 app.whenReady().then(async () => {
+  await initMainI18n()
   setSqlWasmPath(
     app.isPackaged
       ? join(process.resourcesPath, 'sql-wasm.wasm')

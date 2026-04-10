@@ -1,0 +1,141 @@
+{
+  "app": {
+    "title": "ExifMod"
+  },
+  "menu": {
+    "file": "File",
+    "importPresetDatabase": "Import Preset Database…",
+    "exportPresetDatabase": "Export Preset Database…"
+  },
+  "dialog": {
+    "sqliteDatabase": "SQLite database",
+    "imagesFilter": "Images",
+    "importPresetTitle": "Import Previously Exported Preset Database",
+    "exportPresetTitle": "Export Preset Database",
+    "exportChooseFolder": "Choose a folder. The preset database will be saved as presets.sqlite3.",
+    "replaceSqliteMessage": "Replace existing presets.sqlite3?",
+    "replaceSqliteDetail": "A file named presets.sqlite3 already exists in:\n{{dir}}",
+    "buttonReplace": "Replace",
+    "buttonCancel": "Cancel"
+  },
+  "importExport": {
+    "importFinished": "Preset import finished",
+    "importFailed": "Import failed",
+    "importDetail": "Imported {{count}} preset(s) from previously exported database:\n{{path}}",
+    "notImportedHeader": "Not imported ({{count}}):",
+    "skippedLine": "• {{category}} / \"{{name}}\": {{reason}}",
+    "exportSuccess": "Preset Database Exported",
+    "exportFailed": "Export failed",
+    "exportDbNotFound": "Preset database not found.",
+    "exportInvalid": "Cannot export: preset database is invalid:\n{{detail}}"
+  },
+  "preflight": {
+    "dbFileMissing": "Preset database file is missing.",
+    "noPresets": "No presets found in database.",
+    "dbUnavailable": "Preset database unavailable: {{detail}}",
+    "integrityFailed": "Database integrity failed: {{detail}}",
+    "invalidCategory": "Preset id={{id}}: invalid category {{category}}.",
+    "invalidPayloadJson": "Preset id={{id}}: invalid payload JSON: {{detail}}",
+    "couldNotReadDb": "Could not read database: {{detail}}",
+    "missingPresetsTable": "Missing or invalid presets table.",
+    "exiftoolNotFound": "exiftool not found.\nInstall exiftool and ensure it is available in PATH or one of the common install locations.",
+    "exiftoolExecFailed": "exiftool cannot be executed from '{{path}}': {{detail}}"
+  },
+  "mergeImport": {
+    "invalidDb": "The selected file is not a valid ExifMod preset database:\n\n{{detail}}",
+    "fileNotFound": "File not found: {{path}}",
+    "skipEmptyName": "Skipped: preset name is empty.",
+    "skipInvalidPayload": "Skipped: invalid payload JSON ({{detail}}).",
+    "skipDuplicate": "A preset named \"{{name}}\" already exists in category \"{{category}}\".",
+    "skipGeneric": "Skipped: {{detail}}",
+    "unsupportedCategory": "Unsupported preset category: {{category}}"
+  },
+  "ipc": {
+    "exiftoolNotFound": "exiftool not found",
+    "exiftoolExit": "exiftool exited with {{code}}"
+  },
+  "store": {
+    "unsupportedCategory": "Unsupported preset category: {{category}}",
+    "cameraLensSystem": "Camera lens_system must be 'fixed' or 'interchangeable'.",
+    "invalidPresetRef": "Invalid preset reference: {{ref}}",
+    "nameRequired": "Preset name is required.",
+    "duplicatePreset": "A {{category}} preset named '{{name}}' already exists.",
+    "presetNotFound": "Preset id={{id}} was not found."
+  },
+  "preview": {
+    "decodeFailed": "Preview could not be decoded. For TIFF and other raw formats, ensure the file is readable.",
+    "tooLarge": "Image is too large to preview without decoding."
+  },
+  "ui": {
+    "errorPreload": "Error:",
+    "errorPreloadBody": "ExifMod must run in the desktop app window (e.g. start with <code>npm run dev</code>), not in a standalone browser tab—the connection to file handling and metadata is unavailable. If you already launch Electron and still see this, run <code>npx electron-vite build</code> once so <code>out/preload/index.mjs</code> is built.",
+    "warningPrefix": "Warning:",
+    "selectFolder": "Select Folder",
+    "openFolder": "Open Folder",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "previewAlt": "Preview",
+    "previewPlaceholder": "Select an image to preview",
+    "metadataMapping": "Metadata mapping",
+    "category": "Category",
+    "current": "Current",
+    "preset": "Preset",
+    "actions": "Actions",
+    "new": "New",
+    "edit": "Edit",
+    "pending": "pending",
+    "doNotModify": "Do Not Modify",
+    "setValue": "Set Value",
+    "multiple": "Multiple",
+    "none": "None",
+    "shutterAndAperture": "Shutter and aperture",
+    "attribute": "Attribute",
+    "newValue": "New value",
+    "shutterSpeed": "Shutter speed",
+    "apertureFStop": "Aperture (f-stop)",
+    "notesImageDescription": "Notes (ImageDescription)",
+    "notesPlaceholder": "Optional image description.",
+    "previewMergedPayload": "Preview merged payload",
+    "commitChanges": "Commit changes",
+    "statusCommitted": "Committed {{ok}}/{{total}} files.",
+    "statusWriting": "Writing…",
+    "preloadUnavailable": "Electron preload unavailable (IPC missing).",
+    "noStagedChanges": "No staged changes to commit.",
+    "commitConfirm": "Commit metadata to {{count}} file(s)? This will modify originals.",
+    "applyError": "{{path}}: {{message}}"
+  },
+  "category": {
+    "camera": "Camera",
+    "lens": "Lens",
+    "film": "Film",
+    "author": "Author"
+  },
+  "presetEditor": {
+    "titleNew": "New {{category}} preset",
+    "titleEdit": "Edit {{category}} preset",
+    "name": "Name",
+    "lensSystem": "Lens system",
+    "interchangeable": "Interchangeable",
+    "fixedLens": "Fixed lens",
+    "lensMount": "Lens mount",
+    "lensAdaptable": "Lens adaptable",
+    "make": "Make",
+    "model": "Model",
+    "lensOptional": "Lens (optional)",
+    "lensModel": "LensModel",
+    "lens": "Lens",
+    "exposureTime": "Shutter speed (ExposureTime)",
+    "fNumber": "Aperture (FNumber)",
+    "creator": "Creator",
+    "artist": "Artist",
+    "iso": "ISO",
+    "keywordsHint": "Keywords (comma-separated, include Film and stock name)",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "validation": {
+    "exposureTime": "Shutter speed: use a fraction (e.g. 1/125) or decimal seconds (e.g. 2).",
+    "fNumber": "Aperture: enter a positive f-number (e.g. 2.8 or 8).",
+    "imageDescriptionBytes": "Notes (ImageDescription): {{bytes}} UTF-8 bytes exceeds maximum {{max}}."
+  }
+}

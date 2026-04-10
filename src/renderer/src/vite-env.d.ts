@@ -4,6 +4,7 @@ import type { ConfigCatalog, CreatePresetInput, PresetRecord, UpdatePresetInput 
 
 export interface ExifmodApi {
   getPaths: () => Promise<{ dataDir: string; dbPath: string; configDir: string }>
+  getLocale: () => Promise<string>
   preflight: () => Promise<string[]>
   openFolder: () => Promise<string | null>
   openFiles: () => Promise<string[]>

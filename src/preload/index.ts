@@ -4,6 +4,7 @@ import type { ConfigCatalog, CreatePresetInput, PresetRecord, UpdatePresetInput 
 const api = {
   getPaths: () =>
     ipcRenderer.invoke('app:getPaths') as Promise<{ dataDir: string; dbPath: string; configDir: string }>,
+  getLocale: () => ipcRenderer.invoke('app:getLocale') as Promise<string>,
   preflight: () => ipcRenderer.invoke('app:preflight') as Promise<string[]>,
   openFolder: () => ipcRenderer.invoke('dialog:openFolder') as Promise<string | null>,
   openFiles: () => ipcRenderer.invoke('dialog:openFiles') as Promise<string[]>,

@@ -1,0 +1,141 @@
+{
+  "app": {
+    "title": "ExifMod"
+  },
+  "menu": {
+    "file": "Fichier",
+    "importPresetDatabase": "Importer la base de préréglages…",
+    "exportPresetDatabase": "Exporter la base de préréglages…"
+  },
+  "dialog": {
+    "sqliteDatabase": "Base SQLite",
+    "imagesFilter": "Images",
+    "importPresetTitle": "Importer une base de préréglages exportée",
+    "exportPresetTitle": "Exporter la base de préréglages",
+    "exportChooseFolder": "Choisissez un dossier. La base sera enregistrée sous le nom presets.sqlite3.",
+    "replaceSqliteMessage": "Remplacer presets.sqlite3 existant ?",
+    "replaceSqliteDetail": "Un fichier nommé presets.sqlite3 existe déjà dans :\n{{dir}}",
+    "buttonReplace": "Remplacer",
+    "buttonCancel": "Annuler"
+  },
+  "importExport": {
+    "importFinished": "Import terminé",
+    "importFailed": "Échec de l’import",
+    "importDetail": "{{count}} préréglage(s) importé(s) depuis la base exportée :\n{{path}}",
+    "notImportedHeader": "Non importé ({{count}}) :",
+    "skippedLine": "• {{category}} / « {{name}} » : {{reason}}",
+    "exportSuccess": "Base de préréglages exportée",
+    "exportFailed": "Échec de l’export",
+    "exportDbNotFound": "Base de préréglages introuvable.",
+    "exportInvalid": "Impossible d’exporter : base invalide :\n{{detail}}"
+  },
+  "preflight": {
+    "dbFileMissing": "Fichier de base de préréglages manquant.",
+    "noPresets": "Aucun préréglage dans la base.",
+    "dbUnavailable": "Base de préréglages indisponible : {{detail}}",
+    "integrityFailed": "Échec de l’intégrité de la base : {{detail}}",
+    "invalidCategory": "Préréglage id={{id}} : catégorie invalide {{category}}.",
+    "invalidPayloadJson": "Préréglage id={{id}} : JSON de charge utile invalide : {{detail}}",
+    "couldNotReadDb": "Impossible de lire la base : {{detail}}",
+    "missingPresetsTable": "Table des préréglages manquante ou invalide.",
+    "exiftoolNotFound": "exiftool introuvable.\nInstallez exiftool et vérifiez qu’il est dans le PATH ou un emplacement courant.",
+    "exiftoolExecFailed": "Impossible d’exécuter exiftool depuis « {{path}} » : {{detail}}"
+  },
+  "mergeImport": {
+    "invalidDb": "Le fichier choisi n’est pas une base ExifMod valide :\n\n{{detail}}",
+    "fileNotFound": "Fichier introuvable : {{path}}",
+    "skipEmptyName": "Ignoré : nom de préréglage vide.",
+    "skipInvalidPayload": "Ignoré : JSON de charge utile invalide ({{detail}}).",
+    "skipDuplicate": "Un préréglage nommé « {{name}} » existe déjà dans la catégorie « {{category}} ».",
+    "skipGeneric": "Ignoré : {{detail}}",
+    "unsupportedCategory": "Catégorie de préréglage non prise en charge : {{category}}"
+  },
+  "ipc": {
+    "exiftoolNotFound": "exiftool introuvable",
+    "exiftoolExit": "exiftool s’est terminé avec le code {{code}}"
+  },
+  "store": {
+    "unsupportedCategory": "Catégorie de préréglage non prise en charge : {{category}}",
+    "cameraLensSystem": "Pour l’appareil, lens_system doit être « fixed » ou « interchangeable ».",
+    "invalidPresetRef": "Référence de préréglage invalide : {{ref}}",
+    "nameRequired": "Le nom du préréglage est obligatoire.",
+    "duplicatePreset": "Un préréglage {{category}} nommé « {{name}} » existe déjà.",
+    "presetNotFound": "Préréglage id={{id}} introuvable."
+  },
+  "preview": {
+    "decodeFailed": "Impossible d’afficher l’aperçu. Pour les TIFF et formats bruts, vérifiez que le fichier est lisible.",
+    "tooLarge": "Image trop volumineuse pour l’aperçu sans décodage."
+  },
+  "ui": {
+    "errorPreload": "Erreur :",
+    "errorPreloadBody": "ExifMod doit s’exécuter dans la fenêtre de l’application (p. ex. <code>npm run dev</code>), pas dans un onglet du navigateur — la connexion aux fichiers et aux métadonnées est indisponible. Si vous lancez déjà Electron, exécutez <code>npx electron-vite build</code> une fois pour générer <code>out/preload/index.mjs</code>.",
+    "warningPrefix": "Avertissement :",
+    "selectFolder": "Choisir un dossier",
+    "openFolder": "Ouvrir un dossier",
+    "selectAll": "Tout sélectionner",
+    "deselectAll": "Tout désélectionner",
+    "previewAlt": "Aperçu",
+    "previewPlaceholder": "Sélectionnez une image pour l’aperçu",
+    "metadataMapping": "Correspondance des métadonnées",
+    "category": "Catégorie",
+    "current": "Actuel",
+    "preset": "Préréglage",
+    "actions": "Actions",
+    "new": "Nouveau",
+    "edit": "Modifier",
+    "pending": "en attente",
+    "doNotModify": "Ne pas modifier",
+    "setValue": "Définir la valeur",
+    "multiple": "Plusieurs",
+    "none": "Aucun",
+    "shutterAndAperture": "Obturateur et ouverture",
+    "attribute": "Attribut",
+    "newValue": "Nouvelle valeur",
+    "shutterSpeed": "Vitesse d’obturation",
+    "apertureFStop": "Ouverture (f)",
+    "notesImageDescription": "Notes (ImageDescription)",
+    "notesPlaceholder": "Description d’image facultative.",
+    "previewMergedPayload": "Aperçu de la charge fusionnée",
+    "commitChanges": "Valider les modifications",
+    "statusCommitted": "{{ok}}/{{total}} fichier(s) enregistré(s).",
+    "statusWriting": "Écriture…",
+    "preloadUnavailable": "Préchargement Electron indisponible (IPC manquant).",
+    "noStagedChanges": "Aucune modification à valider.",
+    "commitConfirm": "Enregistrer les métadonnées sur {{count}} fichier(s) ? Les originaux seront modifiés.",
+    "applyError": "{{path}} : {{message}}"
+  },
+  "category": {
+    "camera": "Appareil",
+    "lens": "Objectif",
+    "film": "Film",
+    "author": "Auteur"
+  },
+  "presetEditor": {
+    "titleNew": "Nouveau préréglage {{category}}",
+    "titleEdit": "Modifier le préréglage {{category}}",
+    "name": "Nom",
+    "lensSystem": "Système d’objectif",
+    "interchangeable": "Interchangeable",
+    "fixedLens": "Objectif fixe",
+    "lensMount": "Monture",
+    "lensAdaptable": "Objectif adaptable",
+    "make": "Marque",
+    "model": "Modèle",
+    "lensOptional": "Objectif (facultatif)",
+    "lensModel": "Modèle d’objectif",
+    "lens": "Objectif",
+    "exposureTime": "Vitesse (ExposureTime)",
+    "fNumber": "Ouverture (FNumber)",
+    "creator": "Créateur",
+    "artist": "Artiste",
+    "iso": "ISO",
+    "keywordsHint": "Mots-clés (séparés par des virgules, inclure Film et le nom de la pellicule)",
+    "save": "Enregistrer",
+    "cancel": "Annuler"
+  },
+  "validation": {
+    "exposureTime": "Vitesse : utilisez une fraction (ex. 1/125) ou des secondes décimales (ex. 2).",
+    "fNumber": "Ouverture : indiquez un nombre f positif (ex. 2,8 ou 8).",
+    "imageDescriptionBytes": "Notes (ImageDescription) : {{bytes}} octets UTF-8, maximum {{max}}."
+  }
+}

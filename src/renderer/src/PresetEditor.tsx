@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { Cat } from './categories.js'
 
 type CatLower = 'camera' | 'lens' | 'author' | 'film'
+
+const CAT_I18N: Record<Cat, 'category.camera' | 'category.lens' | 'category.film' | 'category.author'> = {
+  Camera: 'category.camera',
+  Lens: 'category.lens',
+  Film: 'category.film',
+  Author: 'category.author'
+}
 
 function catToLower(c: Cat): CatLower {
   return c === 'Camera' ? 'camera' : c === 'Lens' ? 'lens' : c === 'Film' ? 'film' : 'author'
@@ -14,7 +22,9 @@ export function PresetEditorModal(props: {
   onClose: () => void
   onSaved: () => void
 }): React.ReactElement {
+  const { t } = useTranslation()
   const { mode, category, editId, onClose, onSaved } = props
+  const categoryLabel = t(CAT_I18N[category])
   const [name, setName] = useState('')
   const [payload, setPayload] = useState<Record<string, unknown>>({})
   const [lensSystem, setLensSystem] = useState<'fixed' | 'interchangeable'>('interchangeable')
@@ -91,30 +101,32 @@ export function PresetEditorModal(props: {
     <div className="modal-backdrop" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
         <h3>
-          {mode === 'new' ? 'New' : 'Edit'} {category} preset
+          {mode === 'new'
+            ? t('presetEditor.titleNew', { category: categoryLabel })
+            : t('presetEditor.titleEdit', { category: categoryLabel })}
         </h3>
         {err && <p style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>{err}</p>}
         <div className="form-row">
-          <label>Name</label>
+          <label>{t('presetEditor.name')}</label>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         {category === 'Camera' && (
           <>
             <div className="form-row">
-              <label>Lens system</label>
+              <label>{t('presetEditor.lensSystem')}</label>
               <select
                 className="input"
                 value={lensSystem}
                 onChange={(e) => setLensSystem(e.target.value as 'fixed' | 'interchangeable')}
               >
-                <option value="interchangeable">Interchangeable</option>
-                <option value="fixed">Fixed lens</option>
+                <option value="interchangeable">{t('presetEditor.interchangeable')}</option>
+                <option value="fixed">{t('presetEditor.fixedLens')}</option>
               </select>
             </div>
             {lensSystem === 'interchangeable' && (
               <>
                 <div className="form-row">
-                  <label>Lens mount</label>
+                  <label>{t('presetEditor.lensMount')}</label>
                   <input className="input" list="mount-list" value={lensMount} onChange={(e) => setLensMount(e.target.value)} />
                   <datalist id="mount-list">
                     {mounts.map((m) => (
@@ -129,27 +141,27 @@ export function PresetEditorModal(props: {
                       checked={lensAdaptable}
                       onChange={(e) => setLensAdaptable(e.target.checked)}
                     />{' '}
-                    Lens adaptable
+                    {t('presetEditor.lensAdaptable')}
                   </label>
                 </div>
               </>
             )}
             <div className="form-row">
-              <label>Make</label>
+              <label>{t('presetEditor.make')}</label>
               <input className="input" value={String(payload['Make'] ?? '')} onChange={(e) => setField('Make', e.target.value)} />
             </div>
             <div className="form-row">
-              <label>Model</label>
+              <label>{t('presetEditor.model')}</label>
               <input className="input" value={String(payload['Model'] ?? '')} onChange={(e) => setField('Model', e.target.value)} />
             </div>
             {lensSystem === 'fixed' && (
               <>
                 <div className="form-row">
-                  <label>Lens (optional)</label>
+                  <label>{t('presetEditor.lensOptional')}</label>
                   <input className="input" value={String(payload['Lens'] ?? '')} onChange={(e) => setField('Lens', e.target.value)} />
                 </div>
                 <div className="form-row">
-                  <label>LensModel</label>
+                  <label>{t('presetEditor.lensModel')}</label>
                   <input
                     className="input"
                     value={String(payload['LensModel'] ?? '')}
@@ -163,7 +175,7 @@ export function PresetEditorModal(props: {
         {category === 'Lens' && (
           <>
             <div className="form-row">
-              <label>Lens mount</label>
+              <label>{t('presetEditor.lensMount')}</label>
               <input className="input" list="mount-list-l" value={lensMount} onChange={(e) => setLensMount(e.target.value)} />
               <datalist id="mount-list-l">
                 {mounts.map((m) => (
@@ -172,11 +184,11 @@ export function PresetEditorModal(props: {
               </datalist>
             </div>
             <div className="form-row">
-              <label>Lens</label>
+              <label>{t('presetEditor.lens')}</label>
               <input className="input" value={String(payload['Lens'] ?? '')} onChange={(e) => setField('Lens', e.target.value)} />
             </div>
             <div className="form-row">
-              <label>LensModel</label>
+              <label>{t('presetEditor.lensModel')}</label>
               <input
                 className="input"
                 value={String(payload['LensModel'] ?? '')}
@@ -184,7 +196,7 @@ export function PresetEditorModal(props: {
               />
             </div>
             <div className="form-row">
-              <label>Shutter speed (ExposureTime)</label>
+              <label>{t('presetEditor.exposureTime')}</label>
               <input
                 className="input"
                 value={String(payload['ExposureTime'] ?? '')}
@@ -192,21 +204,21 @@ export function PresetEditorModal(props: {
               />
             </div>
             <div className="form-row">
-              <label>Aperture (FNumber)</label>
+              <label>{t('presetEditor.fNumber')}</label>
               <input
                 className="input"
                 value={String(payload['FNumber'] ?? '')}
                 onChange={(e) => {
-                  const t = e.target.value.trim()
-                  if (!t) {
+                  const raw = e.target.value.trim()
+                  if (!raw) {
                     setPayload((p) => {
                       const c = { ...p }
                       delete c['FNumber']
                       return c
                     })
                   } else {
-                    const n = Number(t)
-                    setPayload((p) => ({ ...p, FNumber: Number.isFinite(n) ? n : t }))
+                    const n = Number(raw)
+                    setPayload((p) => ({ ...p, FNumber: Number.isFinite(n) ? n : raw }))
                   }
                 }}
               />
@@ -216,11 +228,11 @@ export function PresetEditorModal(props: {
         {category === 'Author' && (
           <>
             <div className="form-row">
-              <label>Creator</label>
+              <label>{t('presetEditor.creator')}</label>
               <input className="input" value={String(payload['Creator'] ?? '')} onChange={(e) => setField('Creator', e.target.value)} />
             </div>
             <div className="form-row">
-              <label>Artist</label>
+              <label>{t('presetEditor.artist')}</label>
               <input className="input" value={String(payload['Artist'] ?? '')} onChange={(e) => setField('Artist', e.target.value)} />
             </div>
           </>
@@ -228,11 +240,11 @@ export function PresetEditorModal(props: {
         {category === 'Film' && (
           <>
             <div className="form-row">
-              <label>ISO</label>
+              <label>{t('presetEditor.iso')}</label>
               <input className="input" value={String(payload['ISO'] ?? '')} onChange={(e) => setField('ISO', e.target.value)} />
             </div>
             <div className="form-row">
-              <label>Keywords (comma-separated, include Film and stock name)</label>
+              <label>{t('presetEditor.keywordsHint')}</label>
               <input
                 className="input"
                 value={Array.isArray(payload['Keywords']) ? (payload['Keywords'] as string[]).join(', ') : String(payload['Keywords'] ?? '')}
@@ -251,10 +263,10 @@ export function PresetEditorModal(props: {
         )}
         <div className="actions-row" style={{ marginTop: '0.75rem' }}>
           <button type="button" className="btn btn-primary" onClick={() => void save()}>
-            Save
+            {t('presetEditor.save')}
           </button>
           <button type="button" className="btn" onClick={onClose}>
-            Cancel
+            {t('presetEditor.cancel')}
           </button>
         </div>
       </div>

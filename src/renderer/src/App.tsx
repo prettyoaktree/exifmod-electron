@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { ConfigCatalog } from '@shared/types.js'
 import { filterLensValues } from '@shared/lensFilter.js'
 import {
@@ -18,17 +19,13 @@ import {
 import { PresetEditorModal } from './PresetEditor.js'
 import type { Cat } from './categories.js'
 
-const PRESET_NONE_DISPLAY = 'Do Not Modify'
-const LENS_EXPOSURE_CUSTOM = 'Set Value'
-
 const CATS: Cat[] = ['Camera', 'Lens', 'Film', 'Author']
 
-function internalToDisplay(name: string): string {
-  return name === 'None' ? PRESET_NONE_DISPLAY : name
-}
-
-function displayToInternal(text: string): string {
-  return text === PRESET_NONE_DISPLAY ? 'None' : text
+const CAT_I18N: Record<Cat, 'category.camera' | 'category.lens' | 'category.film' | 'category.author'> = {
+  Camera: 'category.camera',
+  Lens: 'category.lens',
+  Film: 'category.film',
+  Author: 'category.author'
 }
 
 interface PendingState {
@@ -100,11 +97,18 @@ function idKeyForCategory(cat: Cat): keyof PendingState {
 }
 
 export function App(): React.ReactElement {
+  const { t } = useTranslation()
+  const noneDisplay = t('ui.doNotModify')
+  const setValueDisplay = t('ui.setValue')
+  const internalToDisplay = (name: string): string => (name === 'None' ? noneDisplay : name)
+  const displayToInternal = (text: string): string => (text === noneDisplay ? 'None' : text)
+  const catLabel = (cat: Cat): string => t(CAT_I18N[cat])
+
   const [preflight, setPreflight] = useState<string[]>([])
   const [catalog, setCatalog] = useState<ConfigCatalog | null>(null)
   const [catalogIssues, setCatalogIssues] = useState<string[]>([])
   const [files, setFiles] = useState<string[]>([])
-  const [folderLabel, setFolderLabel] = useState<string>('Open Folder')
+  const [folderLabel, setFolderLabel] = useState<string>(() => t('ui.openFolder'))
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set())
   const [currentIndex, setCurrentIndex] = useState<number | null>(null)
   const [pendingByPath, setPendingByPath] = useState<Record<string, PendingState>>({})
@@ -349,7 +353,7 @@ export function App(): React.ReactElement {
 
   const buildMergedForCommit = async (st: PendingState): Promise<{ payload: Record<string, unknown> | null; err: string | null }> => {
     const api = window.exifmod
-    if (!api) return { payload: null, err: 'Electron preload unavailable (IPC missing).' }
+    if (!api) return { payload: null, err: t('ui.preloadUnavailable') }
     try {
       let merged = await api.mergePayloads({
         camera: st.cameraId,
@@ -386,7 +390,7 @@ export function App(): React.ReactElement {
   const onCommit = async () => {
     const api = window.exifmod
     if (!api) {
-      alert('Electron preload unavailable (IPC missing).')
+      alert(t('ui.preloadUnavailable'))
       return
     }
     const todo: { path: string; payload: Record<string, unknown> }[] = []
@@ -403,21 +407,26 @@ export function App(): React.ReactElement {
       }
     }
     if (!todo.length) {
-      alert('No staged changes to commit.')
+      alert(t('ui.noStagedChanges'))
       return
     }
-    if (!confirm(`Commit metadata to ${todo.length} file(s)? This will modify originals.`)) return
-    setStatus('Writing…')
+    if (!confirm(t('ui.commitConfirm', { count: todo.length }))) return
+    setStatus(t('ui.statusWriting'))
     let ok = 0
     for (const { path, payload } of todo) {
       try {
         await api.applyExif(path, payload)
         ok++
       } catch (e) {
-        alert(`${path}: ${e}`)
+        alert(
+          t('ui.applyError', {
+            path,
+            message: e instanceof Error ? e.message : String(e)
+          })
+        )
       }
     }
-    setStatus(`Committed ${ok}/${todo.length} files.`)
+    setStatus(t('ui.statusCommitted', { ok, total: todo.length }))
   }
 
   const staging = stagingPaths
@@ -427,8 +436,17 @@ export function App(): React.ReactElement {
   const fnCurrent = staging.map((p) => formatFnumberForUi(fnumberRawFromMetadata(metadataByPath[p] ?? {})))
 
   const exposureCurrentDisplay =
-    exposureCurrent.length === 0 ? '' : new Set(exposureCurrent).size === 1 ? exposureCurrent[0]! : 'Multiple'
-  const fnCurrentDisplay = fnCurrent.length === 0 ? '' : new Set(fnCurrent).size === 1 ? fnCurrent[0]! : 'Multiple'
+    exposureCurrent.length === 0
+      ? ''
+      : new Set(exposureCurrent).size === 1
+        ? exposureCurrent[0]!
+        : t('ui.multiple')
+  const fnCurrentDisplay =
+    fnCurrent.length === 0
+      ? ''
+      : new Set(fnCurrent).size === 1
+        ? fnCurrent[0]!
+        : t('ui.multiple')
 
   const editIdForCategory = (cat: Cat): number | null => {
     const k = idKeyForCategory(cat)
@@ -439,20 +457,19 @@ export function App(): React.ReactElement {
     <div className="app">
       {!window.exifmod && (
         <div className="preflight-warn">
-          <strong>Preload missing:</strong> The Electron preload script did not expose <code>window.exifmod</code>. Use{' '}
-          <code>npm run dev</code> (Electron), not a standalone browser tab. If this persists, run{' '}
-          <code>npx electron-vite build</code> once so <code>out/preload/index.mjs</code> exists.
+          <strong>{t('ui.errorPreload')}</strong>{' '}
+          <span dangerouslySetInnerHTML={{ __html: t('ui.errorPreloadBody') }} />
         </div>
       )}
       {preflight.length > 0 && (
         <div className="preflight-warn">
-          <strong>Preflight:</strong> {preflight.join(' · ')}
+          <strong>{t('ui.warningPrefix')}</strong> {preflight.join(' · ')}
         </div>
       )}
       <div className="app-toolbar">
-        <h1>ExifMod</h1>
+        <h1>{t('app.title')}</h1>
         <button type="button" className="btn" onClick={() => void onOpenFolder()}>
-          Select Folder
+          {t('ui.selectFolder')}
         </button>
         <button
           type="button"
@@ -462,7 +479,7 @@ export function App(): React.ReactElement {
             if (files.length) setCurrentIndex(0)
           }}
         >
-          Select all
+          {t('ui.selectAll')}
         </button>
         <button
           type="button"
@@ -472,7 +489,7 @@ export function App(): React.ReactElement {
             setCurrentIndex(null)
           }}
         >
-          Deselect all
+          {t('ui.deselectAll')}
         </button>
       </div>
       <div className="app-body">
@@ -501,7 +518,7 @@ export function App(): React.ReactElement {
                   onClick={(e) => onRowClick(i, e)}
                 >
                   <span>{base}</span>
-                  {hasPend ? <span className="badge">pending</span> : null}
+                  {hasPend ? <span className="badge">{t('ui.pending')}</span> : null}
                 </li>
               )
             })}
@@ -509,24 +526,24 @@ export function App(): React.ReactElement {
         </div>
         <div className="preview-panel">
           {previewDataUrl ? (
-            <img src={previewDataUrl} alt="Preview" />
+            <img src={previewDataUrl} alt={t('ui.previewAlt')} />
           ) : (
-            <div className="preview-placeholder">Select an image to preview</div>
+            <div className="preview-placeholder">{t('ui.previewPlaceholder')}</div>
           )}
         </div>
         <div className="meta-panel">
           <div className="meta-section">
-            <h2>Metadata mapping</h2>
+            <h2>{t('ui.metadataMapping')}</h2>
             {catalogIssues.length > 0 && (
               <p style={{ fontSize: '0.75rem', color: '#b45309' }}>{catalogIssues.join(' ')}</p>
             )}
             <table className="mapping">
               <thead>
                 <tr>
-                  <th>Category</th>
-                  <th>Current</th>
-                  <th>Preset</th>
-                  <th>Actions</th>
+                  <th>{t('ui.category')}</th>
+                  <th>{t('ui.current')}</th>
+                  <th>{t('ui.preset')}</th>
+                  <th>{t('ui.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -543,8 +560,8 @@ export function App(): React.ReactElement {
                           : catalog?.author_values
                   return (
                     <tr key={cat}>
-                      <td>{cat}</td>
-                      <td>{inferredRow[cat]}</td>
+                      <td>{catLabel(cat)}</td>
+                      <td>{inferredRow[cat] === 'Multiple' ? t('ui.multiple') : inferredRow[cat]}</td>
                       <td>
                         <select
                           className="input"
@@ -561,7 +578,7 @@ export function App(): React.ReactElement {
                       </td>
                       <td className="actions-row">
                         <button type="button" className="btn" onClick={() => setPresetEditor({ mode: 'new', category: cat })}>
-                          New
+                          {t('ui.new')}
                         </button>
                         <button
                           type="button"
@@ -569,7 +586,7 @@ export function App(): React.ReactElement {
                           disabled={!catalog || name === 'None'}
                           onClick={() => setPresetEditor({ mode: 'edit', category: cat })}
                         >
-                          Edit
+                          {t('ui.edit')}
                         </button>
                       </td>
                     </tr>
@@ -580,34 +597,34 @@ export function App(): React.ReactElement {
           </div>
 
           <div className="meta-section">
-            <h2>Shutter and aperture</h2>
+            <h2>{t('ui.shutterAndAperture')}</h2>
             <table className="mapping">
               <thead>
                 <tr>
-                  <th>Attribute</th>
-                  <th>Current</th>
-                  <th>New value</th>
+                  <th>{t('ui.attribute')}</th>
+                  <th>{t('ui.current')}</th>
+                  <th>{t('ui.newValue')}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>Shutter speed</td>
+                  <td>{t('ui.shutterSpeed')}</td>
                   <td>{exposureCurrentDisplay}</td>
                   <td>
                     <select
                       className="input"
-                      value={st.exposureMode === 'custom' ? LENS_EXPOSURE_CUSTOM : PRESET_NONE_DISPLAY}
+                      value={st.exposureMode === 'custom' ? setValueDisplay : noneDisplay}
                       onChange={(e) => {
                         const v = e.target.value
                         updatePendingForPaths(staging, (s) => ({
                           ...s,
-                          exposureMode: v === LENS_EXPOSURE_CUSTOM ? 'custom' : 'none',
-                          exposureTime: v === LENS_EXPOSURE_CUSTOM ? s.exposureTime : ''
+                          exposureMode: v === setValueDisplay ? 'custom' : 'none',
+                          exposureTime: v === setValueDisplay ? s.exposureTime : ''
                         }))
                       }}
                     >
-                      <option>{PRESET_NONE_DISPLAY}</option>
-                      <option>{LENS_EXPOSURE_CUSTOM}</option>
+                      <option>{noneDisplay}</option>
+                      <option>{setValueDisplay}</option>
                     </select>
                     {st.exposureMode === 'custom' ? (
                       <input
@@ -621,23 +638,23 @@ export function App(): React.ReactElement {
                   </td>
                 </tr>
                 <tr>
-                  <td>Aperture (f-stop)</td>
+                  <td>{t('ui.apertureFStop')}</td>
                   <td>{fnCurrentDisplay}</td>
                   <td>
                     <select
                       className="input"
-                      value={st.fNumberMode === 'custom' ? LENS_EXPOSURE_CUSTOM : PRESET_NONE_DISPLAY}
+                      value={st.fNumberMode === 'custom' ? setValueDisplay : noneDisplay}
                       onChange={(e) => {
                         const v = e.target.value
                         updatePendingForPaths(staging, (s) => ({
                           ...s,
-                          fNumberMode: v === LENS_EXPOSURE_CUSTOM ? 'custom' : 'none',
-                          fNumberText: v === LENS_EXPOSURE_CUSTOM ? s.fNumberText : ''
+                          fNumberMode: v === setValueDisplay ? 'custom' : 'none',
+                          fNumberText: v === setValueDisplay ? s.fNumberText : ''
                         }))
                       }}
                     >
-                      <option>{PRESET_NONE_DISPLAY}</option>
-                      <option>{LENS_EXPOSURE_CUSTOM}</option>
+                      <option>{noneDisplay}</option>
+                      <option>{setValueDisplay}</option>
                     </select>
                     {st.fNumberMode === 'custom' ? (
                       <input
@@ -655,27 +672,27 @@ export function App(): React.ReactElement {
           </div>
 
           <div className="meta-section">
-            <h2>Notes (ImageDescription)</h2>
+            <h2>{t('ui.notesImageDescription')}</h2>
             <textarea
               className="notes-area"
               disabled={!staging.length}
-              placeholder="Optional image description."
+              placeholder={t('ui.notesPlaceholder')}
               value={st.notesText}
               onChange={(e) => {
-                const t = clampUtf8ByBytes(e.target.value)
-                updatePendingForPaths(staging, (s) => ({ ...s, notesText: t }))
+                const nextNotes = clampUtf8ByBytes(e.target.value)
+                updatePendingForPaths(staging, (s) => ({ ...s, notesText: nextNotes }))
               }}
             />
           </div>
 
           <div className="meta-section">
-            <h2>Preview merged payload</h2>
+            <h2>{t('ui.previewMergedPayload')}</h2>
             <pre className="preview-json">{JSON.stringify(mergedPreview, null, 2)}</pre>
           </div>
 
           <div className="meta-section actions-row">
             <button type="button" className="btn btn-primary" onClick={() => void onCommit()}>
-              Commit changes
+              {t('ui.commitChanges')}
             </button>
           </div>
         </div>
