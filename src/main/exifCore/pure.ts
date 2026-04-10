@@ -6,11 +6,18 @@ import {
 import { formatCopyrightForExif } from '../../shared/copyrightFormat.js'
 import type { CameraMetadata, ConfigCatalog, LensMetadata } from '../../shared/types.js'
 
-export function sanitizeWritePayload(payload: Record<string, unknown>): Record<string, unknown> {
+/** Drop keys that must never enter merged preview / apply from preset JSON (`Film`, `Film Maker`). */
+export function stripWriteExcludedFields(payload: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(payload)) {
     if (!WRITE_EXCLUDED_FIELDS.has(k)) out[k] = v
   }
+  return out
+}
+
+/** Final payload before ExifTool: strip excluded keys and format Copyright for write. */
+export function sanitizeWritePayload(payload: Record<string, unknown>): Record<string, unknown> {
+  const out = stripWriteExcludedFields(payload)
   if (Object.prototype.hasOwnProperty.call(out, 'Copyright')) {
     const formatted = formatCopyrightForExif(String(out['Copyright'] ?? ''))
     if (formatted === null) delete out['Copyright']
@@ -109,4 +116,4 @@ export function sortedStrings(items: Iterable<string>): string[] {
   return [...new Set(items)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 }
 
-export type { ConfigCatalog }
+export type { CameraMetadata, ConfigCatalog, LensMetadata }

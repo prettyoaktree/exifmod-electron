@@ -4,7 +4,7 @@ import type { ConfigCatalog, DataPaths, MergeImportResult, MergeImportSkip } fro
 import { CONTROL_FIELDS, FALLBACK_LENS_MOUNT_NAMES, IMAGE_EXTENSIONS, LENS_MOUNT_DEFAULTS_FILENAME } from './constants.js'
 import { migrateLensMountDisplayNames, openDb } from './database.js'
 import { PresetStoreError } from './errors.js'
-import { sanitizeWritePayload, sortedStrings } from './pure.js'
+import { sortedStrings, stripWriteExcludedFields } from './pure.js'
 import type { PersistedDatabase } from './sqlJs.js'
 import { getSqlJs } from './sqlJs.js'
 import type { Database, Statement } from 'sql.js'
@@ -343,7 +343,8 @@ export async function mergeSelectedPayloads(
   if (lensFile) Object.assign(merged, await readConfigPayload(paths, lensFile))
   if (authorFile) Object.assign(merged, await readConfigPayload(paths, authorFile))
   if (filmFile) Object.assign(merged, await readConfigPayload(paths, filmFile))
-  return sanitizeWritePayload(merged)
+  /** Raw merged tags + user Copyright (no ©/year yet). `sanitizeWritePayload` runs only at ExifTool apply. */
+  return stripWriteExcludedFields(merged)
 }
 
 export async function loadCatalog(paths: DataPaths): Promise<{ catalog: ConfigCatalog; loadIssues: string[] }> {
