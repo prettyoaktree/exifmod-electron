@@ -3,8 +3,11 @@ import {
   LEGACY_LENS_MOUNT_TO_DISPLAY,
   WRITE_EXCLUDED_FIELDS
 } from './constants.js'
+import { clampUtf8ByBytes, utf8ByteLength } from '../../shared/exifLimits.js'
 import { formatCopyrightForExif } from '../../shared/copyrightFormat.js'
 import type { CameraMetadata, ConfigCatalog, LensMetadata } from '../../shared/types.js'
+
+export { clampUtf8ByBytes, utf8ByteLength }
 
 /** Drop keys that must never enter merged preview / apply from preset JSON (`Film`, `Film Maker`). */
 export function stripWriteExcludedFields(payload: Record<string, unknown>): Record<string, unknown> {
@@ -24,19 +27,6 @@ export function sanitizeWritePayload(payload: Record<string, unknown>): Record<s
     else out['Copyright'] = formatted
   }
   return out
-}
-
-export function utf8ByteLength(text: string): number {
-  return Buffer.byteLength(text, 'utf8')
-}
-
-export function clampUtf8ByBytes(text: string, maxBytes: number = IMAGEDESCRIPTION_MAX_UTF8_BYTES): string {
-  if (maxBytes <= 0) return ''
-  const raw = Buffer.from(text, 'utf8')
-  if (raw.length <= maxBytes) return text
-  let cut = maxBytes
-  while (cut > 0 && (raw[cut - 1]! & 0xc0) === 0x80) cut--
-  return raw.subarray(0, cut).toString('utf8')
 }
 
 export function validateImageDescriptionForExif(text: string): string | null {

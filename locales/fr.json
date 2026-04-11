@@ -3,6 +3,7 @@
     "title": "ExifMod"
   },
   "menu": {
+    "edit": "Édition",
     "file": "Fichier",
     "importPresetDatabase": "Importer la base de préréglages…",
     "exportPresetDatabase": "Exporter la base de préréglages…"
@@ -99,6 +100,10 @@
     "apertureFStop": "Ouverture",
     "notesImageDescription": "Notes",
     "notesPlaceholder": "Description d’image facultative.",
+    "aiDescribeTooltip": "Générer des notes et mots-clés avec l’IA (Ollama)",
+    "aiDescribeLoading": "Génération…",
+    "aiDescribeNoRoom": "Plus d’espace pour du texte dans Notes (ImageDescription EXIF limitée à 999 octets UTF-8, séparateur inclus lors de l’ajout). Supprimez du texte puis réessayez.",
+    "aiDescribeNoRoomTooltip": "Plus d’espace dans Notes (limite 999 octets UTF-8).",
     "metadata": "Métadonnées",
     "metadataOneFileSelected": "Métadonnées — 1 fichier sélectionné",
     "metadataFilesSelected": "Métadonnées — {{count}} fichiers sélectionnés",

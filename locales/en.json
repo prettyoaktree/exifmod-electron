@@ -3,6 +3,7 @@
     "title": "ExifMod"
   },
   "menu": {
+    "edit": "Edit",
     "file": "File",
     "importPresetDatabase": "Import Preset Database…",
     "exportPresetDatabase": "Export Preset Database…"
@@ -99,6 +100,13 @@
     "apertureFStop": "Aperture",
     "notesImageDescription": "Notes",
     "notesPlaceholder": "Optional image description.",
+    "keywordsLabel": "Keywords",
+    "keywordsPlaceholder": "Comma-separated keywords (merged with presets when writing).",
+    "aiDescribeTooltip": "Generate notes and keywords with AI (Ollama)",
+    "aiDescribeLoading": "Generating…",
+    "aiDescribeNoRoom": "There is no space left for new text in Notes (EXIF ImageDescription is limited to 999 UTF-8 bytes, including a separator when appending). Remove some text, then try again.",
+    "aiDescribeNoRoomTooltip": "No room left in Notes (999 UTF-8 byte limit).",
+    "ollamaError": "AI error: {{message}}",
     "metadata": "Metadata",
     "metadataOneFileSelected": "Metadata - 1 File Selected",
     "metadataFilesSelected": "Metadata - {{count}} Files Selected",

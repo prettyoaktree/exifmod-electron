@@ -1,6 +1,7 @@
 /** Infer mapping "current value" hints from exiftool -j metadata (simplified from Qt). */
 
-import { clampUtf8ByBytes } from './validate.js'
+import { filmStockHintFromExifKeywords, formatKeywordsField } from '@shared/filmKeywords.js'
+import { clampUtf8ByBytes, fitKeywordsForExif } from '@shared/exifLimits.js'
 
 export function metadataFirstTag(meta: Record<string, unknown>, candidates: readonly string[]): unknown {
   for (const name of candidates) {
@@ -68,6 +69,18 @@ export function formatFnumberForUi(value: unknown): string {
   return String(value).trim()
 }
 
+/** Keywords as written in the main window field (comma-separated). */
+export function keywordsFieldFromMetadata(meta: Record<string, unknown>): string {
+  const k = meta['Keywords']
+  const arr: string[] =
+    typeof k === 'string'
+      ? k.split(/[,;]/).map((s) => s.trim()).filter(Boolean)
+      : Array.isArray(k)
+        ? k.map((v) => String(v).trim()).filter(Boolean)
+        : []
+  return formatKeywordsField(fitKeywordsForExif(arr))
+}
+
 export function imageDescriptionFromMetadata(meta: Record<string, unknown>): string {
   const raw = metadataFirstTag(meta, ['ImageDescription', 'EXIF:ImageDescription'] as const)
   if (raw == null) return ''
@@ -90,13 +103,10 @@ export function inferCategoryValues(
 
   const filmOpts = filmOptions.filter((o) => o !== 'None')
   let filmFromKeywords = ''
-  const hasFilmMarker = keywordValues.some((k) => k.trim().toLowerCase() === 'film')
-  const filmNameKeywords = keywordValues
-    .map((k) => k.trim())
-    .filter((k) => k && k.toLowerCase() !== 'film')
+  const stockHint = filmStockHintFromExifKeywords(keywordValues)
   const metadataIso = String(meta['ISO'] ?? '').trim()
 
-  if (hasFilmMarker && filmNameKeywords.length) {
+  if (stockHint) {
     const parsed = filmOpts.map((option) => {
       let baseName = option
       let optionIso = ''
@@ -108,6 +118,7 @@ export function inferCategoryValues(
       return { full: option, base: baseName.trim(), iso: optionIso }
     })
 
+    const filmNameKeywords = [stockHint]
     for (const keyword of filmNameKeywords) {
       const kl = keyword.toLowerCase()
       for (const { full, base, iso } of parsed) {

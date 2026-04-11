@@ -1,7 +1,11 @@
 export const CONTROL_FIELDS = new Set(['LensSystem', 'LensMount', 'LensAdaptable'])
 export const WRITE_EXCLUDED_FIELDS = new Set(['Film', 'Film Maker'])
 
-export const IMAGEDESCRIPTION_MAX_UTF8_BYTES = 999
+export {
+  IMAGEDESCRIPTION_MAX_UTF8_BYTES,
+  KEYWORD_TOKEN_MAX_UTF8_BYTES,
+  KEYWORDS_MERGED_SUM_MAX_UTF8_BYTES
+} from '../../shared/exifLimits.js'
 
 export const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.tif', '.tiff'])
 

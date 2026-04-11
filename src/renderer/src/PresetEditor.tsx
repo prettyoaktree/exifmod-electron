@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatCopyrightForExif } from '@shared/copyrightFormat.js'
+import {
+  filmStockDisplayFromKeywordsPayload,
+  filmStockKeywordFromDisplayName
+} from '@shared/filmKeywords.js'
 import type { Cat } from './categories.js'
 
 type CatLower = 'camera' | 'lens' | 'author' | 'film'
@@ -53,20 +57,7 @@ function normalizeLensPayloadForSave(pl: Record<string, unknown>, category: Cat)
   return p
 }
 
-/** Keywords list from payload: every token except the literal `film` marker (comma-separated in UI). */
-function filmStockFromPayload(pl: Record<string, unknown>): string {
-  const kw = pl['Keywords']
-  const vals: string[] =
-    typeof kw === 'string'
-      ? kw.split(/[,;]/).map((s) => s.trim()).filter(Boolean)
-      : Array.isArray(kw)
-        ? kw.map((v) => String(v).trim()).filter(Boolean)
-        : []
-  const parts = vals.filter((v) => v.toLowerCase() !== 'film')
-  return parts.join(', ')
-}
-
-/** Normalize legacy string/array Keywords and ensure a `film` marker for catalog / EXIF rules. */
+/** Normalize legacy string/array Keywords and ensure `film` + single `… Film Stock` keyword when possible. */
 function migrateFilmPayloadFromDb(pl: Record<string, unknown>): Record<string, unknown> {
   const p = { ...pl }
   const kw = p['Keywords']
@@ -77,18 +68,21 @@ function migrateFilmPayloadFromDb(pl: Record<string, unknown>): Record<string, u
     vals = kw.map((v) => String(v).trim()).filter(Boolean)
   }
   const parts = vals.filter((v) => v.toLowerCase() !== 'film')
-  p['Keywords'] = parts.length ? ['film', ...parts] : ['film']
+  if (parts.length === 0) {
+    p['Keywords'] = ['film']
+    return p
+  }
+  const display = filmStockDisplayFromKeywordsPayload(p)
+  const stockKw = filmStockKeywordFromDisplayName(display)
+  p['Keywords'] = stockKw ? ['film', stockKw] : ['film']
   return p
 }
 
 function normalizeFilmPayloadForSave(pl: Record<string, unknown>): Record<string, unknown> {
   const p = { ...pl }
-  const stock = filmStockFromPayload(p)
-  const parts = stock
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-  p['Keywords'] = parts.length ? ['film', ...parts] : ['film']
+  const display = filmStockDisplayFromKeywordsPayload(p)
+  const stockKw = filmStockKeywordFromDisplayName(display)
+  p['Keywords'] = stockKw ? ['film', stockKw] : ['film']
   return p
 }
 
@@ -398,15 +392,12 @@ export function PresetEditorModal(props: {
               <label>{t('presetEditor.filmStockName')}</label>
               <input
                 className="input"
-                value={filmStockFromPayload(payload)}
+                value={filmStockDisplayFromKeywordsPayload(payload)}
                 onChange={(e) => {
-                  const parts = e.target.value
-                    .split(',')
-                    .map((s) => s.trim())
-                    .filter(Boolean)
+                  const stockKw = filmStockKeywordFromDisplayName(e.target.value)
                   setPayload((p) => ({
                     ...p,
-                    Keywords: parts.length ? ['film', ...parts] : ['film']
+                    Keywords: stockKw ? ['film', stockKw] : ['film']
                   }))
                 }}
               />

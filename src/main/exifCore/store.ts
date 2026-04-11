@@ -4,6 +4,7 @@ import type { ConfigCatalog, DataPaths, MergeImportResult, MergeImportSkip } fro
 import { CONTROL_FIELDS, FALLBACK_LENS_MOUNT_NAMES, IMAGE_EXTENSIONS, LENS_MOUNT_DEFAULTS_FILENAME } from './constants.js'
 import { migrateLensMountDisplayNames, openDb } from './database.js'
 import { PresetStoreError } from './errors.js'
+import { stripFilmStockSuffix } from '../../shared/filmKeywords.js'
 import { sortedStrings, stripWriteExcludedFields } from './pure.js'
 import type { PersistedDatabase } from './sqlJs.js'
 import { getSqlJs } from './sqlJs.js'
@@ -46,7 +47,12 @@ function filmNameFromKeywords(data: Record<string, unknown>): string {
   if (!hasFilmMarker) return ''
   for (const value of values) {
     const n = value.trim()
-    if (n && n.toLowerCase() !== 'film') return n
+    if (!n || n.toLowerCase() === 'film') continue
+    if (n.includes('Film Stock')) return stripFilmStockSuffix(n)
+  }
+  for (const value of values) {
+    const n = value.trim()
+    if (n && n.toLowerCase() !== 'film') return stripFilmStockSuffix(n)
   }
   return ''
 }

@@ -27,6 +27,10 @@ export interface ExifmodApi {
   listImagesInDir: (dirPath: string) => Promise<string[]>
   isFile: (filePath: string) => Promise<boolean>
   readImageDataUrl: (filePath: string) => Promise<string>
+  ollamaDescribeImage: (
+    filePath: string,
+    opts?: { maxDescriptionUtf8Bytes?: number }
+  ) => Promise<{ ok: true; description: string; keywords: string[] } | { ok: false; error: string }>
   onPresetsImported: (cb: () => void) => () => void
   onStartupPath: (cb: (p: string) => void) => () => void
 }

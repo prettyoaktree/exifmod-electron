@@ -1,4 +1,11 @@
 import { i18next } from '../i18n.js'
+import {
+  clampUtf8ByBytes,
+  IMAGEDESCRIPTION_MAX_UTF8_BYTES,
+  utf8ByteLength
+} from '@shared/exifLimits.js'
+
+export { clampUtf8ByBytes, utf8ByteLength }
 
 const EXPOSURE_TIME_CHARS = /^[\d\s./]+$/
 
@@ -21,28 +28,12 @@ export function validateFnumberForExif(text: string): string | null {
   return null
 }
 
-const IMAGEDESCRIPTION_MAX = 999
-
-export function utf8ByteLength(text: string): number {
-  return new TextEncoder().encode(text).length
-}
-
-export function clampUtf8ByBytes(text: string, maxBytes: number = IMAGEDESCRIPTION_MAX): string {
-  if (maxBytes <= 0) return ''
-  const enc = new TextEncoder()
-  const raw = enc.encode(text)
-  if (raw.length <= maxBytes) return text
-  let cut = maxBytes
-  while (cut > 0 && (raw[cut - 1]! & 0xc0) === 0x80) cut--
-  return new TextDecoder('utf-8', { fatal: false }).decode(raw.slice(0, cut))
-}
-
 export function validateImageDescriptionForExif(text: string): string | null {
   const trimmed = text.trim()
   if (!trimmed) return null
   const n = utf8ByteLength(trimmed)
-  if (n > IMAGEDESCRIPTION_MAX) {
-    return i18next.t('validation.imageDescriptionBytes', { bytes: n, max: IMAGEDESCRIPTION_MAX })
+  if (n > IMAGEDESCRIPTION_MAX_UTF8_BYTES) {
+    return i18next.t('validation.imageDescriptionBytes', { bytes: n, max: IMAGEDESCRIPTION_MAX_UTF8_BYTES })
   }
   return null
 }

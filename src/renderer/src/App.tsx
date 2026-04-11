@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { withCopyrightAsWrittenToExif } from '@shared/copyrightFormat.js'
+import {
+  formatKeywordsField,
+  mergeKeywordsDeduped,
+  parseKeywordsField
+} from '@shared/filmKeywords.js'
+import {
+  fitKeywordsForExif,
+  mergeImageDescriptionAppend,
+  remainingUtf8BytesForAiDescription
+} from '@shared/exifLimits.js'
 import type { ConfigCatalog } from '@shared/types.js'
 import { filterLensValues } from '@shared/lensFilter.js'
 import {
@@ -9,8 +19,10 @@ import {
   inferCategoryValues,
   exposureTimeRawFromMetadata,
   fnumberRawFromMetadata,
-  imageDescriptionFromMetadata
+  imageDescriptionFromMetadata,
+  keywordsFieldFromMetadata
 } from './exif/infer.js'
+import { diffWritePayloadFromMetadata } from './exif/payloadDiff.js'
 import {
   clampUtf8ByBytes,
   validateExposureTimeForExif,
@@ -43,6 +55,8 @@ interface PendingState {
   fNumberText: string
   notesText: string
   notesBaseline: string
+  keywordsText: string
+  keywordsBaseline: string
 }
 
 function emptyPending(): PendingState {
@@ -54,8 +68,16 @@ function emptyPending(): PendingState {
     exposureTime: '',
     fNumberText: '',
     notesText: '',
-    notesBaseline: ''
+    notesBaseline: '',
+    keywordsText: '',
+    keywordsBaseline: ''
   }
+}
+
+function keywordsFromMergedPayloadField(v: unknown): string[] {
+  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean)
+  if (typeof v === 'string') return v.split(/[,;]/).map((s) => s.trim()).filter(Boolean)
+  return []
 }
 
 function pathKey(p: string): string {
@@ -116,7 +138,7 @@ function notesPendingForState(pend: PendingState): boolean {
 function aggregatePendingAttributeHighlights(
   paths: string[],
   pendingByPath: Record<string, PendingState>
-): Record<Cat, boolean> & { shutter: boolean; aperture: boolean; notes: boolean } {
+): Record<Cat, boolean> & { shutter: boolean; aperture: boolean; notes: boolean; keywords: boolean } {
   const cats: Cat[] = ['Camera', 'Lens', 'Film', 'Author']
   const out = {
     Camera: false,
@@ -125,7 +147,8 @@ function aggregatePendingAttributeHighlights(
     Author: false,
     shutter: false,
     aperture: false,
-    notes: false
+    notes: false,
+    keywords: false
   }
   for (const path of paths) {
     const pend = pendingByPath[pathKey(path)]
@@ -137,6 +160,7 @@ function aggregatePendingAttributeHighlights(
     if (pend.exposureTime.trim() !== '') out.shutter = true
     if (pend.fNumberText.trim() !== '') out.aperture = true
     if (notesPendingForState(pend)) out.notes = true
+    if (pend.keywordsText.trim() !== pend.keywordsBaseline.trim()) out.keywords = true
   }
   return out
 }
@@ -163,6 +187,10 @@ function mergePendingStateForNewValueUi(
   const notesSame = new Set(notesVals).size === 1
   const baselineVals = states.map((s) => s.notesBaseline)
   const baselineSame = new Set(baselineVals).size === 1
+  const kwVals = states.map((s) => s.keywordsText)
+  const kwSame = new Set(kwVals).size === 1
+  const kwBaselineVals = states.map((s) => s.keywordsBaseline)
+  const kwBaselineSame = new Set(kwBaselineVals).size === 1
   return {
     cameraId: mergeId('cameraId'),
     lensId: mergeId('lensId'),
@@ -171,11 +199,13 @@ function mergePendingStateForNewValueUi(
     exposureTime: expSame ? states[0]!.exposureTime : '',
     fNumberText: fnSame ? states[0]!.fNumberText : '',
     notesText: notesSame ? states[0]!.notesText : '',
-    notesBaseline: baselineSame ? states[0]!.notesBaseline : ''
+    notesBaseline: baselineSame ? states[0]!.notesBaseline : '',
+    keywordsText: kwSame ? states[0]!.keywordsText : '',
+    keywordsBaseline: kwBaselineSame ? states[0]!.keywordsBaseline : ''
   }
 }
 
-const META_FIELD_COUNT = 7
+const META_FIELD_COUNT = 8
 
 const FILES_PANE_WIDTH_MIN_PCT = 12
 const FILES_PANE_WIDTH_MAX_PCT = 88
@@ -218,6 +248,7 @@ export function App(): React.ReactElement {
     { path: string; payload: Record<string, unknown> }[] | null
   >(null)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
+  const [aiDescribeLoading, setAiDescribeLoading] = useState(false)
   /** Horizontal split: files pane width as % of main content area (default 30%). */
   const [filesPaneWidthPct, setFilesPaneWidthPct] = useState(30)
   /** Vertical split within files pane: file list + actions region height % (default 60%). */
@@ -445,7 +476,8 @@ export function App(): React.ReactElement {
           const md = meta[path]!
           if (row.notesText === '' && row.notesBaseline === '') {
             const desc = imageDescriptionFromMetadata(md)
-            next[k] = { ...row, notesText: desc, notesBaseline: desc }
+            const kw = keywordsFieldFromMetadata(md)
+            next[k] = { ...row, notesText: desc, notesBaseline: desc, keywordsText: kw, keywordsBaseline: kw }
           }
         }
         return next
@@ -507,6 +539,15 @@ export function App(): React.ReactElement {
             merged = { ...merged, ImageDescription: notes }
           }
         }
+        const presetKw = keywordsFromMergedPayloadField(merged['Keywords'])
+        const uiKw = parseKeywordsField(st.keywordsText)
+        const finalKw = fitKeywordsForExif(mergeKeywordsDeduped(presetKw, uiKw))
+        if (finalKw.length > 0) {
+          merged = { ...merged, Keywords: finalKw }
+        } else {
+          const { Keywords: _drop, ...rest } = merged
+          merged = rest
+        }
         if (Object.keys(merged).length === 0) return { payload: null, err: null }
         return { payload: merged, err: null }
       } catch (e) {
@@ -530,6 +571,7 @@ export function App(): React.ReactElement {
         }
         setExifPreviewLoading(true)
         const parts: string[] = []
+        let anyWouldChange = false
         for (const path of files) {
           if (cancelled) return
           const st = pendingByPath[pathKey(path)]
@@ -538,12 +580,16 @@ export function App(): React.ReactElement {
           if (cancelled) return
           const previewPayload = withCopyrightAsWrittenToExif(payload)
           if (err || !previewPayload || Object.keys(previewPayload).length === 0) continue
-          parts.push(`// ${path}\n${JSON.stringify(previewPayload, null, 2)}`)
+          const meta = metadataByPath[pathKey(path)] ?? {}
+          const diff = diffWritePayloadFromMetadata(previewPayload, meta)
+          if (Object.keys(diff).length === 0) continue
+          anyWouldChange = true
+          parts.push(`// ${path}\n${JSON.stringify(diff, null, 2)}`)
         }
         if (!cancelled) {
           setExifPreviewBody(parts.join('\n\n'))
           setExifPreviewLoading(false)
-          setHasPendingToWrite(parts.length > 0)
+          setHasPendingToWrite(anyWouldChange)
         }
       })()
     }, 250)
@@ -551,7 +597,7 @@ export function App(): React.ReactElement {
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [files, pendingByPath, catalog, buildMergedPayloadForState])
+  }, [files, pendingByPath, metadataByPath, catalog, buildMergedPayloadForState])
 
   const inferredRow = useMemo(() => {
     if (!catalog || !stagingPaths.length) return { Camera: '', Lens: '', Film: '', Author: '' }
@@ -816,7 +862,14 @@ export function App(): React.ReactElement {
           for (const path of successfulPaths) {
             const md = metaUpdates[path] ?? {}
             const desc = imageDescriptionFromMetadata(md)
-            next[pathKey(path)] = { ...emptyPending(), notesText: desc, notesBaseline: desc }
+            const kw = keywordsFieldFromMetadata(md)
+            next[pathKey(path)] = {
+              ...emptyPending(),
+              notesText: desc,
+              notesBaseline: desc,
+              keywordsText: kw,
+              keywordsBaseline: kw
+            }
           }
           return next
         })
@@ -841,30 +894,78 @@ export function App(): React.ReactElement {
         alert(err)
         return
       }
-      if (payload && Object.keys(payload).length > 0) {
-        todo.push({ path, payload })
-      }
+      if (!payload || Object.keys(payload).length === 0) continue
+      const previewPayload = withCopyrightAsWrittenToExif(payload)
+      const meta = metadataByPath[pathKey(path)] ?? {}
+      if (Object.keys(diffWritePayloadFromMetadata(previewPayload, meta)).length === 0) continue
+      todo.push({ path, payload })
     }
     if (!todo.length) {
       alert(t('ui.noStagedChanges'))
       return
     }
     setWriteConfirmTodo(todo)
-  }, [files, pendingByPath, buildMergedPayloadForState, t])
+  }, [files, pendingByPath, metadataByPath, buildMergedPayloadForState, t])
 
   const onClearPending = useCallback(() => {
     setPendingByPath((prev) => {
       const next = { ...prev }
       for (const path of files) {
         const k = pathKey(path)
-        const desc = imageDescriptionFromMetadata(metadataByPath[k] ?? {})
-        next[k] = { ...emptyPending(), notesText: desc, notesBaseline: desc }
+        const md = metadataByPath[k] ?? {}
+        const desc = imageDescriptionFromMetadata(md)
+        const kw = keywordsFieldFromMetadata(md)
+        next[k] = { ...emptyPending(), notesText: desc, notesBaseline: desc, keywordsText: kw, keywordsBaseline: kw }
       }
       return next
     })
   }, [files, metadataByPath])
 
+  const runAiDescribe = useCallback(async () => {
+    if (stagingPaths.length !== 1) return
+    const api = window.exifmod
+    if (!api?.ollamaDescribeImage) {
+      alert(t('ui.preloadUnavailable'))
+      return
+    }
+    const path = stagingPaths[0]!
+    const st = pendingByPath[pathKey(path)]
+    const maxDescriptionUtf8Bytes = st ? remainingUtf8BytesForAiDescription(st.notesText) : 0
+    if (maxDescriptionUtf8Bytes <= 0) {
+      alert(t('ui.aiDescribeNoRoom'))
+      return
+    }
+    setAiDescribeLoading(true)
+    try {
+      const r = await api.ollamaDescribeImage(path, { maxDescriptionUtf8Bytes })
+      if (!r.ok) {
+        alert(t('ui.ollamaError', { message: r.error }))
+        return
+      }
+      updatePendingForPaths(stagingPaths, (s) => {
+        let notesText = s.notesText
+        if (r.description.trim()) {
+          notesText = mergeImageDescriptionAppend(s.notesText, r.description)
+        }
+        const mergedKw = fitKeywordsForExif(mergeKeywordsDeduped(parseKeywordsField(s.keywordsText), r.keywords))
+        return {
+          ...s,
+          notesText,
+          keywordsText: formatKeywordsField(mergedKw)
+        }
+      })
+    } finally {
+      setAiDescribeLoading(false)
+    }
+  }, [stagingPaths, pendingByPath, t, updatePendingForPaths])
+
   const staging = stagingPaths
+
+  const aiDescribeNotesRoom = useMemo(() => {
+    if (stagingPaths.length !== 1) return 0
+    const st = pendingByPath[pathKey(stagingPaths[0]!)]
+    return st ? remainingUtf8BytesForAiDescription(st.notesText) : 0
+  }, [stagingPaths, pendingByPath])
 
   const exposureCurrent = staging.map((p) => formatExposureTimeForUi(exposureTimeRawFromMetadata(metadataByPath[p] ?? {})))
   const fnCurrent = staging.map((p) => formatFnumberForUi(fnumberRawFromMetadata(metadataByPath[p] ?? {})))
@@ -970,7 +1071,8 @@ export function App(): React.ReactElement {
                           pend.authorId != null ||
                           pend.exposureTime.trim() !== '' ||
                           pend.fNumberText.trim() !== '' ||
-                          (pend.notesText.trim() !== pend.notesBaseline.trim() && pend.notesText.trim() !== ''))
+                          (pend.notesText.trim() !== pend.notesBaseline.trim() && pend.notesText.trim() !== '') ||
+                          pend.keywordsText.trim() !== pend.keywordsBaseline.trim())
                       return (
                         <li
                           key={f}
@@ -1190,12 +1292,53 @@ export function App(): React.ReactElement {
               </table>
 
               <div className="meta-notes-wrap">
-                <h2>{t('ui.notesImageDescription')}</h2>
+                <div className="meta-notes-header">
+                  <h2 className="meta-notes-section-title">{t('ui.notesImageDescription')}</h2>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    className={['btn-ai-spark', aiDescribeLoading ? 'btn-ai-spark--loading' : ''].filter(Boolean).join(' ')}
+                    aria-busy={aiDescribeLoading}
+                    disabled={
+                      !staging.length ||
+                      staging.length !== 1 ||
+                      aiDescribeLoading ||
+                      aiDescribeNotesRoom <= 0
+                    }
+                    title={
+                      aiDescribeLoading
+                        ? t('ui.aiDescribeLoading')
+                        : aiDescribeNotesRoom <= 0 && staging.length === 1
+                          ? t('ui.aiDescribeNoRoomTooltip')
+                          : t('ui.aiDescribeTooltip')
+                    }
+                    aria-label={
+                      aiDescribeLoading
+                        ? t('ui.aiDescribeLoading')
+                        : aiDescribeNotesRoom <= 0 && staging.length === 1
+                          ? t('ui.aiDescribeNoRoomTooltip')
+                          : t('ui.aiDescribeTooltip')
+                    }
+                    onClick={() => void runAiDescribe()}
+                  >
+                    {aiDescribeLoading ? (
+                      <span className="btn-ai-spark-loading">{t('ui.aiDescribeLoading')}</span>
+                    ) : (
+                      <svg className="btn-ai-spark-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden focusable="false">
+                        <path
+                          fill="currentColor"
+                          d="M12 2l1.2 4.2L17.4 7.4l-4.2 1.2L12 12.8l-1.2-4.2L6.6 7.4l4.2-1.2L12 2zm7 8l.8 2.8 2.8.8-2.8.8L19 17.4l-.8-2.8-2.8-.8 2.8-.8L19 10zM6 14l.6 2.2 2.2.6-2.2.6L6 19.8l-.6-2.2-2.2-.6 2.2-.6L6 14z"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                </div>
                 <textarea
                   ref={bindMetaRef(6)}
                   tabIndex={-1}
                   className={['notes-area', pendingAttributeHighlights.notes ? 'meta-value-pending' : ''].filter(Boolean).join(' ')}
-                  disabled={!staging.length}
+                  readOnly={!staging.length}
+                  rows={3}
                   placeholder={t('ui.notesPlaceholder')}
                   value={formPending.notesText}
                   onChange={(e) => {
@@ -1203,6 +1346,24 @@ export function App(): React.ReactElement {
                     updatePendingForPaths(staging, (s) => ({ ...s, notesText: nextNotes }))
                   }}
                   onKeyDown={onMetaFieldTabKeyDown(6)}
+                />
+                <div className="meta-notes-header meta-notes-header--keywords">
+                  <h3 className="meta-notes-section-title">{t('ui.keywordsLabel')}</h3>
+                </div>
+                <textarea
+                  ref={bindMetaRef(7)}
+                  tabIndex={-1}
+                  className={['notes-area notes-area--keywords', pendingAttributeHighlights.keywords ? 'meta-value-pending' : '']
+                    .filter(Boolean)
+                    .join(' ')}
+                  readOnly={!staging.length}
+                  placeholder={t('ui.keywordsPlaceholder')}
+                  rows={2}
+                  value={formPending.keywordsText}
+                  onChange={(e) =>
+                    updatePendingForPaths(staging, (s) => ({ ...s, keywordsText: e.target.value }))
+                  }
+                  onKeyDown={onMetaFieldTabKeyDown(7)}
                 />
               </div>
             </div>

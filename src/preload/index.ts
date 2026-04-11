@@ -43,6 +43,10 @@ const api = {
     ipcRenderer.invoke('fs:listImagesInDir', dirPath) as Promise<string[]>,
   isFile: (filePath: string) => ipcRenderer.invoke('fs:isFile', filePath) as Promise<boolean>,
   readImageDataUrl: (filePath: string) => ipcRenderer.invoke('fs:readImageDataUrl', filePath) as Promise<string>,
+  ollamaDescribeImage: (filePath: string, opts?: { maxDescriptionUtf8Bytes?: number }) =>
+    ipcRenderer.invoke('ollama:describeImage', filePath, opts ?? {}) as Promise<
+      { ok: true; description: string; keywords: string[] } | { ok: false; error: string }
+    >,
   onPresetsImported: (cb: () => void) => {
     const fn = (): void => cb()
     ipcRenderer.on('presets:imported', fn)

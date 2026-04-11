@@ -1,14 +1,11 @@
 import './setAppName.js'
-import { app, BrowserWindow, ipcMain, dialog, Menu, nativeImage } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron'
 import { i18next, initMainI18n } from './i18n.js'
 import { localizePreflightIssues, localizeIssueLine } from './localizePreflight.js'
 import { localizeSkipReason, localizeMergeErrorMessage, localizeExportErrorMessage } from './localizeMerge.js'
 import { localizeThrownPresetError } from './localizeStoreError.js'
 import { resolveLocaleTag } from '../shared/i18n/resolveLocale.js'
-import { execFile as execFileCb } from 'node:child_process'
-import { dirname, extname, join, resolve as resolvePath } from 'node:path'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { dirname, join, resolve as resolvePath } from 'node:path'
 import type { MergeImportResult } from '../shared/types.js'
 import { fileURLToPath } from 'node:url'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
@@ -32,6 +29,8 @@ import {
   isSupportedImagePath
 } from './exifCore/index.js'
 import { spawnExiftool } from './exiftoolRunner.js'
+import { ollamaDescribeImage } from './ollamaDescribe.js'
+import { readImagePreviewDataUrl } from './previewImage.js'
 import type { CreatePresetInput, UpdatePresetInput } from '../shared/types.js'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
@@ -162,102 +161,6 @@ if (process.platform === 'darwin') {
   })
 }
 
-/** Max longest edge for preview (pixels). Keeps IPC payload small and memory stable. */
-const PREVIEW_MAX_EDGE = 2048
-const PREVIEW_JPEG_QUALITY = 82
-/** Raw data-URL fallback only for types Chromium displays well in <img>; cap size to avoid OOM. */
-const LEGACY_PREVIEW_MAX_BYTES = 48 * 1024 * 1024
-
-const LEGACY_DATA_URL_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif'])
-
-function execFileAsync(command: string, args: string[]): Promise<void> {
-  return new Promise((resolve, reject) => {
-    execFileCb(command, args, (err) => (err ? reject(err) : resolve()))
-  })
-}
-
-/** macOS: rasterize TIFF to JPEG via `sips` (handles many 8/16‑bit and layered TIFFs Quick Look mishandles). */
-async function previewTiffWithSips(filePath: string): Promise<string | null> {
-  let dir: string | undefined
-  try {
-    dir = await mkdtemp(join(tmpdir(), 'exifmod-preview-'))
-    const outJpg = join(dir, 'preview.jpg')
-    await execFileAsync('sips', ['-s', 'format', 'jpeg', '-Z', String(PREVIEW_MAX_EDGE), filePath, '--out', outJpg])
-    const buf = await readFile(outJpg)
-    if (buf.length < 32) return null
-    return `data:image/jpeg;base64,${buf.toString('base64')}`
-  } catch {
-    return null
-  } finally {
-    if (dir) {
-      try {
-        await rm(dir, { recursive: true, force: true })
-      } catch {
-        /* */
-      }
-    }
-  }
-}
-
-/**
- * Build a JPEG data URL the renderer can always show. Chromium does not decode TIFF in img tags;
- * use NativeImage / platform tools. On macOS, Quick Look thumbnails for TIFF often return a generic
- * document icon — avoid `createThumbnailFromPath` for .tif/.tiff and prefer `sips` first.
- */
-async function readImagePreviewDataUrl(filePath: string): Promise<string> {
-  const ext = extname(filePath).toLowerCase()
-  const tiff = ext === '.tif' || ext === '.tiff'
-
-  if (tiff && process.platform === 'darwin') {
-    const fromSips = await previewTiffWithSips(filePath)
-    if (fromSips) return fromSips
-  }
-
-  const skipQuickLookThumb = tiff && process.platform === 'darwin'
-  if (!skipQuickLookThumb && (process.platform === 'darwin' || process.platform === 'win32')) {
-    try {
-      const thumb = await nativeImage.createThumbnailFromPath(filePath, {
-        width: PREVIEW_MAX_EDGE,
-        height: PREVIEW_MAX_EDGE
-      })
-      if (!thumb.isEmpty()) {
-        const buf = thumb.toJPEG(PREVIEW_JPEG_QUALITY)
-        return `data:image/jpeg;base64,${buf.toString('base64')}`
-      }
-    } catch {
-      /* fall through */
-    }
-  }
-
-  let image = nativeImage.createFromPath(filePath)
-  if (!image.isEmpty()) {
-    const { width, height } = image.getSize()
-    const maxEdge = Math.max(width, height)
-    if (maxEdge > PREVIEW_MAX_EDGE) {
-      const scale = PREVIEW_MAX_EDGE / maxEdge
-      image = image.resize({
-        width: Math.max(1, Math.round(width * scale)),
-        height: Math.max(1, Math.round(height * scale)),
-        quality: 'good'
-      })
-    }
-    const buf = image.toJPEG(PREVIEW_JPEG_QUALITY)
-    return `data:image/jpeg;base64,${buf.toString('base64')}`
-  }
-
-  if (!LEGACY_DATA_URL_EXTS.has(ext)) {
-    throw new Error(i18next.t('preview.decodeFailed'))
-  }
-  const sz = statSync(filePath).size
-  if (sz > LEGACY_PREVIEW_MAX_BYTES) {
-    throw new Error(i18next.t('preview.tooLarge'))
-  }
-  const buf = await readFile(filePath)
-  const mime =
-    ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : ext === '.gif' ? 'image/gif' : 'image/jpeg'
-  return `data:${mime};base64,${buf.toString('base64')}`
-}
-
 function getDataPaths() {
   return getPaths(app.getPath('userData'))
 }
@@ -327,6 +230,21 @@ function createWindow(): void {
         },
         { type: 'separator' },
         ...(process.platform === 'darwin' ? [] : [{ role: 'quit' as const }])
+      ]
+    },
+    {
+      label: i18next.t('menu.edit'),
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        ...(process.platform === 'darwin' ? [{ role: 'pasteAndMatchStyle' }] : []),
+        { role: 'delete' },
+        { type: 'separator' },
+        { role: 'selectAll' }
       ]
     }
   ]
@@ -594,6 +512,12 @@ function setupIpc(): void {
   })
 
   ipcMain.handle('fs:readImageDataUrl', async (_e, filePath: string) => readImagePreviewDataUrl(filePath))
+
+  ipcMain.handle(
+    'ollama:describeImage',
+    async (_e, filePath: string, opts?: { maxDescriptionUtf8Bytes?: number }) =>
+      ollamaDescribeImage(filePath, opts)
+  )
 
   ipcMain.handle('fs:isFile', (_e, filePath: string) => {
     try {
