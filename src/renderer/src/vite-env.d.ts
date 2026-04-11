@@ -31,8 +31,15 @@ export interface ExifmodApi {
     filePath: string,
     opts?: { maxDescriptionUtf8Bytes?: number }
   ) => Promise<{ ok: true; description: string; keywords: string[] } | { ok: false; error: string }>
+  ollamaStartupFlow: () => Promise<
+    | { status: 'ready'; initialReachable: boolean }
+    | { status: 'server_down' }
+    | { status: 'no_cli' }
+  >
+  ollamaTryStartServer: () => Promise<{ ok: true } | { ok: false; error: string }>
   onPresetsImported: (cb: () => void) => () => void
   onStartupPath: (cb: (p: string) => void) => () => void
+  onOllamaLaunching: (cb: () => void) => () => void
 }
 
 declare global {
