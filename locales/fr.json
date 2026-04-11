@@ -98,12 +98,25 @@
     "newValue": "Nouvelle valeur",
     "shutterSpeed": "Vitesse d’obturation",
     "apertureFStop": "Ouverture",
-    "notesImageDescription": "Notes",
+    "notesImageDescription": "Description",
     "notesPlaceholder": "Description d’image facultative.",
-    "aiDescribeTooltip": "Générer des notes et mots-clés avec l’IA (Ollama)",
+    "notesPlaceholderMixed": "Les images sélectionnées ont des descriptions différentes. Le texte saisi ici devient la même description en attente pour chaque fichier sélectionné, en remplaçant les valeurs divergentes. Le bouton IA ajoute à la description existante de chaque fichier.",
+    "keywordsLabel": "Mots-clés",
+    "keywordsPlaceholder": "Mots-clés séparés par des virgules (facultatif).",
+    "keywordsPlaceholderMixed": "Les images sélectionnées ont des mots-clés différents. Les mots-clés saisis ici deviennent les mêmes mots-clés en attente pour chaque fichier sélectionné, en remplaçant les valeurs divergentes. Le bouton IA fusionne les suggestions avec les mots-clés existants de chaque fichier.",
+    "aiBatchConfirmLead": "Générer des descriptions et mots-clés IA pour {{count}} fichier(s) ?",
+    "aiBatchConfirmDetail": "Pour chaque fichier, la sortie de l’IA est ajoutée à la description existante (dans la limite d’octets EXIF) et les mots-clés suggérés sont fusionnés avec les mots-clés existants. Rien n’est supprimé tant qu’il reste de la place pour du nouveau texte. Les modifications en attente sont propres à chaque fichier.",
+    "aiBatchGenerate": "Générer",
+    "aiBatchErrorsLead": "Impossible de terminer l’IA pour {{failed}} fichier(s) sur {{total}}.",
+    "aiBatchErrorsDetail": "Consultez les messages ci-dessous. Vous pouvez fermer cette boîte de dialogue ou réessayer uniquement les fichiers en échec.",
+    "aiBatchRetryFailed": "Réessayer les fichiers en échec",
+    "aiDescribeTooltip": "Générer la description et les mots-clés avec l’IA (Ollama)",
     "aiDescribeLoading": "Génération…",
-    "aiDescribeNoRoom": "Plus d’espace pour du texte dans Notes (ImageDescription EXIF limitée à 999 octets UTF-8, séparateur inclus lors de l’ajout). Supprimez du texte puis réessayez.",
-    "aiDescribeNoRoomTooltip": "Plus d’espace dans Notes (limite 999 octets UTF-8).",
+    "aiDescribeLoadingProgress": "Génération ({{current}}/{{total}})…",
+    "aiDescribeNoRoom": "Plus d’espace pour du texte dans Description (ImageDescription EXIF limitée à 999 octets UTF-8, séparateur inclus lors de l’ajout). Supprimez du texte puis réessayez.",
+    "aiDescribeNoRoomTooltip": "Plus d’espace dans Description (limite 999 octets UTF-8).",
+    "ollamaEmptySoftFailure": "Le modèle n’a renvoyé ni description ni mots-clés. Réessayez.",
+    "ollamaError": "Erreur IA : {{message}}",
     "metadata": "Métadonnées",
     "metadataOneFileSelected": "Métadonnées — 1 fichier sélectionné",
     "metadataFilesSelected": "Métadonnées — {{count}} fichiers sélectionnés",
@@ -164,6 +177,6 @@
   "validation": {
     "exposureTime": "Vitesse : utilisez une fraction (ex. 1/125) ou des secondes décimales (ex. 2).",
     "fNumber": "Ouverture : indiquez un nombre f positif (ex. 2,8 ou 8).",
-    "imageDescriptionBytes": "Notes (ImageDescription) : {{bytes}} octets UTF-8, maximum {{max}}."
+    "imageDescriptionBytes": "Description (ImageDescription) : {{bytes}} octets UTF-8, maximum {{max}}."
   }
 }
