@@ -123,12 +123,16 @@ async function tryLaunchOllamaAndWait(): Promise<{ ok: true } | { ok: false; err
 
 export function runOllamaStartupFlow(win: BrowserWindow | null): Promise<OllamaStartupFlowResult> {
   if (!startupFlowPromise) {
-    startupFlowPromise = runOllamaStartupFlowOnce(win)
+    startupFlowPromise = checkOllamaAvailability()
   }
   return startupFlowPromise
 }
 
-async function runOllamaStartupFlowOnce(_win: BrowserWindow | null): Promise<OllamaStartupFlowResult> {
+/**
+ * Fresh reachability + CLI snapshot (not cached). Used after a describe `fetch failed` so we can
+ * show the Start Ollama drawer without replacing the one-time startup flow cache.
+ */
+export async function checkOllamaAvailability(): Promise<OllamaStartupFlowResult> {
   if ((await ollamaWarmup()).ok) {
     return { status: 'ready', initialReachable: true }
   }
