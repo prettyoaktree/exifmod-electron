@@ -153,6 +153,8 @@ body {
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
+  min-height: 0;
+  background: linear-gradient(180deg, #e8e9ec 0%, #e2e3e8 100%);
 }
 
 button.file-panel-open-folder {
