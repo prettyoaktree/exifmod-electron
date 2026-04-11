@@ -273,12 +273,133 @@ button.btn-sm {
 
 .meta-notes-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem;
   /** Same as `.btn-ai-spark` min-height — keeps label→field gap even when row has no button */
   min-height: 2rem;
   margin-bottom: 0.25rem;
+}
+
+.meta-notes-header-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.5rem;
+  max-width: min(28rem, 100%);
+}
+
+/** Collapsible single-line strip left of the AI button when Ollama is down but the CLI exists. */
+.meta-notes-ollama-drawer {
+  flex-shrink: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: min(28rem, 100%);
+  overflow: hidden;
+  transition:
+    max-width 0.24s ease,
+    opacity 0.2s ease;
+}
+
+.meta-notes-ollama-drawer--collapsed {
+  max-width: 2rem;
+  flex-shrink: 0;
+  opacity: 0.92;
+}
+
+.meta-notes-ollama-drawer-line {
+  margin: 0;
+  padding: 0;
+  max-width: 100%;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--muted);
+  white-space: nowrap;
+  text-align: right;
+}
+
+.meta-notes-ollama-drawer-msg {
+  white-space: nowrap;
+}
+
+.meta-notes-ollama-drawer-link {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  vertical-align: baseline;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.meta-notes-ollama-drawer-link--start {
+  color: var(--accent);
+}
+
+.meta-notes-ollama-drawer-link--start:hover {
+  color: #1d4ed8;
+}
+
+.meta-notes-ollama-drawer-link--dismiss {
+  color: var(--danger);
+}
+
+.meta-notes-ollama-drawer-link--dismiss:hover {
+  color: #991b1b;
+}
+
+.meta-notes-ollama-drawer-link:focus {
+  outline: none;
+}
+
+.meta-notes-ollama-drawer-link:focus-visible {
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35);
+}
+
+.meta-notes-ollama-drawer-inline-error {
+  color: var(--danger);
+  font-size: 0.65rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  max-width: 9rem;
+  display: inline-block;
+}
+
+.meta-notes-ollama-drawer-expand {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  min-height: 2rem;
+  padding: 0;
+  border: 1px solid #d4d4d8;
+  border-radius: 6px;
+  background: #fafafa;
+  color: var(--muted);
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+}
+
+.meta-notes-ollama-drawer-expand:hover {
+  color: var(--accent);
+  border-color: rgba(37, 99, 235, 0.45);
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.meta-notes-ollama-drawer-expand-icon {
+  display: block;
 }
 
 /** Same visual as `.meta-section h2` / mapping thead — explicit so Keywords matches Notes. */
@@ -323,9 +444,51 @@ button.btn-sm {
   background: rgba(37, 99, 235, 0.06);
 }
 
+/** Ollama reachable: blue border while idle (may still be disabled until files are selected). */
+.btn-ai-spark--ollama-ready:not(.btn-ai-spark--loading) {
+  border-color: rgba(37, 99, 235, 0.55);
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.btn-ai-spark--ollama-ready:disabled:not(.btn-ai-spark--loading) {
+  opacity: 0.88;
+  border-color: rgba(37, 99, 235, 0.45);
+}
+
+/**
+ * Animated blue border while:
+ * - initial startup warmup (`checking`), or
+ * - after the user chose Start Ollama (`launching`).
+ * Not used when Ollama is down and the user has not started it yet (`server_down`).
+ */
+.btn-ai-spark--ollama-launching:disabled {
+  opacity: 1;
+  cursor: wait;
+  color: var(--accent);
+  border-color: rgba(37, 99, 235, 0.55);
+  background: rgba(37, 99, 235, 0.07);
+  animation: btn-ai-spark-launch-ring 1.35s ease-in-out infinite;
+}
+
 .btn-ai-spark:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+@keyframes btn-ai-spark-launch-ring {
+  0%,
+  100% {
+    border-color: rgba(37, 99, 235, 0.38);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.9) inset,
+      0 0 0 0 rgba(37, 99, 235, 0.2);
+  }
+  50% {
+    border-color: rgba(37, 99, 235, 0.85);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.9) inset,
+      0 0 0 4px rgba(37, 99, 235, 0.28);
+  }
 }
 
 /** Generating: stay visible (default disabled dims too much) and show activity */

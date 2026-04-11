@@ -215,6 +215,15 @@ type StagedTextUniformity = 'empty' | 'uniform' | 'mixed'
 
 type AiDescribeBusy = null | { mode: 'single' } | { mode: 'batch'; current: number; total: number }
 
+type OllamaSession =
+  | 'checking'
+  | 'server_down'
+  | 'launching'
+  | 'ready'
+  | 'declined'
+  | 'failed'
+  | 'no_install'
+
 function classifyStagedTextField(
   paths: string[],
   pendingByPath: Record<string, PendingState>,
@@ -271,6 +280,12 @@ export function App(): React.ReactElement {
   >(null)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
   const [aiDescribeBusy, setAiDescribeBusy] = useState<AiDescribeBusy>(null)
+  const [ollamaSession, setOllamaSession] = useState<OllamaSession>('checking')
+  /** Shown next to the inline Start control when `ollamaTryStartServer` fails (user can retry). */
+  const [ollamaStartError, setOllamaStartError] = useState<string | null>(null)
+  /** When `server_down`, drawer next to AI: expanded vs collapsed strip (Not now collapses; user can expand again). */
+  const [ollamaCtaCollapsed, setOllamaCtaCollapsed] = useState(false)
+  const prevOllamaSessionForDrawerRef = useRef<OllamaSession | null>(null)
   const [aiBatchConfirmPaths, setAiBatchConfirmPaths] = useState<string[] | null>(null)
   const [aiBatchErrorsDialog, setAiBatchErrorsDialog] = useState<null | {
     failures: { path: string; message: string }[]
@@ -410,6 +425,34 @@ export function App(): React.ReactElement {
       await reloadCatalog()
     })()
   }, [reloadCatalog])
+
+  useEffect(() => {
+    const api = window.exifmod
+    if (!api?.ollamaStartupFlow) {
+      setOllamaSession('failed')
+      return
+    }
+    void api.ollamaStartupFlow().then((r) => {
+      if (r.status === 'ready') setOllamaSession('ready')
+      else if (r.status === 'server_down') setOllamaSession('server_down')
+      else if (r.status === 'no_cli') setOllamaSession('no_install')
+      else setOllamaSession('failed')
+    })
+  }, [])
+
+  useEffect(() => {
+    const api = window.exifmod
+    if (!api?.onOllamaLaunching) return
+    return api.onOllamaLaunching(() => setOllamaSession('launching'))
+  }, [])
+
+  useEffect(() => {
+    const prev = prevOllamaSessionForDrawerRef.current
+    prevOllamaSessionForDrawerRef.current = ollamaSession
+    if (ollamaSession === 'server_down' && prev !== 'server_down') {
+      setOllamaCtaCollapsed(false)
+    }
+  }, [ollamaSession])
 
   useEffect(() => {
     const api = window.exifmod
@@ -1055,6 +1098,26 @@ export function App(): React.ReactElement {
     void runAiDescribeSingle()
   }, [stagingPaths, pendingByPath, t, runAiDescribeSingle])
 
+  const onOllamaInlineStart = useCallback(async () => {
+    const api = window.exifmod
+    if (!api?.ollamaTryStartServer) {
+      alert(t('ui.preloadUnavailable'))
+      return
+    }
+    setOllamaStartError(null)
+    const r = await api.ollamaTryStartServer()
+    if (r.ok) {
+      setOllamaSession('ready')
+      return
+    }
+    setOllamaStartError(r.error)
+  }, [t])
+
+  const onOllamaInlineDismiss = useCallback(() => {
+    setOllamaStartError(null)
+    setOllamaCtaCollapsed(true)
+  }, [])
+
   const staging = stagingPaths
 
   const aiDescribeHasAnyRoom = useMemo(
@@ -1090,6 +1153,23 @@ export function App(): React.ReactElement {
     }
     return t('ui.aiDescribeLoading')
   }, [aiDescribeBusy, t])
+
+  const aiButtonDisabled = useMemo(() => {
+    if (ollamaSession !== 'ready') return true
+    return !stagingPaths.length || !!aiDescribeBusy || !aiDescribeHasAnyRoom
+  }, [ollamaSession, stagingPaths.length, aiDescribeBusy, aiDescribeHasAnyRoom])
+
+  const aiButtonTitle = useMemo(() => {
+    if (aiDescribeBusy) return aiDescribeBusyLabel
+    if (ollamaSession === 'launching') return t('ui.aiDescribeOllamaLaunching')
+    if (ollamaSession === 'checking') return t('ui.aiDescribeOllamaChecking')
+    if (ollamaSession === 'server_down') return t('ui.aiDescribeOllamaWaitingStart')
+    if (ollamaSession === 'no_install') return t('ui.aiDescribeOllamaNotInstalled')
+    if (ollamaSession === 'declined' || ollamaSession === 'failed') return t('ui.aiDescribeOllamaUnavailable')
+    if (ollamaSession === 'ready' && stagingPaths.length === 0) return t('ui.aiDescribeSelectFilesTooltip')
+    if (!aiDescribeHasAnyRoom) return t('ui.aiDescribeNoRoomTooltip')
+    return t('ui.aiDescribeTooltip')
+  }, [aiDescribeBusy, aiDescribeBusyLabel, ollamaSession, stagingPaths.length, aiDescribeHasAnyRoom, t])
 
   const exposureCurrent = staging.map((p) => formatExposureTimeForUi(exposureTimeRawFromMetadata(metadataByPath[p] ?? {})))
   const fnCurrent = staging.map((p) => formatFnumberForUi(fnumberRawFromMetadata(metadataByPath[p] ?? {})))
@@ -1418,26 +1498,90 @@ export function App(): React.ReactElement {
               <div className="meta-notes-wrap">
                 <div className="meta-notes-header">
                   <h2 className="meta-notes-section-title">{t('ui.notesImageDescription')}</h2>
-                  <button
+                  <div className="meta-notes-header-tools">
+                    {ollamaSession === 'server_down' && (
+                      <div
+                        className={[
+                          'meta-notes-ollama-drawer',
+                          ollamaCtaCollapsed ? 'meta-notes-ollama-drawer--collapsed' : ''
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        role="region"
+                        aria-label={t('ui.ollamaDrawerRegionLabel')}
+                      >
+                        {!ollamaCtaCollapsed ? (
+                          <p className="meta-notes-ollama-drawer-line">
+                            <span className="meta-notes-ollama-drawer-msg">{t('ui.ollamaInlineHint')}</span>{' '}
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              className="meta-notes-ollama-drawer-link meta-notes-ollama-drawer-link--start"
+                              onClick={() => void onOllamaInlineStart()}
+                            >
+                              {t('ui.ollamaInlineStart')}
+                            </button>{' '}
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              className="meta-notes-ollama-drawer-link meta-notes-ollama-drawer-link--dismiss"
+                              onClick={onOllamaInlineDismiss}
+                            >
+                              {t('dialog.ollamaButtonNotNow')}
+                            </button>
+                            {ollamaStartError ? (
+                              <span className="meta-notes-ollama-drawer-inline-error" title={ollamaStartError}>
+                                {' '}
+                                · {ollamaStartError}
+                              </span>
+                            ) : null}
+                          </p>
+                        ) : (
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            className="meta-notes-ollama-drawer-expand"
+                            onClick={() => setOllamaCtaCollapsed(false)}
+                            title={t('ui.ollamaDrawerExpand')}
+                            aria-label={t('ui.ollamaDrawerExpand')}
+                            aria-expanded="false"
+                          >
+                            <svg
+                              className="meta-notes-ollama-drawer-expand-icon"
+                              viewBox="0 0 24 24"
+                              width="18"
+                              height="18"
+                              aria-hidden
+                              focusable="false"
+                            >
+                              <path
+                                fill="currentColor"
+                                d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
+                              />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    <button
                     type="button"
                     tabIndex={-1}
-                    className={['btn-ai-spark', aiDescribeBusy ? 'btn-ai-spark--loading' : ''].filter(Boolean).join(' ')}
-                    aria-busy={!!aiDescribeBusy}
-                    disabled={!staging.length || !!aiDescribeBusy || !aiDescribeHasAnyRoom}
-                    title={
-                      aiDescribeBusy
-                        ? aiDescribeBusyLabel
-                        : !aiDescribeHasAnyRoom
-                          ? t('ui.aiDescribeNoRoomTooltip')
-                          : t('ui.aiDescribeTooltip')
+                    className={[
+                      'btn-ai-spark',
+                      (ollamaSession === 'checking' || ollamaSession === 'launching') && !aiDescribeBusy
+                        ? 'btn-ai-spark--ollama-launching'
+                        : '',
+                      ollamaSession === 'ready' && !aiDescribeBusy ? 'btn-ai-spark--ollama-ready' : '',
+                      aiDescribeBusy ? 'btn-ai-spark--loading' : ''
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    aria-busy={
+                      !!aiDescribeBusy || ollamaSession === 'checking' || ollamaSession === 'launching'
                     }
-                    aria-label={
-                      aiDescribeBusy
-                        ? aiDescribeBusyLabel
-                        : !aiDescribeHasAnyRoom
-                          ? t('ui.aiDescribeNoRoomTooltip')
-                          : t('ui.aiDescribeTooltip')
-                    }
+                    disabled={aiButtonDisabled}
+                    title={aiButtonTitle}
+                    aria-label={aiButtonTitle}
                     onClick={() => void onAiButtonClick()}
                   >
                     {aiDescribeBusy ? (
@@ -1451,6 +1595,7 @@ export function App(): React.ReactElement {
                       </svg>
                     )}
                   </button>
+                  </div>
                 </div>
                 <textarea
                   ref={bindMetaRef(6)}

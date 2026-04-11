@@ -47,6 +47,14 @@ const api = {
     ipcRenderer.invoke('ollama:describeImage', filePath, opts ?? {}) as Promise<
       { ok: true; description: string; keywords: string[] } | { ok: false; error: string }
     >,
+  ollamaStartupFlow: () =>
+    ipcRenderer.invoke('ollama:startupFlow') as Promise<
+      | { status: 'ready'; initialReachable: boolean }
+      | { status: 'server_down' }
+      | { status: 'no_cli' }
+    >,
+  ollamaTryStartServer: () =>
+    ipcRenderer.invoke('ollama:tryStartServer') as Promise<{ ok: true } | { ok: false; error: string }>,
   onPresetsImported: (cb: () => void) => {
     const fn = (): void => cb()
     ipcRenderer.on('presets:imported', fn)
@@ -59,6 +67,11 @@ const api = {
     return () => {
       startupPathSubscribers.delete(cb)
     }
+  },
+  onOllamaLaunching: (cb: () => void) => {
+    const fn = (): void => cb()
+    ipcRenderer.on('ollama:launching', fn)
+    return () => ipcRenderer.removeListener('ollama:launching', fn)
   }
 }
 

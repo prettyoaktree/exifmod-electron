@@ -30,6 +30,7 @@ import {
 } from './exifCore/index.js'
 import { spawnExiftool } from './exiftoolRunner.js'
 import { ollamaDescribeImage } from './ollamaDescribe.js'
+import { ollamaTryStartServer, registerOllamaWillQuit, runOllamaStartupFlow } from './ollamaLifecycle.js'
 import { readImagePreviewDataUrl } from './previewImage.js'
 import type { CreatePresetInput, UpdatePresetInput } from '../shared/types.js'
 
@@ -519,6 +520,16 @@ function setupIpc(): void {
       ollamaDescribeImage(filePath, opts)
   )
 
+  ipcMain.handle('ollama:startupFlow', async () => {
+    const win = mainWindow ?? BrowserWindow.getFocusedWindow()
+    return runOllamaStartupFlow(win ?? null)
+  })
+
+  ipcMain.handle('ollama:tryStartServer', async () => {
+    const win = mainWindow ?? BrowserWindow.getFocusedWindow()
+    return ollamaTryStartServer(win ?? null)
+  })
+
   ipcMain.handle('fs:isFile', (_e, filePath: string) => {
     try {
       return statSync(filePath).isFile()
@@ -543,6 +554,7 @@ app.whenReady().then(async () => {
     /* preflight surfaces issues */
   }
   setupIpc()
+  registerOllamaWillQuit()
   const dockIcon = resolveAppIconPath()
   if (process.platform === 'darwin' && dockIcon && app.dock) {
     app.dock.setIcon(dockIcon)

@@ -6,9 +6,11 @@ import {
 import { OLLAMA_ERROR_EMPTY_SOFT } from '../shared/ollamaResultCodes.js'
 import { readImagePreviewJpegBase64 } from './previewImage.js'
 
-const DEFAULT_BASE = 'http://127.0.0.1:11434'
-const DEFAULT_MODEL = 'gemma4'
+export const DEFAULT_OLLAMA_BASE = 'http://127.0.0.1:11434'
+export const DEFAULT_OLLAMA_MODEL = 'gemma4'
 const CHAT_TIMEOUT_MS = 180_000
+/** Text-only warmup to verify the configured model responds (startup / availability). */
+const WARMUP_TIMEOUT_MS = 30_000
 
 /** Allow only loopback — reject LAN/public hosts. */
 export function assertLoopbackOllamaBaseUrl(urlString: string): URL {
@@ -27,6 +29,51 @@ export function assertLoopbackOllamaBaseUrl(urlString: string): URL {
     return u
   }
   throw new Error('Ollama URL must use a loopback host (127.0.0.1, localhost, or ::1)')
+}
+
+/** Resolved loopback API base URL and model (same env defaults as describe). */
+export function resolveOllamaConnection(options?: { baseUrl?: string; model?: string }): { api: URL; model: string } {
+  const baseUrl = options?.baseUrl ?? process.env.EXIFMOD_OLLAMA_HOST ?? DEFAULT_OLLAMA_BASE
+  const model = options?.model ?? process.env.EXIFMOD_OLLAMA_MODEL ?? DEFAULT_OLLAMA_MODEL
+  const api = assertLoopbackOllamaBaseUrl(baseUrl)
+  return { api, model }
+}
+
+/**
+ * Minimal chat completion against the configured model (no image read).
+ * Used at startup to detect a reachable Ollama server and warm the model.
+ */
+export async function ollamaWarmup(options?: { baseUrl?: string; model?: string }): Promise<{ ok: boolean }> {
+  let api: URL
+  let model: string
+  try {
+    ;({ api, model } = resolveOllamaConnection(options))
+  } catch {
+    return { ok: false }
+  }
+
+  const chatUrl = new URL('/api/chat', api).href
+  const body = JSON.stringify({
+    model,
+    stream: false,
+    messages: [{ role: 'user', content: 'ping' }]
+  })
+
+  try {
+    const res = await fetch(chatUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      signal: AbortSignal.timeout(WARMUP_TIMEOUT_MS)
+    })
+    if (!res.ok) return { ok: false }
+    const data = (await res.json()) as { message?: { content?: string } }
+    const content = data.message?.content
+    if (typeof content !== 'string' || !content.trim()) return { ok: false }
+    return { ok: true }
+  } catch {
+    return { ok: false }
+  }
 }
 
 function buildSystemPrompt(maxDescriptionUtf8Bytes: number): string {
@@ -73,8 +120,8 @@ export async function ollamaDescribeImage(
   filePath: string,
   options?: { baseUrl?: string; model?: string; maxDescriptionUtf8Bytes?: number }
 ): Promise<OllamaDescribeResult> {
-  const baseUrl = options?.baseUrl ?? process.env.EXIFMOD_OLLAMA_HOST ?? DEFAULT_BASE
-  const model = options?.model ?? process.env.EXIFMOD_OLLAMA_MODEL ?? DEFAULT_MODEL
+  const baseUrl = options?.baseUrl ?? process.env.EXIFMOD_OLLAMA_HOST ?? DEFAULT_OLLAMA_BASE
+  const model = options?.model ?? process.env.EXIFMOD_OLLAMA_MODEL ?? DEFAULT_OLLAMA_MODEL
   const rawCap = options?.maxDescriptionUtf8Bytes
   const maxDescBytes =
     rawCap == null || !Number.isFinite(rawCap)
