@@ -73,7 +73,7 @@ The preload API (`window.exifmod`) covers paths, locale, dialogs, catalog/preset
 
 ### AI assistants and optional project rules
 
-Automated assistants can use this README plus `[docs/product.md](docs/product.md)` and `[docs/exif-preset-mapping.md](docs/exif-preset-mapping.md)` as the source of truth. This repo does not include **Cursor** rules or `AGENTS.md`; you may add `.cursor/rules/` or `AGENTS.md` if your workflow uses them—keep them consistent with those docs.
+Automated assistants should read **[`AGENTS.md`](AGENTS.md)** for repo-specific boundaries and commands, plus this README and `[docs/product.md](docs/product.md)` / `[docs/exif-preset-mapping.md](docs/exif-preset-mapping.md)` as the source of truth. Optional **Cursor** rules live under `.cursor/rules/` if present—keep them consistent with those docs.
 
 ## Localization
 
