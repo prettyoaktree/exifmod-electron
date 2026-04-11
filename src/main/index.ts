@@ -1,4 +1,5 @@
 import './setAppName.js'
+import './cliPath.js'
 import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron'
 import { i18next, initMainI18n } from './i18n.js'
 import { localizePreflightIssues, localizeIssueLine } from './localizePreflight.js'
@@ -208,7 +209,7 @@ function createWindow(): void {
       nodeIntegration: false,
       sandbox: false
     },
-    title: i18next.t('app.title')
+    title: i18next.t('app.windowTitle')
   })
 
   if (process.env['ELECTRON_RENDERER_URL']) {

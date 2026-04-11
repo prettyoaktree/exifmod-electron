@@ -1,6 +1,6 @@
-# ExifMod — product overview
+# EXIFmod — product overview
 
-ExifMod is a desktop application for photographers and editors who want to **apply consistent EXIF metadata** (camera, lens, film stock, author/copyright, exposure, and notes) across images using a **reusable preset catalog**, then **write those changes into the image files**.
+EXIFmod is a desktop application for photographers and editors who want to **apply consistent EXIF metadata** (camera, lens, film stock, author/copyright, exposure, and notes) across images using a **reusable preset catalog**, then **write those changes into the image files**.
 
 The app is built with Electron; metadata read and write use **ExifTool** on the user’s machine.
 
@@ -56,11 +56,11 @@ When multiple files are selected, the UI can show **Multiple** where values diff
 
 ### Optional local AI (Ollama)
 
-On startup, ExifMod **asynchronously** checks whether Ollama is reachable by sending a **minimal text chat** to the configured model (same host and model as real AI work). While that check runs, the **AI** control stays disabled and shows an **animated blue border** (activity). If Ollama responds, the control switches to the steady blue “available” styling (it may still be disabled until you select files or until there is room in Description). If the **`ollama`** command is **not** on your PATH (and the warmup failed), the **AI** control stays **off for the session** with a hint to install Ollama. Otherwise, if Ollama does not respond but the CLI is available, a **collapsible drawer** next to the AI button offers **Start Ollama** (`ollama serve`) without a modal; **Not now** collapses the drawer so you can reopen it later. Until you choose **Start Ollama**, the AI button stays **without** that animation; after you do, the **animated blue border** returns until the server answers or a timeout is reached.
+On startup, EXIFmod **asynchronously** checks whether Ollama is reachable by sending a **minimal text chat** to the configured model (same host and model as real AI work). While that check runs, the **AI** control stays disabled and shows an **animated blue border** (activity). If Ollama responds, the control switches to the steady blue “available” styling (it may still be disabled until you select files or until there is room in Description). If the **`ollama`** command is **not** on your PATH (and the warmup failed), the **AI** control stays **off for the session** with a hint to install Ollama. Otherwise, if Ollama does not respond but the CLI is available, a **collapsible drawer** next to the AI button offers **Start Ollama** (`ollama serve`) without a modal; **Not now** collapses the drawer so you can reopen it later. Until you choose **Start Ollama**, the AI button stays **without** that animation; after you do, the **animated blue border** returns until the server answers or a timeout is reached.
 
 The **Description** header offers the **AI** control when Ollama is available for the session and at least one staged file still has room for more ImageDescription text. It calls a **local Ollama** server over HTTP (`/api/chat`) with a downscaled JPEG preview per file. For **one** selected file, AI runs immediately. For **several** files, the app asks for confirmation, then processes files **one after another**, showing **Generating (n/total)…** on the button. **Per-file failures do not stop the batch**; when the run finishes, if anything failed, a dialog lists each error and you can **retry only the failed files** or dismiss. AI output **appends** to each file’s existing description (within the EXIF byte budget) and **merges** suggested **Keywords** with the field. Only **loopback** hosts are allowed (e.g. `127.0.0.1`). Configure the base URL and model with **`EXIFMOD_OLLAMA_HOST`** and **`EXIFMOD_OLLAMA_MODEL`** if needed. If a describe request fails with a **transport** error (for example **`fetch failed`** because Ollama stopped), the app re-checks availability and can show the **Start Ollama** drawer again when the CLI is on your PATH—without changing the initial startup check.
 
-When you quit ExifMod: if Ollama **was already running** when the app started (the warmup succeeded immediately), ExifMod **does not** stop Ollama. If ExifMod **started** **`ollama serve`** after you opted in, it **terminates** that process when you quit.
+When you quit EXIFmod: if Ollama **was already running** when the app started (the warmup succeeded immediately), EXIFmod **does not** stop Ollama. If EXIFmod **started** **`ollama serve`** after you opted in, it **terminates** that process when you quit.
 
 ### Clipboard and menus
 
@@ -72,7 +72,7 @@ Use the **Edit** menu (or standard shortcuts such as **⌘C** / **Ctrl+C**, **�
 
 From the **File** menu:
 
-- **Import Preset Database…** — Merge presets from a previously exported ExifMod SQLite database. Conflicts or invalid rows are reported; valid presets are imported.
+- **Import Preset Database…** — Merge presets from a previously exported EXIFmod SQLite database. Conflicts or invalid rows are reported; valid presets are imported.
 - **Export Preset Database…** — Save the current preset database as `presets.sqlite3` to a folder you choose (useful for backup or moving to another machine).
 
 ---

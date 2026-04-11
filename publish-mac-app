@@ -17,13 +17,13 @@ if [[ ! -d "$ROOT/release" ]]; then
   exit 1
 fi
 
-APP="$(find "$ROOT/release" -name 'ExifMod.app' -type d 2>/dev/null | head -1)"
+APP="$(find "$ROOT/release" -name 'EXIFmod.app' -type d 2>/dev/null | head -1)"
 if [[ -z "$APP" ]] || [[ ! -d "$APP" ]]; then
-  echo "publish-mac-app: could not find ExifMod.app under release/. Check electron-builder output." >&2
+  echo "publish-mac-app: could not find EXIFmod.app under release/. Check electron-builder output." >&2
   exit 1
 fi
 
-DEST="/Applications/ExifMod.app"
+DEST="/Applications/EXIFmod.app"
 echo "Installing: $APP → $DEST"
 if [[ -d "$DEST" ]]; then
   echo "Removing existing $DEST"
@@ -31,4 +31,4 @@ if [[ -d "$DEST" ]]; then
 fi
 
 ditto "$APP" "$DEST"
-echo "Done. ExifMod is in /Applications."
+echo "Done. EXIFmod is in /Applications."

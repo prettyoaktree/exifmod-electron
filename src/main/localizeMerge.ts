@@ -25,7 +25,7 @@ export function localizeSkipReason(skip: MergeImportSkip): string {
   return r
 }
 
-const INVALID_DB_PREFIX = 'The selected file is not a valid ExifMod preset database:\n\n'
+const INVALID_DB_PREFIX = 'The selected file is not a valid EXIFmod preset database:\n\n'
 
 /** Localize thrown Error message from merge/import preset flows. */
 export function localizeMergeErrorMessage(message: string): string {

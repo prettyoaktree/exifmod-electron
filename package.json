@@ -35,7 +35,7 @@
   },
   "build": {
     "appId": "dev.ay.exifmod",
-    "productName": "ExifMod",
+    "productName": "EXIFmod",
     "directories": {
       "output": "release"
     },

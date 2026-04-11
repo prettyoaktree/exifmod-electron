@@ -657,7 +657,7 @@ function verifyPresetDatabaseMemory(db: Database): string[] {
 }
 
 /**
- * Merge presets from another ExifMod presets.sqlite3 into the destination database.
+ * Merge presets from another EXIFmod presets.sqlite3 into the destination database.
  * Inserts only rows whose (category, name) are not already present. Does not modify the source file.
  */
 export async function mergePresetsFromSqliteFile(sourceFilePath: string, destPaths: DataPaths): Promise<MergeImportResult> {
@@ -675,7 +675,7 @@ export async function mergePresetsFromSqliteFile(sourceFilePath: string, destPat
     const issues = verifyPresetDatabaseMemory(srcDb)
     if (issues.length) {
       throw new Error(
-        `The selected file is not a valid ExifMod preset database:\n\n${issues.join('\n')}`
+        `The selected file is not a valid EXIFmod preset database:\n\n${issues.join('\n')}`
       )
     }
 

@@ -22,7 +22,7 @@ function exiftoolSkipReason(): string | null {
  * UI-only keys (`LensSystem`, `LensMount`, `LensAdaptable`) are never present in merged apply payloads from the store.
  */
 const RAW_MERGED_LIKE_CATALOG: Record<string, unknown> = {
-  Make: 'ExifMod Catalog Test',
+  Make: 'EXIFmod Catalog Test',
   Model: 'Integration Body T1',
   LensMake: 'Catalog Lens Co',
   LensModel: 'CAT-35-14-A',
@@ -32,7 +32,7 @@ const RAW_MERGED_LIKE_CATALOG: Record<string, unknown> = {
   ISO: 400,
   Author: 'Person',
   Artist: 'Catalog Test Author',
-  Copyright: 'ExifMod catalog integration',
+  Copyright: 'EXIFmod catalog integration',
   ImageDescription: 'Merged preset catalog round-trip verification.',
   Keywords: ['catalog-test', 'exifmod'],
   Film: 'should-not-write',
