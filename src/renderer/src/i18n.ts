@@ -20,7 +20,7 @@ export async function initRendererI18n(localeHint: string | undefined): Promise<
   })
   document.documentElement.lang = lng
   document.documentElement.dir = 'ltr'
-  document.title = i18next.t('app.title')
+  document.title = i18next.t('app.windowTitle')
   inited = true
 }
 

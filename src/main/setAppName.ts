@@ -5,4 +5,4 @@ import { app } from 'electron'
  * Affects APIs that read `app.name` / `app.getName()`; the macOS menu bar title in **development**
  * still comes from the Electron.app bundle — see README.
  */
-app.setName('ExifMod')
+app.setName('EXIFmod')

@@ -54,7 +54,7 @@ export function ollamaCliAvailable(): Promise<boolean> {
 }
 
 let ollamaLaunchedByApp = false
-/** Child from `ollama serve` when ExifMod started the server after user opt-in (kill on quit). */
+/** Child from `ollama serve` when EXIFmod started the server after user opt-in (kill on quit). */
 let ollamaServeChild: ChildProcess | null = null
 
 /** Single flight for the whole session (React Strict Mode runs the renderer effect twice in dev). */

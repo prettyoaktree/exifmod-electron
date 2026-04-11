@@ -1,4 +1,4 @@
-/** Suffix for film stock EXIF keyword tokens written by ExifMod (literal substring for inference). */
+/** Suffix for film stock EXIF keyword tokens written by EXIFmod (literal substring for inference). */
 export const FILM_STOCK_SUFFIX = ' Film Stock'
 
 /** Strip trailing ` Film Stock` (case-insensitive) from a keyword token. */

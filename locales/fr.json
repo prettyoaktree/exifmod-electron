@@ -1,6 +1,7 @@
 {
   "app": {
-    "title": "ExifMod"
+    "windowTitle": "EXIFmod",
+    "title": "EXIFmod : éditeur de métadonnées d’images pour workflows argentiques"
   },
   "menu": {
     "edit": "Édition",
@@ -46,7 +47,7 @@
     "exiftoolExecFailed": "Impossible d’exécuter exiftool depuis « {{path}} » : {{detail}}"
   },
   "mergeImport": {
-    "invalidDb": "Le fichier choisi n’est pas une base ExifMod valide :\n\n{{detail}}",
+    "invalidDb": "Le fichier choisi n’est pas une base EXIFmod valide :\n\n{{detail}}",
     "fileNotFound": "Fichier introuvable : {{path}}",
     "skipEmptyName": "Ignoré : nom de préréglage vide.",
     "skipInvalidPayload": "Ignoré : JSON de charge utile invalide ({{detail}}).",
@@ -57,7 +58,7 @@
   "ipc": {
     "exiftoolNotFound": "exiftool introuvable",
     "exiftoolExit": "exiftool s’est terminé avec le code {{code}}",
-    "finderMultiPathTitle": "ExifMod",
+    "finderMultiPathTitle": "EXIFmod",
     "finderMultiPathDetail": "N’ouvrez qu’un seul fichier ou dossier à la fois."
   },
   "store": {
@@ -74,7 +75,7 @@
   },
   "ui": {
     "errorPreload": "Erreur :",
-    "errorPreloadBody": "ExifMod doit s’exécuter dans la fenêtre de l’application (p. ex. <code>npm run dev</code>), pas dans un onglet du navigateur — la connexion aux fichiers et aux métadonnées est indisponible. Si vous lancez déjà Electron, exécutez <code>npx electron-vite build</code> une fois pour générer <code>out/preload/index.mjs</code>.",
+    "errorPreloadBody": "EXIFmod doit s’exécuter dans la fenêtre de l’application (p. ex. <code>npm run dev</code>), pas dans un onglet du navigateur — la connexion aux fichiers et aux métadonnées est indisponible. Si vous lancez déjà Electron, exécutez <code>npx electron-vite build</code> une fois pour générer <code>out/preload/index.mjs</code>.",
     "warningPrefix": "Avertissement :",
     "selectFolder": "Choisir un dossier",
     "openFolder": "Ouvrir un dossier",

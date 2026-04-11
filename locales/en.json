@@ -1,6 +1,7 @@
 {
   "app": {
-    "title": "ExifMod"
+    "windowTitle": "EXIFmod",
+    "title": "EXIFmod: Image Metadata Editor for Analog Workflows"
   },
   "menu": {
     "edit": "Edit",
@@ -46,7 +47,7 @@
     "exiftoolExecFailed": "exiftool cannot be executed from '{{path}}': {{detail}}"
   },
   "mergeImport": {
-    "invalidDb": "The selected file is not a valid ExifMod preset database:\n\n{{detail}}",
+    "invalidDb": "The selected file is not a valid EXIFmod preset database:\n\n{{detail}}",
     "fileNotFound": "File not found: {{path}}",
     "skipEmptyName": "Skipped: preset name is empty.",
     "skipInvalidPayload": "Skipped: invalid payload JSON ({{detail}}).",
@@ -57,7 +58,7 @@
   "ipc": {
     "exiftoolNotFound": "exiftool not found",
     "exiftoolExit": "exiftool exited with {{code}}",
-    "finderMultiPathTitle": "ExifMod",
+    "finderMultiPathTitle": "EXIFmod",
     "finderMultiPathDetail": "Open only one file or folder at a time."
   },
   "store": {
@@ -74,7 +75,7 @@
   },
   "ui": {
     "errorPreload": "Error:",
-    "errorPreloadBody": "ExifMod must run in the desktop app window (e.g. start with <code>npm run dev</code>), not in a standalone browser tab—the connection to file handling and metadata is unavailable. If you already launch Electron and still see this, run <code>npx electron-vite build</code> once so <code>out/preload/index.mjs</code> is built.",
+    "errorPreloadBody": "EXIFmod must run in the desktop app window (e.g. start with <code>npm run dev</code>), not in a standalone browser tab—the connection to file handling and metadata is unavailable. If you already launch Electron and still see this, run <code>npx electron-vite build</code> once so <code>out/preload/index.mjs</code> is built.",
     "warningPrefix": "Warning:",
     "selectFolder": "Select Folder",
     "openFolder": "Open Folder",

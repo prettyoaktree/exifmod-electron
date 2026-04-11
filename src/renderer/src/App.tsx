@@ -433,12 +433,15 @@ export function App(): React.ReactElement {
       setOllamaSession('failed')
       return
     }
-    void api.ollamaStartupFlow().then((r) => {
-      if (r.status === 'ready') setOllamaSession('ready')
-      else if (r.status === 'server_down') setOllamaSession('server_down')
-      else if (r.status === 'no_cli') setOllamaSession('no_install')
-      else setOllamaSession('failed')
-    })
+    void api
+      .ollamaStartupFlow()
+      .then((r) => {
+        if (r.status === 'ready') setOllamaSession('ready')
+        else if (r.status === 'server_down') setOllamaSession('server_down')
+        else if (r.status === 'no_cli') setOllamaSession('no_install')
+        else setOllamaSession('failed')
+      })
+      .catch(() => setOllamaSession('failed'))
   }, [])
 
   useEffect(() => {

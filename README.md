@@ -1,4 +1,4 @@
-# ExifMod
+# EXIFmod
 
 Electron desktop app for editing EXIF metadata using a preset catalog.
 
@@ -86,21 +86,21 @@ Automated assistants should read **[`AGENTS.md`](AGENTS.md)** for repo-specific 
 
 ### Menu bar shows “Electron” during development
 
-With `npm run dev`, the process is the prebuilt **Electron.app** from `node_modules`. The name next to the Apple menu comes from that bundle’s **Info.plist** (`CFBundleName`), not from `app.setName()` or menu templates—`app.getName()` can still be `ExifMod` while the menu bar shows **Electron**.
+With `npm run dev`, the process is the prebuilt **Electron.app** from `node_modules`. The name next to the Apple menu comes from that bundle’s **Info.plist** (`CFBundleName`), not from `app.setName()` or menu templates—`app.getName()` can still be `EXIFmod` while the menu bar shows **Electron**.
 
-**Packaged builds** (`npm run build`) apply `**build.productName`** (`ExifMod`) to the `.app`, so the menu bar shows the correct name. Use a release build to verify branding.
+**Packaged builds** (`npm run build`) apply `**build.productName`** (`EXIFmod`) to the `.app`, so the menu bar shows the correct name. Use a release build to verify branding.
 
 **Optional (dev only):** You can edit `CFBundleName` / `CFBundleDisplayName` under `node_modules/electron/dist/Electron.app/Contents/Info.plist` (re-apply after Electron upgrades; `patch-package` can persist the change).
 
 ### Finder, Dock, and Open With
 
-- **Open With** (`.jpg`, `.jpeg`, `.tif`, `.tiff`): After a release install, Finder can open files with ExifMod. The app loads the **parent folder** as the session and **selects** the opened file. **Multiple** files + Open With shows a dialog and does not load a session.
+- **Open With** (`.jpg`, `.jpeg`, `.tif`, `.tiff`): After a release install, Finder can open files with EXIFmod. The app loads the **parent folder** as the session and **selects** the opened file. **Multiple** files + Open With shows a dialog and does not load a session.
 - **Dock:** Dropping a supported image on the icon should match Open With when the system passes a single path.
 - **Closing the main window** quits the app (unlike the default Electron macOS behavior of keeping the process alive with no windows).
 
 #### Manual checks (release build)
 
-1. **File:** Open With → ExifMod on a `.jpg` in a folder with several images; the sidebar lists supported images and the opened row is selected.
+1. **File:** Open With → EXIFmod on a `.jpg` in a folder with several images; the sidebar lists supported images and the opened row is selected.
 2. **Multi-select** + Open With → short native dialog, no partial load.
 3. **App already running:** Open With another image → session switches to the new folder and selection.
 
