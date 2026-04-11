@@ -30,7 +30,12 @@ import {
 } from './exifCore/index.js'
 import { spawnExiftool } from './exiftoolRunner.js'
 import { ollamaDescribeImage } from './ollamaDescribe.js'
-import { ollamaTryStartServer, registerOllamaWillQuit, runOllamaStartupFlow } from './ollamaLifecycle.js'
+import {
+  checkOllamaAvailability,
+  ollamaTryStartServer,
+  registerOllamaWillQuit,
+  runOllamaStartupFlow
+} from './ollamaLifecycle.js'
 import { readImagePreviewDataUrl } from './previewImage.js'
 import type { CreatePresetInput, UpdatePresetInput } from '../shared/types.js'
 
@@ -524,6 +529,8 @@ function setupIpc(): void {
     const win = mainWindow ?? BrowserWindow.getFocusedWindow()
     return runOllamaStartupFlow(win ?? null)
   })
+
+  ipcMain.handle('ollama:checkAvailability', async () => checkOllamaAvailability())
 
   ipcMain.handle('ollama:tryStartServer', async () => {
     const win = mainWindow ?? BrowserWindow.getFocusedWindow()

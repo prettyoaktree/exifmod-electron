@@ -57,7 +57,7 @@ Preset merge order, which tags are written or stripped, Film/Keywords, Author/Co
 | `release/`           | Packaged artifacts from `npm run build`                                                          |
 
 
-The preload API (`window.exifmod`) covers paths, locale, dialogs, catalog/presets, EXIF read/merge/apply, optional **`ollamaDescribeImage`**, **`ollamaStartupFlow`**, and **`ollamaTryStartServer`**, filesystem helpers, and startup paths for cold “Open With” flows.
+The preload API (`window.exifmod`) covers paths, locale, dialogs, catalog/presets, EXIF read/merge/apply, optional **`ollamaDescribeImage`**, **`ollamaStartupFlow`**, **`ollamaCheckAvailability`**, and **`ollamaTryStartServer`**, filesystem helpers, and startup paths for cold “Open With” flows.
 
 ## Development conventions
 

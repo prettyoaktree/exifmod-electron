@@ -53,6 +53,12 @@ const api = {
       | { status: 'server_down' }
       | { status: 'no_cli' }
     >,
+  ollamaCheckAvailability: () =>
+    ipcRenderer.invoke('ollama:checkAvailability') as Promise<
+      | { status: 'ready'; initialReachable: boolean }
+      | { status: 'server_down' }
+      | { status: 'no_cli' }
+    >,
   ollamaTryStartServer: () =>
     ipcRenderer.invoke('ollama:tryStartServer') as Promise<{ ok: true } | { ok: false; error: string }>,
   onPresetsImported: (cb: () => void) => {

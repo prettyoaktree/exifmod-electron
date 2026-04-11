@@ -11,6 +11,7 @@ import {
   mergeImageDescriptionAppend,
   remainingUtf8BytesForAiDescription
 } from '@shared/exifLimits.js'
+import { isOllamaTransportFailureError } from '@shared/ollamaNetErrors.js'
 import { OLLAMA_ERROR_EMPTY_SOFT } from '@shared/ollamaResultCodes.js'
 import type { ConfigCatalog } from '@shared/types.js'
 import { filterLensValues } from '@shared/lensFilter.js'
@@ -993,6 +994,24 @@ export function App(): React.ReactElement {
     })
   }, [files, metadataByPath])
 
+  /** After describe `fetch failed`, re-check availability (uncached) and show drawer or no-install state. */
+  const handleOllamaDescribeTransportFailure = useCallback(async (): Promise<boolean> => {
+    const api = window.exifmod
+    if (!api?.ollamaCheckAvailability) return false
+    const ar = await api.ollamaCheckAvailability()
+    if (ar.status === 'server_down') {
+      setOllamaSession('server_down')
+      setOllamaCtaCollapsed(false)
+      setOllamaStartError(null)
+      return true
+    }
+    if (ar.status === 'no_cli') {
+      setOllamaSession('no_install')
+      return true
+    }
+    return false
+  }, [])
+
   const applyOllamaResultToPending = useCallback(
     (path: string, r: { description: string; keywords: string[] }) => {
       updatePendingForPaths([path], (s) => {
@@ -1029,6 +1048,10 @@ export function App(): React.ReactElement {
     try {
       const r = await api.ollamaDescribeImage(path, { maxDescriptionUtf8Bytes })
       if (!r.ok) {
+        if (r.error !== OLLAMA_ERROR_EMPTY_SOFT && isOllamaTransportFailureError(r.error)) {
+          const handled = await handleOllamaDescribeTransportFailure()
+          if (handled) return
+        }
         const message =
           r.error === OLLAMA_ERROR_EMPTY_SOFT ? t('ui.ollamaEmptySoftFailure') : r.error
         alert(t('ui.ollamaError', { message }))
@@ -1038,7 +1061,7 @@ export function App(): React.ReactElement {
     } finally {
       setAiDescribeBusy(null)
     }
-  }, [stagingPaths, pendingByPath, t, applyOllamaResultToPending])
+  }, [stagingPaths, pendingByPath, t, applyOllamaResultToPending, handleOllamaDescribeTransportFailure])
 
   const runAiDescribeBatch = useCallback(
     async (paths: string[]) => {
@@ -1060,6 +1083,10 @@ export function App(): React.ReactElement {
           if (maxDescriptionUtf8Bytes <= 0) continue
           const r = await api.ollamaDescribeImage(path, { maxDescriptionUtf8Bytes })
           if (!r.ok) {
+            if (r.error !== OLLAMA_ERROR_EMPTY_SOFT && isOllamaTransportFailureError(r.error)) {
+              const handled = await handleOllamaDescribeTransportFailure()
+              if (handled) break
+            }
             const message =
               r.error === OLLAMA_ERROR_EMPTY_SOFT ? t('ui.ollamaEmptySoftFailure') : r.error
             failures.push({ path, message })
@@ -1074,7 +1101,7 @@ export function App(): React.ReactElement {
         setAiBatchErrorsDialog({ failures, total })
       }
     },
-    [t, applyOllamaResultToPending]
+    [t, applyOllamaResultToPending, handleOllamaDescribeTransportFailure]
   )
 
   const onAiButtonClick = useCallback(() => {

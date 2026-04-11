@@ -36,6 +36,11 @@ export interface ExifmodApi {
     | { status: 'server_down' }
     | { status: 'no_cli' }
   >
+  ollamaCheckAvailability: () => Promise<
+    | { status: 'ready'; initialReachable: boolean }
+    | { status: 'server_down' }
+    | { status: 'no_cli' }
+  >
   ollamaTryStartServer: () => Promise<{ ok: true } | { ok: false; error: string }>
   onPresetsImported: (cb: () => void) => () => void
   onStartupPath: (cb: (p: string) => void) => () => void
