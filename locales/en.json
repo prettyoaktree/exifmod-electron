@@ -98,15 +98,25 @@
     "newValue": "New Value",
     "shutterSpeed": "Shutter Speed",
     "apertureFStop": "Aperture",
-    "notesImageDescription": "Notes",
+    "notesImageDescription": "Description",
     "notesPlaceholder": "Optional image description.",
+    "notesPlaceholderMixed": "Selected images have different descriptions. Text you type here becomes the same pending description for every selected file, replacing their differing values. The AI control appends to each file’s existing description.",
     "keywordsLabel": "Keywords",
-    "keywordsPlaceholder": "Comma-separated keywords (merged with presets when writing).",
-    "aiDescribeTooltip": "Generate notes and keywords with AI (Ollama)",
+    "keywordsPlaceholder": "Optional comma-separated keywords.",
+    "keywordsPlaceholderMixed": "Selected images have different keywords. Keywords you type here become the same pending keywords for every selected file, replacing their differing values. The AI control merges suggested keywords with each file’s existing keywords.",
+    "aiBatchConfirmLead": "Generate AI descriptions and keywords for {{count}} file(s)?",
+    "aiBatchConfirmDetail": "For each file, AI output is appended to the existing description (within the EXIF byte limit) and suggested keywords are merged with existing keywords. Nothing is removed unless there is no room left for new text. Pending edits are unique per file.",
+    "aiBatchGenerate": "Generate",
+    "aiBatchErrorsLead": "Could not complete AI for {{failed}} of {{total}} file(s).",
+    "aiBatchErrorsDetail": "Review the messages below. You can close this dialog or retry only the files that failed.",
+    "aiBatchRetryFailed": "Retry failed files",
+    "aiDescribeTooltip": "Generate description and keywords with AI (Ollama)",
     "aiDescribeLoading": "Generating…",
-    "aiDescribeNoRoom": "There is no space left for new text in Notes (EXIF ImageDescription is limited to 999 UTF-8 bytes, including a separator when appending). Remove some text, then try again.",
-    "aiDescribeNoRoomTooltip": "No room left in Notes (999 UTF-8 byte limit).",
+    "aiDescribeLoadingProgress": "Generating ({{current}}/{{total}})…",
+    "aiDescribeNoRoom": "There is no space left for new text in Description (EXIF ImageDescription is limited to 999 UTF-8 bytes, including a separator when appending). Remove some text, then try again.",
+    "aiDescribeNoRoomTooltip": "No room left in Description (999 UTF-8 byte limit).",
     "ollamaError": "AI error: {{message}}",
+    "ollamaEmptySoftFailure": "The model returned no description or keywords. Try again.",
     "metadata": "Metadata",
     "metadataOneFileSelected": "Metadata - 1 File Selected",
     "metadataFilesSelected": "Metadata - {{count}} Files Selected",
@@ -167,6 +177,6 @@
   "validation": {
     "exposureTime": "Shutter speed: use a fraction (e.g. 1/125) or decimal seconds (e.g. 2).",
     "fNumber": "Aperture: enter a positive f-number (e.g. 2.8 or 8).",
-    "imageDescriptionBytes": "Notes (ImageDescription): {{bytes}} UTF-8 bytes exceeds maximum {{max}}."
+    "imageDescriptionBytes": "Description (ImageDescription): {{bytes}} UTF-8 bytes exceeds maximum {{max}}."
   }
 }

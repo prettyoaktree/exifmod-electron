@@ -3,6 +3,7 @@ import {
   fitKeywordsForExif,
   IMAGEDESCRIPTION_MAX_UTF8_BYTES
 } from '../shared/exifLimits.js'
+import { OLLAMA_ERROR_EMPTY_SOFT } from '../shared/ollamaResultCodes.js'
 import { readImagePreviewJpegBase64 } from './previewImage.js'
 
 const DEFAULT_BASE = 'http://127.0.0.1:11434'
@@ -129,10 +130,15 @@ export async function ollamaDescribeImage(
     if (!parsed) {
       return { ok: false, error: 'Could not parse JSON from model response' }
     }
+    const description = clampUtf8ByBytes(parsed.description.trim(), maxDescBytes)
+    const keywords = fitKeywordsForExif(parsed.keywords)
+    if (!description.trim() && keywords.length === 0) {
+      return { ok: false, error: OLLAMA_ERROR_EMPTY_SOFT }
+    }
     return {
       ok: true,
-      description: clampUtf8ByBytes(parsed.description.trim(), maxDescBytes),
-      keywords: fitKeywordsForExif(parsed.keywords)
+      description,
+      keywords
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)

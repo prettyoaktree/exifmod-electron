@@ -17,7 +17,7 @@ The app is built with Electron; metadata read and write use **ExifTool** on the 
 
 1. **Open a folder** (or launch from the OS with a supported image — see the README’s macOS notes). The app lists **supported images** in that folder.
 2. **Select one or more files** in the list. The UI shows a **preview** (when one image is in focus) and a **metadata** area.
-3. Choose **presets** per category and optionally set **shutter speed**, **aperture**, **Notes** (EXIF `ImageDescription`), and **Keywords** (merged with preset keywords on write). Edits are **pending** until you commit.
+3. Choose **presets** per category and optionally set **shutter speed**, **aperture**, **Description** (EXIF `ImageDescription`), and **Keywords** (merged with preset keywords on write). Edits are **pending** until you commit.
 4. Use **Preview EXIF Changes** to inspect **only the tags that would change** compared to each file’s current metadata (same logic as commit). If nothing would change for any file, the preview stays empty (shows “—”).
 5. **Write Pending Changes** applies metadata only for files that actually differ; **Clear Pending Changes** discards uncommitted edits.
 
@@ -49,18 +49,18 @@ For the current selection, the app shows a **metadata mapping** table:
 - **Current** — Values inferred from the file’s existing EXIF (where applicable).
 - **Preset** — The preset (or “None” / “Do Not Modify”) applied per category for **pending** edits.
 - **Shutter and aperture** — Editable fields validated before write (fractions or decimals for shutter; f-numbers for aperture).
-- **Notes** — Maps to EXIF **ImageDescription** (UTF‑8 byte limit enforced on write).
+- **Description** — Maps to EXIF **ImageDescription** (UTF‑8 byte limit enforced on write).
 - **Keywords** — Comma- or line-separated tokens merged with preset **Keywords** (film stock markers, deduplication, and total size limits apply).
 
-When multiple files are selected, the UI can show **Multiple** where values differ. Pending changes can target **all selected files** when you write.
+When multiple files are selected, the UI can show **Multiple** where values differ. For **Description** and **Keywords**, if the selected files do not all share the same text, the fields show **placeholders** that explain that typing applies one pending value to every selected file (overwriting differing values), while the **AI** control still **appends** to each file’s description and **merges** keywords (see below). Pending changes can target **all selected files** when you write.
 
 ### Optional local AI (Ollama)
 
-With **exactly one file** staged, the Notes header offers an **AI** control that calls a **local Ollama** server over HTTP (`/api/chat`) with a downscaled JPEG preview of the image. It appends a short description to **Notes** (respecting remaining space under the EXIF limit) and merges suggested **Keywords** with the field. Only **loopback** hosts are allowed (e.g. `127.0.0.1`). Configure the base URL and model with **`EXIFMOD_OLLAMA_HOST`** and **`EXIFMOD_OLLAMA_MODEL`** if needed. ExifMod does not install or start Ollama.
+The **Description** header offers an **AI** control when at least one staged file still has room for more ImageDescription text. It calls a **local Ollama** server over HTTP (`/api/chat`) with a downscaled JPEG preview per file. For **one** selected file, AI runs immediately. For **several** files, the app asks for confirmation, then processes files **one after another**, showing **Generating (n/total)…** on the button. **Per-file failures do not stop the batch**; when the run finishes, if anything failed, a dialog lists each error and you can **retry only the failed files** or dismiss. AI output **appends** to each file’s existing description (within the EXIF byte budget) and **merges** suggested **Keywords** with the field. Only **loopback** hosts are allowed (e.g. `127.0.0.1`). Configure the base URL and model with **`EXIFMOD_OLLAMA_HOST`** and **`EXIFMOD_OLLAMA_MODEL`** if needed. ExifMod does not install or start Ollama.
 
 ### Clipboard and menus
 
-Use the **Edit** menu (or standard shortcuts such as **⌘C** / **Ctrl+C**, **⌘A** / **Ctrl+A**) to copy or select text in Notes, Keywords, and the EXIF preview. On macOS, an Edit menu with standard roles is required for those shortcuts to apply to the web content.
+Use the **Edit** menu (or standard shortcuts such as **⌘C** / **Ctrl+C**, **⌘A** / **Ctrl+A**) to copy or select text in Description, Keywords, and the EXIF preview. On macOS, an Edit menu with standard roles is required for those shortcuts to apply to the web content.
 
 ---
 

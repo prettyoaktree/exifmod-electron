@@ -558,5 +558,6 @@ app.whenReady().then(async () => {
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
+  // Quit when the main window closes on all platforms (including macOS; default Electron skips quit on darwin).
+  app.quit()
 })

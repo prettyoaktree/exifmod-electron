@@ -6,8 +6,8 @@ Electron desktop app for editing EXIF metadata using a preset catalog.
 
 - **Stack:** Electron, **React** (Vite), **TypeScript**. Presets live in **SQLite** via **sql.js**.
 - **EXIF I/O:** The main process runs **ExifTool**; a working install is required (see preflight / tool resolution in the main process).
-- **Metadata UI:** Notes and Keywords respect EXIF-safe UTF‑8 limits (`src/shared/exifLimits.ts`). **Preview EXIF changes** shows only tags that would **differ** from each file’s current metadata (`src/renderer/src/exif/payloadDiff.ts`); the preview is empty when nothing would change.
-- **Optional AI:** A **local Ollama** server can fill Notes and Keywords for the staged image (`ollama:describeImage` on `window.exifmod`). Loopback-only; defaults and env vars are documented in `docs/exif-preset-mapping.md`.
+- **Metadata UI:** **Description** (EXIF `ImageDescription`) and **Keywords** respect EXIF-safe UTF‑8 limits (`src/shared/exifLimits.ts`). **Preview EXIF changes** shows only tags that would **differ** from each file’s current metadata (`src/renderer/src/exif/payloadDiff.ts`); the preview is empty when nothing would change.
+- **Optional AI:** A **local Ollama** server can append descriptions and merge keywords for **one or more** staged files (`ollama:describeImage` on `window.exifmod`). Multi-file runs use a confirmation step, show **Generating (n/total)…** progress, **continue on per-file errors**, then offer a summary dialog with **retry failed files** if needed. Loopback-only; defaults and env vars are documented in `docs/exif-preset-mapping.md`.
 - **Menus:** **File** (preset database import/export) and **Edit** (standard clipboard roles: Copy, Paste, Select All, …). The Edit menu is required on macOS so ⌘C / ⌘A work in the renderer.
 
 ### Documentation
@@ -96,6 +96,7 @@ With `npm run dev`, the process is the prebuilt **Electron.app** from `node_modu
 
 - **Open With** (`.jpg`, `.jpeg`, `.tif`, `.tiff`): After a release install, Finder can open files with ExifMod. The app loads the **parent folder** as the session and **selects** the opened file. **Multiple** files + Open With shows a dialog and does not load a session.
 - **Dock:** Dropping a supported image on the icon should match Open With when the system passes a single path.
+- **Closing the main window** quits the app (unlike the default Electron macOS behavior of keeping the process alive with no windows).
 
 #### Manual checks (release build)
 

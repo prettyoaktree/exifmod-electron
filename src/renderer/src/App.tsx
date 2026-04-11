@@ -11,6 +11,7 @@ import {
   mergeImageDescriptionAppend,
   remainingUtf8BytesForAiDescription
 } from '@shared/exifLimits.js'
+import { OLLAMA_ERROR_EMPTY_SOFT } from '@shared/ollamaResultCodes.js'
 import type { ConfigCatalog } from '@shared/types.js'
 import { filterLensValues } from '@shared/lensFilter.js'
 import {
@@ -82,6 +83,11 @@ function keywordsFromMergedPayloadField(v: unknown): string[] {
 
 function pathKey(p: string): string {
   return p
+}
+
+function fileBaseName(p: string): string {
+  const i = Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\'))
+  return i < 0 ? p : p.slice(i + 1)
 }
 
 function parentDir(p: string): string {
@@ -205,6 +211,22 @@ function mergePendingStateForNewValueUi(
   }
 }
 
+type StagedTextUniformity = 'empty' | 'uniform' | 'mixed'
+
+type AiDescribeBusy = null | { mode: 'single' } | { mode: 'batch'; current: number; total: number }
+
+function classifyStagedTextField(
+  paths: string[],
+  pendingByPath: Record<string, PendingState>,
+  field: 'notesText' | 'keywordsText'
+): StagedTextUniformity {
+  if (paths.length < 2) return 'uniform'
+  const vals = paths.map((p) => (pendingByPath[pathKey(p)] ?? emptyPending())[field].trim())
+  if (vals.every((v) => v === '')) return 'empty'
+  if (new Set(vals).size === 1) return 'uniform'
+  return 'mixed'
+}
+
 const META_FIELD_COUNT = 8
 
 const FILES_PANE_WIDTH_MIN_PCT = 12
@@ -248,7 +270,12 @@ export function App(): React.ReactElement {
     { path: string; payload: Record<string, unknown> }[] | null
   >(null)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
-  const [aiDescribeLoading, setAiDescribeLoading] = useState(false)
+  const [aiDescribeBusy, setAiDescribeBusy] = useState<AiDescribeBusy>(null)
+  const [aiBatchConfirmPaths, setAiBatchConfirmPaths] = useState<string[] | null>(null)
+  const [aiBatchErrorsDialog, setAiBatchErrorsDialog] = useState<null | {
+    failures: { path: string; message: string }[]
+    total: number
+  }>(null)
   /** Horizontal split: files pane width as % of main content area (default 30%). */
   const [filesPaneWidthPct, setFilesPaneWidthPct] = useState(30)
   /** Vertical split within files pane: file list + actions region height % (default 60%). */
@@ -264,6 +291,8 @@ export function App(): React.ReactElement {
   const rowRefs = useRef<(HTMLLIElement | null)[]>([])
   const selectionAnchorRef = useRef<number | null>(null)
   const metaFieldRefs = useRef<Array<HTMLElement | null>>(Array.from({ length: META_FIELD_COUNT }, () => null))
+  const pendingByPathRef = useRef(pendingByPath)
+  pendingByPathRef.current = pendingByPath
 
   const bindMetaRef = useCallback((index: number) => (el: HTMLElement | null) => {
     metaFieldRefs.current[index] = el
@@ -921,7 +950,25 @@ export function App(): React.ReactElement {
     })
   }, [files, metadataByPath])
 
-  const runAiDescribe = useCallback(async () => {
+  const applyOllamaResultToPending = useCallback(
+    (path: string, r: { description: string; keywords: string[] }) => {
+      updatePendingForPaths([path], (s) => {
+        let notesText = s.notesText
+        if (r.description.trim()) {
+          notesText = mergeImageDescriptionAppend(s.notesText, r.description)
+        }
+        const mergedKw = fitKeywordsForExif(mergeKeywordsDeduped(parseKeywordsField(s.keywordsText), r.keywords))
+        return {
+          ...s,
+          notesText,
+          keywordsText: formatKeywordsField(mergedKw)
+        }
+      })
+    },
+    [updatePendingForPaths]
+  )
+
+  const runAiDescribeSingle = useCallback(async () => {
     if (stagingPaths.length !== 1) return
     const api = window.exifmod
     if (!api?.ollamaDescribeImage) {
@@ -935,37 +982,114 @@ export function App(): React.ReactElement {
       alert(t('ui.aiDescribeNoRoom'))
       return
     }
-    setAiDescribeLoading(true)
+    setAiDescribeBusy({ mode: 'single' })
     try {
       const r = await api.ollamaDescribeImage(path, { maxDescriptionUtf8Bytes })
       if (!r.ok) {
-        alert(t('ui.ollamaError', { message: r.error }))
+        const message =
+          r.error === OLLAMA_ERROR_EMPTY_SOFT ? t('ui.ollamaEmptySoftFailure') : r.error
+        alert(t('ui.ollamaError', { message }))
         return
       }
-      updatePendingForPaths(stagingPaths, (s) => {
-        let notesText = s.notesText
-        if (r.description.trim()) {
-          notesText = mergeImageDescriptionAppend(s.notesText, r.description)
-        }
-        const mergedKw = fitKeywordsForExif(mergeKeywordsDeduped(parseKeywordsField(s.keywordsText), r.keywords))
-        return {
-          ...s,
-          notesText,
-          keywordsText: formatKeywordsField(mergedKw)
-        }
-      })
+      applyOllamaResultToPending(path, r)
     } finally {
-      setAiDescribeLoading(false)
+      setAiDescribeBusy(null)
     }
-  }, [stagingPaths, pendingByPath, t, updatePendingForPaths])
+  }, [stagingPaths, pendingByPath, t, applyOllamaResultToPending])
+
+  const runAiDescribeBatch = useCallback(
+    async (paths: string[]) => {
+      const api = window.exifmod
+      if (!api?.ollamaDescribeImage) {
+        alert(t('ui.preloadUnavailable'))
+        return
+      }
+      const total = paths.length
+      if (total === 0) return
+      const failures: { path: string; message: string }[] = []
+      setAiDescribeBusy({ mode: 'batch', current: 1, total })
+      try {
+        for (let i = 0; i < paths.length; i++) {
+          const path = paths[i]!
+          setAiDescribeBusy({ mode: 'batch', current: i + 1, total })
+          const st = pendingByPathRef.current[pathKey(path)]
+          const maxDescriptionUtf8Bytes = st ? remainingUtf8BytesForAiDescription(st.notesText) : 0
+          if (maxDescriptionUtf8Bytes <= 0) continue
+          const r = await api.ollamaDescribeImage(path, { maxDescriptionUtf8Bytes })
+          if (!r.ok) {
+            const message =
+              r.error === OLLAMA_ERROR_EMPTY_SOFT ? t('ui.ollamaEmptySoftFailure') : r.error
+            failures.push({ path, message })
+            continue
+          }
+          applyOllamaResultToPending(path, r)
+        }
+      } finally {
+        setAiDescribeBusy(null)
+      }
+      if (failures.length > 0) {
+        setAiBatchErrorsDialog({ failures, total })
+      }
+    },
+    [t, applyOllamaResultToPending]
+  )
+
+  const onAiButtonClick = useCallback(() => {
+    const api = window.exifmod
+    if (!api?.ollamaDescribeImage) {
+      alert(t('ui.preloadUnavailable'))
+      return
+    }
+    const targets = stagingPaths.filter((p) => {
+      const st = pendingByPath[pathKey(p)]
+      return st && remainingUtf8BytesForAiDescription(st.notesText) > 0
+    })
+    if (!targets.length) {
+      alert(t('ui.aiDescribeNoRoom'))
+      return
+    }
+    if (stagingPaths.length >= 2) {
+      setAiBatchConfirmPaths(targets)
+      return
+    }
+    void runAiDescribeSingle()
+  }, [stagingPaths, pendingByPath, t, runAiDescribeSingle])
 
   const staging = stagingPaths
 
-  const aiDescribeNotesRoom = useMemo(() => {
-    if (stagingPaths.length !== 1) return 0
-    const st = pendingByPath[pathKey(stagingPaths[0]!)]
-    return st ? remainingUtf8BytesForAiDescription(st.notesText) : 0
-  }, [stagingPaths, pendingByPath])
+  const aiDescribeHasAnyRoom = useMemo(
+    () =>
+      stagingPaths.some((p) => {
+        const st = pendingByPath[pathKey(p)]
+        return st ? remainingUtf8BytesForAiDescription(st.notesText) > 0 : false
+      }),
+    [stagingPaths, pendingByPath]
+  )
+
+  const notesPlaceholderUi = useMemo(() => {
+    if (stagingPaths.length < 2) return t('ui.notesPlaceholder')
+    return classifyStagedTextField(stagingPaths, pendingByPath, 'notesText') === 'mixed'
+      ? t('ui.notesPlaceholderMixed')
+      : t('ui.notesPlaceholder')
+  }, [stagingPaths, pendingByPath, t])
+
+  const keywordsPlaceholderUi = useMemo(() => {
+    if (stagingPaths.length < 2) return t('ui.keywordsPlaceholder')
+    return classifyStagedTextField(stagingPaths, pendingByPath, 'keywordsText') === 'mixed'
+      ? t('ui.keywordsPlaceholderMixed')
+      : t('ui.keywordsPlaceholder')
+  }, [stagingPaths, pendingByPath, t])
+
+  const aiDescribeBusyLabel = useMemo(() => {
+    if (!aiDescribeBusy) return ''
+    if (aiDescribeBusy.mode === 'batch' && aiDescribeBusy.total > 1) {
+      return t('ui.aiDescribeLoadingProgress', {
+        current: aiDescribeBusy.current,
+        total: aiDescribeBusy.total
+      })
+    }
+    return t('ui.aiDescribeLoading')
+  }, [aiDescribeBusy, t])
 
   const exposureCurrent = staging.map((p) => formatExposureTimeForUi(exposureTimeRawFromMetadata(metadataByPath[p] ?? {})))
   const fnCurrent = staging.map((p) => formatFnumberForUi(fnumberRawFromMetadata(metadataByPath[p] ?? {})))
@@ -1297,32 +1421,27 @@ export function App(): React.ReactElement {
                   <button
                     type="button"
                     tabIndex={-1}
-                    className={['btn-ai-spark', aiDescribeLoading ? 'btn-ai-spark--loading' : ''].filter(Boolean).join(' ')}
-                    aria-busy={aiDescribeLoading}
-                    disabled={
-                      !staging.length ||
-                      staging.length !== 1 ||
-                      aiDescribeLoading ||
-                      aiDescribeNotesRoom <= 0
-                    }
+                    className={['btn-ai-spark', aiDescribeBusy ? 'btn-ai-spark--loading' : ''].filter(Boolean).join(' ')}
+                    aria-busy={!!aiDescribeBusy}
+                    disabled={!staging.length || !!aiDescribeBusy || !aiDescribeHasAnyRoom}
                     title={
-                      aiDescribeLoading
-                        ? t('ui.aiDescribeLoading')
-                        : aiDescribeNotesRoom <= 0 && staging.length === 1
+                      aiDescribeBusy
+                        ? aiDescribeBusyLabel
+                        : !aiDescribeHasAnyRoom
                           ? t('ui.aiDescribeNoRoomTooltip')
                           : t('ui.aiDescribeTooltip')
                     }
                     aria-label={
-                      aiDescribeLoading
-                        ? t('ui.aiDescribeLoading')
-                        : aiDescribeNotesRoom <= 0 && staging.length === 1
+                      aiDescribeBusy
+                        ? aiDescribeBusyLabel
+                        : !aiDescribeHasAnyRoom
                           ? t('ui.aiDescribeNoRoomTooltip')
                           : t('ui.aiDescribeTooltip')
                     }
-                    onClick={() => void runAiDescribe()}
+                    onClick={() => void onAiButtonClick()}
                   >
-                    {aiDescribeLoading ? (
-                      <span className="btn-ai-spark-loading">{t('ui.aiDescribeLoading')}</span>
+                    {aiDescribeBusy ? (
+                      <span className="btn-ai-spark-loading">{aiDescribeBusyLabel}</span>
                     ) : (
                       <svg className="btn-ai-spark-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden focusable="false">
                         <path
@@ -1339,7 +1458,7 @@ export function App(): React.ReactElement {
                   className={['notes-area', pendingAttributeHighlights.notes ? 'meta-value-pending' : ''].filter(Boolean).join(' ')}
                   readOnly={!staging.length}
                   rows={3}
-                  placeholder={t('ui.notesPlaceholder')}
+                  placeholder={notesPlaceholderUi}
                   value={formPending.notesText}
                   onChange={(e) => {
                     const nextNotes = clampUtf8ByBytes(e.target.value)
@@ -1357,7 +1476,7 @@ export function App(): React.ReactElement {
                     .filter(Boolean)
                     .join(' ')}
                   readOnly={!staging.length}
-                  placeholder={t('ui.keywordsPlaceholder')}
+                  placeholder={keywordsPlaceholderUi}
                   rows={2}
                   value={formPending.keywordsText}
                   onChange={(e) =>
@@ -1529,6 +1648,95 @@ export function App(): React.ReactElement {
                 }}
               >
                 {t('ui.clearPendingChanges')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {aiBatchConfirmPaths ? (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setAiBatchConfirmPaths(null)
+          }}
+        >
+          <div
+            className="modal modal-dialog-confirm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ai-batch-confirm-title"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <h3 id="ai-batch-confirm-title" className="modal-confirm-heading">
+              {t('ui.aiBatchConfirmLead', { count: aiBatchConfirmPaths.length })}
+            </h3>
+            <p className="modal-confirm-detail">{t('ui.aiBatchConfirmDetail')}</p>
+            <div className="modal-confirm-actions">
+              <button type="button" className="btn" onClick={() => setAiBatchConfirmPaths(null)}>
+                {t('dialog.buttonCancel')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  const paths = aiBatchConfirmPaths
+                  setAiBatchConfirmPaths(null)
+                  void runAiDescribeBatch(paths)
+                }}
+              >
+                {t('ui.aiBatchGenerate')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {aiBatchErrorsDialog ? (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setAiBatchErrorsDialog(null)
+          }}
+        >
+          <div
+            className="modal modal-dialog-confirm modal-ai-batch-errors"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ai-batch-errors-title"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <h3 id="ai-batch-errors-title" className="modal-confirm-heading">
+              {t('ui.aiBatchErrorsLead', {
+                failed: aiBatchErrorsDialog.failures.length,
+                total: aiBatchErrorsDialog.total
+              })}
+            </h3>
+            <p className="modal-confirm-detail">{t('ui.aiBatchErrorsDetail')}</p>
+            <ul className="ai-batch-error-list">
+              {aiBatchErrorsDialog.failures.map(({ path, message }) => (
+                <li key={path} className="ai-batch-error-item">
+                  <span className="ai-batch-error-file" title={path}>
+                    {truncateMiddle(fileBaseName(path), 42)}
+                  </span>
+                  <span className="ai-batch-error-msg">{message}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="modal-confirm-actions">
+              <button type="button" className="btn" onClick={() => setAiBatchErrorsDialog(null)}>
+                {t('ui.closePanel')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  const retryPaths = aiBatchErrorsDialog.failures.map((f) => f.path)
+                  setAiBatchErrorsDialog(null)
+                  void runAiDescribeBatch(retryPaths)
+                }}
+              >
+                {t('ui.aiBatchRetryFailed')}
               </button>
             </div>
           </div>

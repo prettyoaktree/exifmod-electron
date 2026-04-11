@@ -1109,6 +1109,45 @@ button.preset-slideout-close:focus-visible {
   padding: 1.25rem;
 }
 
+.modal.modal-dialog-confirm.modal-ai-batch-errors {
+  width: min(520px, 92vw);
+  max-height: min(85vh, 32rem);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ai-batch-error-list {
+  margin: 0 0 1.25rem;
+  padding-left: 1.15rem;
+  max-height: min(40vh, 14rem);
+  overflow-y: auto;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.ai-batch-error-item {
+  margin-bottom: 0.65rem;
+}
+
+.ai-batch-error-item:last-child {
+  margin-bottom: 0;
+}
+
+.ai-batch-error-file {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+  word-break: break-all;
+}
+
+.ai-batch-error-msg {
+  display: block;
+  color: var(--muted);
+  word-break: break-word;
+}
+
 .modal-confirm-heading {
   margin: 0 0 0.5rem;
   font-size: 1rem;
