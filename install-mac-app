@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
-  echo "publish-mac-app: this script only runs on macOS." >&2
+  echo "install-mac-app: this script only runs on macOS." >&2
   exit 1
 fi
 
@@ -13,13 +13,13 @@ echo "Building release…"
 npm run build
 
 if [[ ! -d "$ROOT/release" ]]; then
-  echo "publish-mac-app: no release/ directory after build." >&2
+  echo "install-mac-app: no release/ directory after build." >&2
   exit 1
 fi
 
 APP="$(find "$ROOT/release" -name 'EXIFmod.app' -type d 2>/dev/null | head -1)"
 if [[ -z "$APP" ]] || [[ ! -d "$APP" ]]; then
-  echo "publish-mac-app: could not find EXIFmod.app under release/. Check electron-builder output." >&2
+  echo "install-mac-app: could not find EXIFmod.app under release/. Check electron-builder output." >&2
   exit 1
 fi
 
