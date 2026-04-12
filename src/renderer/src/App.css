@@ -770,6 +770,7 @@ table.mapping tbody tr:last-child td {
 }
 
 .meta-panel .input,
+table.mapping .input,
 .notes-area {
   width: 100%;
   font-family: inherit;
@@ -786,16 +787,19 @@ table.mapping tbody tr:last-child td {
     box-shadow 0.15s ease;
 }
 
-.meta-panel select.input {
+.meta-panel select.input,
+table.mapping select.input {
   cursor: pointer;
 }
 
-.meta-panel input.input::placeholder {
+.meta-panel input.input::placeholder,
+table.mapping input.input::placeholder {
   color: var(--muted);
   opacity: 1;
 }
 
-.meta-panel select.input.input--neutral-value {
+.meta-panel select.input.input--neutral-value,
+table.mapping select.input.input--neutral-value {
   color: var(--muted);
 }
 
@@ -804,11 +808,13 @@ table.mapping tbody tr:last-child td {
 }
 
 .meta-panel .input:hover,
+table.mapping .input:hover,
 .notes-area:hover {
   border-color: #d4d4d8;
 }
 
 .meta-panel .input:focus,
+table.mapping .input:focus,
 .notes-area:focus {
   outline: none;
   border-color: var(--accent);
@@ -816,6 +822,7 @@ table.mapping tbody tr:last-child td {
 }
 
 .meta-panel .input:disabled,
+table.mapping .input:disabled,
 .notes-area:disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -1140,8 +1147,11 @@ button.preset-slideout-close:focus-visible {
 }
 
 .preset-slideout-cat-title {
-  font-size: 0.85rem;
+  font-size: 0.7rem;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
 }
 
 .preset-slideout-cat-toggle .exif-preview-chevron {
@@ -1209,7 +1219,7 @@ button.preset-slideout-close:focus-visible {
   padding: 0.35rem 0;
   padding-left: var(--preset-slideout-text-indent);
   border-bottom: 1px solid var(--border);
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
 }
 
 .preset-slideout-name {
@@ -1371,12 +1381,10 @@ button.preset-slideout-close:focus-visible {
   flex-direction: column;
   padding: 0;
   max-height: min(90vh, 720px);
-  width: min(480px, 94vw);
-  border-radius: 12px;
-  border: 1px solid rgba(24, 24, 27, 0.1);
-  box-shadow:
-    0 25px 50px -12px rgba(15, 23, 42, 0.22),
-    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  width: min(560px, 94vw);
+  border-radius: var(--chrome-radius);
+  border: 1px solid var(--chrome-border);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
   overflow: hidden;
 }
 
@@ -1398,30 +1406,49 @@ button.preset-slideout-close:focus-visible {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 1rem 1.35rem 1.15rem;
+  padding: 0.75rem 1rem 1rem;
   -webkit-overflow-scrolling: touch;
 }
 
-.modal-preset-editor-content .form-row {
-  margin-bottom: 0.85rem;
+.modal-preset-editor-content table.mapping.preset-modal-mapping {
+  margin: 0;
 }
 
-.modal-preset-editor-content .form-row:last-child {
-  margin-bottom: 0;
+table.mapping.preset-modal-mapping col.preset-modal-col-field {
+  width: 13.5rem;
 }
 
-.modal-preset-editor-content .form-row > label:not(.form-label-inline) {
-  display: block;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: none;
-  color: var(--muted);
-  margin-bottom: 0.35rem;
+table.mapping.preset-modal-mapping col.preset-modal-col-value {
+  width: auto;
+}
+
+table.mapping.preset-modal-mapping td.preset-modal-field-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text);
+  vertical-align: middle;
+}
+
+table.mapping.preset-modal-mapping td.preset-modal-field-control {
+  vertical-align: middle;
+}
+
+table.mapping.preset-modal-mapping .preset-modal-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.preset-modal-checkbox {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--accent);
+  vertical-align: middle;
 }
 
 .preset-editor-error {
-  margin: 0 0 1rem;
+  margin: 0 0 0.75rem;
   padding: 0.55rem 0.7rem;
   font-size: 0.8125rem;
   line-height: 1.4;
@@ -1437,47 +1464,6 @@ button.preset-slideout-close:focus-visible {
   line-height: 1.45;
   color: var(--muted);
   word-break: break-word;
-}
-
-.modal-preset-editor .input {
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  padding: 0.5rem 0.7rem;
-  font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 400;
-  line-height: 1.45;
-  color: var(--text);
-  background-color: var(--panel);
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.modal-preset-editor select.input {
-  cursor: pointer;
-  appearance: auto;
-}
-
-.modal-preset-editor select.input option {
-  font-family: inherit;
-  font-size: 0.875rem;
-  color: var(--text);
-  background-color: var(--panel);
-}
-
-.modal-preset-editor .input:hover {
-  border-color: #d4d4d8;
-}
-
-.modal-preset-editor .input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
-}
-
-.modal-preset-editor .form-row-checkbox {
-  margin-top: 0.1rem;
 }
 
 .modal-preset-editor-mount-row {
@@ -1526,7 +1512,7 @@ button.preset-slideout-close:focus-visible {
 .modal-preset-editor-actions {
   flex-shrink: 0;
   margin: 0;
-  padding: 0.9rem 1.35rem 1.05rem;
+  padding: 0.9rem 1rem 1rem;
   border-top: 1px solid var(--border);
   background: linear-gradient(180deg, #fafafa 0%, #ffffff 100%);
   justify-content: flex-end;

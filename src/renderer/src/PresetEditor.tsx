@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactElement, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatCopyrightForExif } from '@shared/copyrightFormat.js'
 import { validateExposureTimeForExif, validateFnumberForExif } from './exif/validate.js'
@@ -164,6 +164,15 @@ function normalizeAuthorPayloadForSave(pl: Record<string, unknown>): Record<stri
   return p
 }
 
+function PresetFieldRow(props: { label: ReactNode; children: ReactNode }): ReactElement {
+  return (
+    <tr>
+      <td className="preset-modal-field-label">{props.label}</td>
+      <td className="preset-modal-field-control">{props.children}</td>
+    </tr>
+  )
+}
+
 export function PresetEditorModal(props: {
   mode: 'new' | 'edit'
   category: Cat
@@ -314,219 +323,217 @@ export function PresetEditorModal(props: {
         </h3>
         <div className="modal-preset-editor-content">
           {err && <p className="preset-editor-error">{err}</p>}
-          <div className="form-row">
-            <label>{t('presetEditor.name')}</label>
-            <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-        {category === 'Camera' && (
-          <>
-            <div className="form-row">
-              <label>{t('presetEditor.lensSystem')}</label>
-              <select
-                className="input"
-                value={lensSystem}
-                onChange={(e) => setLensSystem(e.target.value as 'fixed' | 'interchangeable')}
-              >
-                <option value="interchangeable">{t('presetEditor.interchangeable')}</option>
-                <option value="fixed">{t('presetEditor.fixedLens')}</option>
-              </select>
-            </div>
-            {lensSystem === 'interchangeable' && (
-              <>
-                <div className="form-row">
-                  <label>{t('presetEditor.lensMount')}</label>
-                  <div className="modal-preset-editor-mount-row">
+          <table className="mapping preset-modal-mapping">
+            <colgroup>
+              <col className="preset-modal-col-field" />
+              <col className="preset-modal-col-value" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">{t('ui.attribute')}</th>
+                <th scope="col">{t('ui.newValue')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <PresetFieldRow label={t('presetEditor.name')}>
+                <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+              </PresetFieldRow>
+              {category === 'Camera' && (
+                <>
+                  <PresetFieldRow label={t('presetEditor.lensSystem')}>
+                    <select
+                      className="input"
+                      value={lensSystem}
+                      onChange={(e) => setLensSystem(e.target.value as 'fixed' | 'interchangeable')}
+                    >
+                      <option value="interchangeable">{t('presetEditor.interchangeable')}</option>
+                      <option value="fixed">{t('presetEditor.fixedLens')}</option>
+                    </select>
+                  </PresetFieldRow>
+                  {lensSystem === 'interchangeable' && (
+                    <PresetFieldRow label={t('presetEditor.lensMount')}>
+                      <div className="modal-preset-editor-mount-row">
+                        <input
+                          className="input modal-preset-editor-mount-input"
+                          list="mount-list"
+                          value={lensMount}
+                          onChange={(e) => setLensMount(e.target.value)}
+                        />
+                        <label className="form-label-inline modal-preset-editor-adapters-label">
+                          <input
+                            type="checkbox"
+                            checked={lensAdaptable}
+                            onChange={(e) => setLensAdaptable(e.target.checked)}
+                          />
+                          <span>{t('presetEditor.lensAdaptable')}</span>
+                        </label>
+                      </div>
+                      <datalist id="mount-list">
+                        {mounts.map((m) => (
+                          <option key={m} value={m} />
+                        ))}
+                      </datalist>
+                    </PresetFieldRow>
+                  )}
+                  <PresetFieldRow label={t('presetEditor.make')}>
+                    <input className="input" value={String(payload['Make'] ?? '')} onChange={(e) => setField('Make', e.target.value)} />
+                  </PresetFieldRow>
+                  <PresetFieldRow label={t('presetEditor.model')}>
+                    <input className="input" value={String(payload['Model'] ?? '')} onChange={(e) => setField('Model', e.target.value)} />
+                  </PresetFieldRow>
+                  {lensSystem === 'fixed' && (
+                    <>
+                      <PresetFieldRow label={t('presetEditor.lensMakeOptional')}>
+                        <input
+                          className="input"
+                          value={String(payload['LensMake'] ?? '')}
+                          onChange={(e) => setField('LensMake', e.target.value)}
+                        />
+                      </PresetFieldRow>
+                      <PresetFieldRow label={t('presetEditor.lensModelOptional')}>
+                        <input
+                          className="input"
+                          value={String(payload['LensModel'] ?? '')}
+                          onChange={(e) => setField('LensModel', e.target.value)}
+                        />
+                      </PresetFieldRow>
+                    </>
+                  )}
+                  <PresetFieldRow label={t('presetEditor.fixedShutter')}>
                     <input
-                      className="input modal-preset-editor-mount-input"
-                      list="mount-list"
-                      value={lensMount}
-                      onChange={(e) => setLensMount(e.target.value)}
+                      type="checkbox"
+                      className="preset-modal-checkbox"
+                      checked={fixedShutter}
+                      onChange={(e) => {
+                        const on = e.target.checked
+                        setFixedShutter(on)
+                        if (!on) {
+                          setPayload((prev) => {
+                            const n = { ...prev }
+                            delete n['ExposureTime']
+                            return n
+                          })
+                        }
+                      }}
+                      aria-label={t('presetEditor.fixedShutter')}
                     />
-                    <label className="form-label-inline modal-preset-editor-adapters-label">
+                  </PresetFieldRow>
+                  {fixedShutter && (
+                    <PresetFieldRow label={t('presetEditor.exposureTime')}>
                       <input
-                        type="checkbox"
-                        checked={lensAdaptable}
-                        onChange={(e) => setLensAdaptable(e.target.checked)}
+                        className="input"
+                        value={String(payload['ExposureTime'] ?? '')}
+                        onChange={(e) => setField('ExposureTime', e.target.value)}
                       />
-                      <span>{t('presetEditor.lensAdaptable')}</span>
-                    </label>
-                  </div>
-                  <datalist id="mount-list">
-                    {mounts.map((m) => (
-                      <option key={m} value={m} />
-                    ))}
-                  </datalist>
-                </div>
-              </>
-            )}
-            <div className="form-row">
-              <label>{t('presetEditor.make')}</label>
-              <input className="input" value={String(payload['Make'] ?? '')} onChange={(e) => setField('Make', e.target.value)} />
-            </div>
-            <div className="form-row">
-              <label>{t('presetEditor.model')}</label>
-              <input className="input" value={String(payload['Model'] ?? '')} onChange={(e) => setField('Model', e.target.value)} />
-            </div>
-            {lensSystem === 'fixed' && (
-              <>
-                <div className="form-row">
-                  <label>{t('presetEditor.lensMakeOptional')}</label>
-                  <input
-                    className="input"
-                    value={String(payload['LensMake'] ?? '')}
-                    onChange={(e) => setField('LensMake', e.target.value)}
-                  />
-                </div>
-                <div className="form-row">
-                  <label>{t('presetEditor.lensModelOptional')}</label>
-                  <input
-                    className="input"
-                    value={String(payload['LensModel'] ?? '')}
-                    onChange={(e) => setField('LensModel', e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-            <div className="form-row">
-              <label className="form-label-inline">
-                <input
-                  type="checkbox"
-                  checked={fixedShutter}
-                  onChange={(e) => {
-                    const on = e.target.checked
-                    setFixedShutter(on)
-                    if (!on) {
-                      setPayload((prev) => {
-                        const n = { ...prev }
-                        delete n['ExposureTime']
-                        return n
-                      })
-                    }
-                  }}
-                />
-                <span>{t('presetEditor.fixedShutter')}</span>
-              </label>
-            </div>
-            {fixedShutter && (
-              <div className="form-row">
-                <label>{t('presetEditor.exposureTime')}</label>
-                <input
-                  className="input"
-                  value={String(payload['ExposureTime'] ?? '')}
-                  onChange={(e) => setField('ExposureTime', e.target.value)}
-                />
-              </div>
-            )}
-            <div className="form-row">
-              <label className="form-label-inline">
-                <input
-                  type="checkbox"
-                  checked={fixedAperture}
-                  onChange={(e) => {
-                    const on = e.target.checked
-                    setFixedAperture(on)
-                    if (!on) {
-                      setPayload((prev) => {
-                        const n = { ...prev }
-                        delete n['FNumber']
-                        return n
-                      })
-                    }
-                  }}
-                />
-                <span>{t('presetEditor.fixedAperture')}</span>
-              </label>
-            </div>
-            {fixedAperture && (
-              <div className="form-row">
-                <label>{t('presetEditor.fNumber')}</label>
-                <input
-                  className="input"
-                  value={String(payload['FNumber'] ?? '')}
-                  onChange={(e) => setField('FNumber', e.target.value)}
-                />
-              </div>
-            )}
-          </>
-        )}
-        {category === 'Lens' && (
-          <>
-            <div className="form-row">
-              <label>{t('presetEditor.lensMount')}</label>
-              <input className="input" list="mount-list-l" value={lensMount} onChange={(e) => setLensMount(e.target.value)} />
-              <datalist id="mount-list-l">
-                {mounts.map((m) => (
-                  <option key={m} value={m} />
-                ))}
-              </datalist>
-            </div>
-            <div className="form-row">
-              <label>{t('presetEditor.lens')}</label>
-              <input
-                className="input"
-                value={String(payload['LensMake'] ?? '')}
-                onChange={(e) => setField('LensMake', e.target.value)}
-              />
-            </div>
-            <div className="form-row">
-              <label>{t('presetEditor.lensModel')}</label>
-              <input
-                className="input"
-                value={String(payload['LensModel'] ?? '')}
-                onChange={(e) => setField('LensModel', e.target.value)}
-              />
-            </div>
-          </>
-        )}
-        {category === 'Author' && (
-          <>
-            <div className="form-row">
-              <label>{t('presetEditor.authorIdentity')}</label>
-              <input
-                className="input"
-                value={authorIdentityFromPayload(payload)}
-                onChange={(e) => {
-                  const v = e.target.value
-                  setPayload((prev) => ({ ...prev, Artist: v, Creator: v }))
-                }}
-              />
-            </div>
-            <div className="form-row">
-              <label>{t('presetEditor.copyrightOptional')}</label>
-              <input
-                className="input"
-                value={String(payload['Copyright'] ?? '')}
-                onChange={(e) => setField('Copyright', e.target.value)}
-              />
-              <p className="preset-editor-hint">
-                {formatCopyrightForExif(String(payload['Copyright'] ?? '')) ??
-                  t('presetEditor.copyrightWrittenNone')}
-              </p>
-            </div>
-          </>
-        )}
-        {category === 'Film' && (
-          <>
-            <div className="form-row">
-              <label>{t('presetEditor.filmStockName')}</label>
-              <input
-                className="input"
-                value={filmStockDisplayFromKeywordsPayload(payload)}
-                onChange={(e) => {
-                  const stockKw = filmStockKeywordFromDisplayName(e.target.value)
-                  setPayload((p) => ({
-                    ...p,
-                    Keywords: stockKw ? ['film', stockKw] : ['film']
-                  }))
-                }}
-              />
-            </div>
-            <div className="form-row">
-              <label>{t('presetEditor.iso')}</label>
-              <input className="input" value={String(payload['ISO'] ?? '')} onChange={(e) => setField('ISO', e.target.value)} />
-            </div>
-          </>
-        )}
+                    </PresetFieldRow>
+                  )}
+                  <PresetFieldRow label={t('presetEditor.fixedAperture')}>
+                    <input
+                      type="checkbox"
+                      className="preset-modal-checkbox"
+                      checked={fixedAperture}
+                      onChange={(e) => {
+                        const on = e.target.checked
+                        setFixedAperture(on)
+                        if (!on) {
+                          setPayload((prev) => {
+                            const n = { ...prev }
+                            delete n['FNumber']
+                            return n
+                          })
+                        }
+                      }}
+                      aria-label={t('presetEditor.fixedAperture')}
+                    />
+                  </PresetFieldRow>
+                  {fixedAperture && (
+                    <PresetFieldRow label={t('presetEditor.fNumber')}>
+                      <input
+                        className="input"
+                        value={String(payload['FNumber'] ?? '')}
+                        onChange={(e) => setField('FNumber', e.target.value)}
+                      />
+                    </PresetFieldRow>
+                  )}
+                </>
+              )}
+              {category === 'Lens' && (
+                <>
+                  <PresetFieldRow label={t('presetEditor.lensMount')}>
+                    <>
+                      <input className="input" list="mount-list-l" value={lensMount} onChange={(e) => setLensMount(e.target.value)} />
+                      <datalist id="mount-list-l">
+                        {mounts.map((m) => (
+                          <option key={m} value={m} />
+                        ))}
+                      </datalist>
+                    </>
+                  </PresetFieldRow>
+                  <PresetFieldRow label={t('presetEditor.lens')}>
+                    <input
+                      className="input"
+                      value={String(payload['LensMake'] ?? '')}
+                      onChange={(e) => setField('LensMake', e.target.value)}
+                    />
+                  </PresetFieldRow>
+                  <PresetFieldRow label={t('presetEditor.lensModel')}>
+                    <input
+                      className="input"
+                      value={String(payload['LensModel'] ?? '')}
+                      onChange={(e) => setField('LensModel', e.target.value)}
+                    />
+                  </PresetFieldRow>
+                </>
+              )}
+              {category === 'Author' && (
+                <>
+                  <PresetFieldRow label={t('presetEditor.authorIdentity')}>
+                    <input
+                      className="input"
+                      value={authorIdentityFromPayload(payload)}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        setPayload((prev) => ({ ...prev, Artist: v, Creator: v }))
+                      }}
+                    />
+                  </PresetFieldRow>
+                  <PresetFieldRow label={t('presetEditor.copyrightOptional')}>
+                    <div className="preset-modal-stack">
+                      <input
+                        className="input"
+                        value={String(payload['Copyright'] ?? '')}
+                        onChange={(e) => setField('Copyright', e.target.value)}
+                      />
+                      <p className="preset-editor-hint">
+                        {formatCopyrightForExif(String(payload['Copyright'] ?? '')) ??
+                          t('presetEditor.copyrightWrittenNone')}
+                      </p>
+                    </div>
+                  </PresetFieldRow>
+                </>
+              )}
+              {category === 'Film' && (
+                <>
+                  <PresetFieldRow label={t('presetEditor.filmStockName')}>
+                    <input
+                      className="input"
+                      value={filmStockDisplayFromKeywordsPayload(payload)}
+                      onChange={(e) => {
+                        const stockKw = filmStockKeywordFromDisplayName(e.target.value)
+                        setPayload((p) => ({
+                          ...p,
+                          Keywords: stockKw ? ['film', stockKw] : ['film']
+                        }))
+                      }}
+                    />
+                  </PresetFieldRow>
+                  <PresetFieldRow label={t('presetEditor.iso')}>
+                    <input className="input" value={String(payload['ISO'] ?? '')} onChange={(e) => setField('ISO', e.target.value)} />
+                  </PresetFieldRow>
+                </>
+              )}
+            </tbody>
+          </table>
         </div>
         <div className="modal-preset-editor-actions actions-row">
           <button type="button" className="btn btn-primary" onClick={() => void save()}>
