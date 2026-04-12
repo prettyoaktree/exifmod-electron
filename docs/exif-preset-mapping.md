@@ -140,7 +140,7 @@ After merging the four preset selections, the app may add:
 | --- | ------ | ------------------ |
 | Preset merge result | Selected Camera / Lens / Film / Author presets | Shown indirectly via **Preset** column dropdowns and **Preview EXIF changes** |
 | `ExposureTime` | Camera preset when **`fixed_shutter`** is set, else manual “Shutter Speed” when non-empty | Shutter Speed |
-| `FNumber` | Camera preset when **`fixed_aperture`** is set, else manual aperture when non-empty | Aperture (f-stop) |
+| `FNumber` | Camera preset when **`fixed_aperture`** is set, else manual aperture when non-empty | Aperture |
 | `ImageDescription` | **Description** textarea (when changed from loaded baseline) | Description |
 | `Keywords` | **`mergeKeywordsDeduped`**(preset merged `Keywords`, parsed **Keywords** field). Case-insensitive dedupe; preset tokens first, then tokens from the field (comma / line separated) | Keywords |
 

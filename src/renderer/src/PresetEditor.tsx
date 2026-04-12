@@ -340,6 +340,12 @@ export function PresetEditorModal(props: {
               </PresetFieldRow>
               {category === 'Camera' && (
                 <>
+                  <PresetFieldRow label={t('presetEditor.make')}>
+                    <input className="input" value={String(payload['Make'] ?? '')} onChange={(e) => setField('Make', e.target.value)} />
+                  </PresetFieldRow>
+                  <PresetFieldRow label={t('presetEditor.model')}>
+                    <input className="input" value={String(payload['Model'] ?? '')} onChange={(e) => setField('Model', e.target.value)} />
+                  </PresetFieldRow>
                   <PresetFieldRow label={t('presetEditor.lensSystem')}>
                     <select
                       className="input"
@@ -375,12 +381,6 @@ export function PresetEditorModal(props: {
                       </datalist>
                     </PresetFieldRow>
                   )}
-                  <PresetFieldRow label={t('presetEditor.make')}>
-                    <input className="input" value={String(payload['Make'] ?? '')} onChange={(e) => setField('Make', e.target.value)} />
-                  </PresetFieldRow>
-                  <PresetFieldRow label={t('presetEditor.model')}>
-                    <input className="input" value={String(payload['Model'] ?? '')} onChange={(e) => setField('Model', e.target.value)} />
-                  </PresetFieldRow>
                   {lensSystem === 'fixed' && (
                     <>
                       <PresetFieldRow label={t('presetEditor.lensMakeOptional')}>
@@ -400,61 +400,61 @@ export function PresetEditorModal(props: {
                     </>
                   )}
                   <PresetFieldRow label={t('presetEditor.fixedShutter')}>
-                    <input
-                      type="checkbox"
-                      className="preset-modal-checkbox"
-                      checked={fixedShutter}
-                      onChange={(e) => {
-                        const on = e.target.checked
-                        setFixedShutter(on)
-                        if (!on) {
-                          setPayload((prev) => {
-                            const n = { ...prev }
-                            delete n['ExposureTime']
-                            return n
-                          })
-                        }
-                      }}
-                      aria-label={t('presetEditor.fixedShutter')}
-                    />
-                  </PresetFieldRow>
-                  {fixedShutter && (
-                    <PresetFieldRow label={t('presetEditor.exposureTime')}>
+                    <div className="modal-preset-editor-combo-row">
+                      <input
+                        type="checkbox"
+                        className="preset-modal-checkbox"
+                        checked={fixedShutter}
+                        onChange={(e) => {
+                          const on = e.target.checked
+                          setFixedShutter(on)
+                          if (!on) {
+                            setPayload((prev) => {
+                              const n = { ...prev }
+                              delete n['ExposureTime']
+                              return n
+                            })
+                          }
+                        }}
+                        aria-label={t('presetEditor.fixedShutter')}
+                      />
                       <input
                         className="input"
+                        disabled={!fixedShutter}
                         value={String(payload['ExposureTime'] ?? '')}
                         onChange={(e) => setField('ExposureTime', e.target.value)}
+                        aria-label={t('presetEditor.exposureTime')}
                       />
-                    </PresetFieldRow>
-                  )}
-                  <PresetFieldRow label={t('presetEditor.fixedAperture')}>
-                    <input
-                      type="checkbox"
-                      className="preset-modal-checkbox"
-                      checked={fixedAperture}
-                      onChange={(e) => {
-                        const on = e.target.checked
-                        setFixedAperture(on)
-                        if (!on) {
-                          setPayload((prev) => {
-                            const n = { ...prev }
-                            delete n['FNumber']
-                            return n
-                          })
-                        }
-                      }}
-                      aria-label={t('presetEditor.fixedAperture')}
-                    />
+                    </div>
                   </PresetFieldRow>
-                  {fixedAperture && (
-                    <PresetFieldRow label={t('presetEditor.fNumber')}>
+                  <PresetFieldRow label={t('presetEditor.fixedAperture')}>
+                    <div className="modal-preset-editor-combo-row">
+                      <input
+                        type="checkbox"
+                        className="preset-modal-checkbox"
+                        checked={fixedAperture}
+                        onChange={(e) => {
+                          const on = e.target.checked
+                          setFixedAperture(on)
+                          if (!on) {
+                            setPayload((prev) => {
+                              const n = { ...prev }
+                              delete n['FNumber']
+                              return n
+                            })
+                          }
+                        }}
+                        aria-label={t('presetEditor.fixedAperture')}
+                      />
                       <input
                         className="input"
+                        disabled={!fixedAperture}
                         value={String(payload['FNumber'] ?? '')}
                         onChange={(e) => setField('FNumber', e.target.value)}
+                        aria-label={t('presetEditor.fNumber')}
                       />
-                    </PresetFieldRow>
-                  )}
+                    </div>
+                  </PresetFieldRow>
                 </>
               )}
               {category === 'Lens' && (
