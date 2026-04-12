@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { formatCopyrightForExif } from '@shared/copyrightFormat.js'
 import {
   filmStockDisplayFromKeywordsPayload,
-  filmStockKeywordFromDisplayName
+  filmStockKeywordFromDisplayName,
+  normalizeFilmPresetPayloadForMerge
 } from '@shared/filmKeywords.js'
 import type { Cat } from './categories.js'
 
@@ -79,11 +80,7 @@ function migrateFilmPayloadFromDb(pl: Record<string, unknown>): Record<string, u
 }
 
 function normalizeFilmPayloadForSave(pl: Record<string, unknown>): Record<string, unknown> {
-  const p = { ...pl }
-  const display = filmStockDisplayFromKeywordsPayload(p)
-  const stockKw = filmStockKeywordFromDisplayName(display)
-  p['Keywords'] = stockKw ? ['film', stockKw] : ['film']
-  return p
+  return normalizeFilmPresetPayloadForMerge(pl)
 }
 
 function authorIdentityFromPayload(pl: Record<string, unknown>): string {

@@ -18,6 +18,18 @@ export function filmStockKeywordFromDisplayName(display: string): string {
 }
 
 /**
+ * Canonical film preset Keywords for merge/write: `film` marker + one `… Film Stock` token when stock is known.
+ * Use when merging film presets so legacy or imported payloads still get the suffix EXIFmod expects in files.
+ */
+export function normalizeFilmPresetPayloadForMerge(payload: Record<string, unknown>): Record<string, unknown> {
+  const display = filmStockDisplayFromKeywordsPayload(payload)
+  const stockKw = filmStockKeywordFromDisplayName(display)
+  const out = { ...payload }
+  out['Keywords'] = stockKw ? ['film', stockKw] : ['film']
+  return out
+}
+
+/**
  * Film stock field display string from preset `Keywords` payload (excluding `film` marker).
  * Prefers the `… Film Stock` token; legacy tokens are joined with ", ".
  */

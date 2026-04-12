@@ -3,6 +3,7 @@ import {
   filmStockHintFromExifKeywords,
   filmStockKeywordFromDisplayName,
   mergeKeywordsDeduped,
+  normalizeFilmPresetPayloadForMerge,
   parseKeywordsField,
   stripFilmStockSuffix
 } from './filmKeywords.js'
@@ -32,6 +33,24 @@ describe('filmStockHintFromExifKeywords', () => {
 
   it('returns empty without film marker', () => {
     expect(filmStockHintFromExifKeywords(['foo'])).toBe('')
+  })
+})
+
+describe('normalizeFilmPresetPayloadForMerge', () => {
+  it('adds Film Stock suffix when legacy Keywords omit it', () => {
+    const merged = normalizeFilmPresetPayloadForMerge({
+      ISO: '400',
+      Keywords: ['film', 'Kodak Portra 400']
+    })
+    expect(merged['Keywords']).toEqual(['film', 'Kodak Portra 400 Film Stock'])
+    expect(merged['ISO']).toBe('400')
+  })
+
+  it('leaves canonical Keywords unchanged', () => {
+    const merged = normalizeFilmPresetPayloadForMerge({
+      Keywords: ['film', 'Acme 100 Film Stock']
+    })
+    expect(merged['Keywords']).toEqual(['film', 'Acme 100 Film Stock'])
   })
 })
 

@@ -4,7 +4,7 @@ This document describes how EXIF tag names relate to **preset categories** (Came
 
 Implementation references:
 
-- Merge and sanitization: `src/main/exifCore/store.ts` (`mergeSelectedPayloads` strips `Film` / `Film Maker` only; raw user Copyright), `src/main/exifCore/pure.ts` (`sanitizeWritePayload` at ExifTool apply, `buildApplyCommand`)
+- Merge and sanitization: `src/main/exifCore/store.ts` (`mergeSelectedPayloads` strips `Film` / `Film Maker` only; **film preset** payloads are passed through `normalizeFilmPresetPayloadForMerge` from `src/shared/filmKeywords.ts` so merged `Keywords` always use the canonical `… Film Stock` token when a stock is inferable—matching Preset Editor save behavior even for legacy DB rows), `src/main/exifCore/pure.ts` (`sanitizeWritePayload` at ExifTool apply, `buildApplyCommand`)
 - Constants: `src/main/exifCore/constants.ts` (re-exports limits from `src/shared/exifLimits.ts`: `IMAGEDESCRIPTION_MAX_UTF8_BYTES`, keyword caps)
 - Main grid / commit: `src/renderer/src/App.tsx` (`buildMergedPayloadForState`, metadata table, Notes + Keywords fields, shutter/aperture)
 - Shared EXIF limits + merge helpers: `src/shared/exifLimits.ts` (UTF‑8 clamps, `mergeImageDescriptionAppend`, `fitKeywordsForExif`, `remainingUtf8BytesForAiDescription`), `src/shared/filmKeywords.ts` (`mergeKeywordsDeduped`, `Film Stock` suffix helpers)
