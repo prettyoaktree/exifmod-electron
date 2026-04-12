@@ -13,7 +13,7 @@ import {
 } from '@shared/exifLimits.js'
 import { isOllamaTransportFailureError } from '@shared/ollamaNetErrors.js'
 import { OLLAMA_ERROR_EMPTY_SOFT } from '@shared/ollamaResultCodes.js'
-import type { ConfigCatalog } from '@shared/types.js'
+import type { CameraMetadata, ConfigCatalog } from '@shared/types.js'
 import { filterLensValues } from '@shared/lensFilter.js'
 import {
   formatExposureTimeForUi,
@@ -117,6 +117,13 @@ function presetNameForId(catalog: ConfigCatalog, category: Cat, id: number | nul
   return 'None'
 }
 
+function cameraMetaForPending(catalog: ConfigCatalog | null, cameraId: number | null): CameraMetadata | null {
+  if (!catalog || cameraId == null) return null
+  const name = presetNameForId(catalog, 'Camera', cameraId)
+  if (name === 'None') return null
+  return catalog.camera_metadata_map[name] ?? null
+}
+
 function getStagingPaths(files: string[], selectedIndices: Set<number>, currentIndex: number | null): string[] {
   const n = files.length
   const rows = [...selectedIndices].sort((a, b) => a - b)
@@ -144,7 +151,8 @@ function notesPendingForState(pend: PendingState): boolean {
 /** Per staged path(s), which metadata attributes have uncommitted edits (for table row highlights). */
 function aggregatePendingAttributeHighlights(
   paths: string[],
-  pendingByPath: Record<string, PendingState>
+  pendingByPath: Record<string, PendingState>,
+  catalog: ConfigCatalog | null
 ): Record<Cat, boolean> & { shutter: boolean; aperture: boolean; notes: boolean; keywords: boolean } {
   const cats: Cat[] = ['Camera', 'Lens', 'Film', 'Author']
   const out = {
@@ -160,12 +168,16 @@ function aggregatePendingAttributeHighlights(
   for (const path of paths) {
     const pend = pendingByPath[pathKey(path)]
     if (!pend) continue
+    const camMeta = cameraMetaForPending(catalog, pend.cameraId)
     for (const cat of cats) {
       const id = pend[idKeyForCategory(cat)]
       if (id != null) out[cat] = true
     }
+    if (camMeta?.locks_lens) out.Lens = true
     if (pend.exposureTime.trim() !== '') out.shutter = true
+    if (camMeta?.locks_shutter) out.shutter = true
     if (pend.fNumberText.trim() !== '') out.aperture = true
+    if (camMeta?.locks_aperture) out.aperture = true
     if (notesPendingForState(pend)) out.notes = true
     if (pend.keywordsText.trim() !== pend.keywordsBaseline.trim()) out.keywords = true
   }
@@ -506,8 +518,8 @@ export function App(): React.ReactElement {
   )
 
   const pendingAttributeHighlights = useMemo(
-    () => aggregatePendingAttributeHighlights(stagingPaths, pendingByPath),
-    [stagingPaths, pendingByPath]
+    () => aggregatePendingAttributeHighlights(stagingPaths, pendingByPath, catalog),
+    [stagingPaths, pendingByPath, catalog]
   )
 
   const formPending = useMemo(
@@ -596,12 +608,15 @@ export function App(): React.ReactElement {
           author: st.authorId,
           film: st.filmId
         })
-        if (st.exposureTime.trim()) {
+        const camMeta = cameraMetaForPending(catalog, st.cameraId)
+        const lockShutter = Boolean(camMeta?.locks_shutter)
+        const lockAperture = Boolean(camMeta?.locks_aperture)
+        if (!lockShutter && st.exposureTime.trim()) {
           const e = validateExposureTimeForExif(st.exposureTime)
           if (e) return { payload: null, err: e }
           merged = { ...merged, ExposureTime: st.exposureTime.trim() }
         }
-        if (st.fNumberText.trim()) {
+        if (!lockAperture && st.fNumberText.trim()) {
           const e = validateFnumberForExif(st.fNumberText)
           if (e) return { payload: null, err: e }
           merged = { ...merged, FNumber: Number(st.fNumberText.trim()) }
@@ -630,7 +645,7 @@ export function App(): React.ReactElement {
         return { payload: null, err: String(e) }
       }
     },
-    [t]
+    [t, catalog]
   )
 
   useEffect(() => {
@@ -702,6 +717,21 @@ export function App(): React.ReactElement {
       catalog.lens_metadata_map
     )
   }, [catalog, formPending])
+
+  const cameraMetaForForm = useMemo(
+    () => cameraMetaForPending(catalog, formPending.cameraId),
+    [catalog, formPending.cameraId]
+  )
+  const shutterLocked = Boolean(cameraMetaForForm?.locks_shutter)
+  const apertureLocked = Boolean(cameraMetaForForm?.locks_aperture)
+  const shutterNewDisplay =
+    shutterLocked && cameraMetaForForm?.fixed_shutter_display != null
+      ? cameraMetaForForm.fixed_shutter_display
+      : formPending.exposureTime
+  const apertureNewDisplay =
+    apertureLocked && cameraMetaForForm?.fixed_aperture_display != null
+      ? cameraMetaForForm.fixed_aperture_display
+      : formPending.fNumberText
 
   const selectAllFiles = useCallback(() => {
     setSelectedIndices(new Set(files.map((_, i) => i)))
@@ -1454,7 +1484,9 @@ export function App(): React.ReactElement {
                             ref={bindMetaRef(idx)}
                             tabIndex={-1}
                             className={[
-                              id == null ? 'input input--neutral-value' : 'input',
+                              id == null || (cat === 'Lens' && lensFilter.state === 'disabled')
+                                ? 'input input--neutral-value'
+                                : 'input',
                               pendingAttributeHighlights[cat] ? 'meta-value-pending' : ''
                             ]
                               .filter(Boolean)
@@ -1487,10 +1519,16 @@ export function App(): React.ReactElement {
                       <input
                         ref={bindMetaRef(4)}
                         tabIndex={-1}
-                        className={['input', pendingAttributeHighlights.shutter ? 'meta-value-pending' : ''].filter(Boolean).join(' ')}
+                        className={[
+                          'input',
+                          shutterLocked ? 'input--neutral-value' : '',
+                          pendingAttributeHighlights.shutter ? 'meta-value-pending' : ''
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
                         placeholder={noneDisplay}
-                        disabled={!staging.length}
-                        value={formPending.exposureTime}
+                        disabled={!staging.length || shutterLocked}
+                        value={shutterNewDisplay}
                         onChange={(e) =>
                           updatePendingForPaths(staging, (s) => ({ ...s, exposureTime: e.target.value }))
                         }
@@ -1511,10 +1549,16 @@ export function App(): React.ReactElement {
                       <input
                         ref={bindMetaRef(5)}
                         tabIndex={-1}
-                        className={['input', pendingAttributeHighlights.aperture ? 'meta-value-pending' : ''].filter(Boolean).join(' ')}
+                        className={[
+                          'input',
+                          apertureLocked ? 'input--neutral-value' : '',
+                          pendingAttributeHighlights.aperture ? 'meta-value-pending' : ''
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
                         placeholder={noneDisplay}
-                        disabled={!staging.length}
-                        value={formPending.fNumberText}
+                        disabled={!staging.length || apertureLocked}
+                        value={apertureNewDisplay}
                         onChange={(e) =>
                           updatePendingForPaths(staging, (s) => ({ ...s, fNumberText: e.target.value }))
                         }

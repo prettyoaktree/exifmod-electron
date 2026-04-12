@@ -37,6 +37,8 @@ These are the fields the **New / Edit preset** dialogs edit (`PresetEditor.tsx`)
 | `Model` | ✓ | | | | Camera body model |
 | `LensMake` | ✓ (fixed lens only) | ✓ | | | UI: “Lens Make” (legacy `Lens` in old presets is migrated to `LensMake` on load) |
 | `LensModel` | ✓ (fixed lens only) | ✓ | | | UI: “Lens Model”; legacy `LensID` in old presets is migrated to `LensModel` on load when model was empty |
+| `ExposureTime` | ✓ (only when **Fixed shutter speed** is enabled) | | | | Written from the camera preset when the **`fixed_shutter`** DB flag is set; not inferred from tag presence alone |
+| `FNumber` | ✓ (only when **Fixed aperture** is enabled) | | | | Written from the camera preset when the **`fixed_aperture`** DB flag is set |
 | `ISO` | | | ✓ | | Shown as **ISO** in the Film preset dialog |
 | `Keywords` | | | ✓ (array) | | **Not** edited as raw keywords in the UI. The Film preset dialog asks for **Film stock** then **ISO**; the app builds `Keywords` for EXIF (see [Film stock and EXIF Keywords](#film-stock-and-exif-keywords)) |
 | `Artist`, `Creator` | | | | ✓ | UI **Author Name**; one value is written to **both** tags |
@@ -50,6 +52,8 @@ These are the fields the **New / Edit preset** dialogs edit (`PresetEditor.tsx`)
 | `lens_system` | ✓ | | Interchangeable vs fixed lens (UI + lens list rules) |
 | `lens_mount` | ✓ | ✓ | Mount name (UI + filtering) |
 | `lens_adaptable` | ✓ | | “Accepts adapters” (Camera interchangeable only) |
+| `fixed_shutter` | ✓ | | When set, camera preset supplies EXIF **ExposureTime** only from the preset; main UI shutter field is read-only |
+| `fixed_aperture` | ✓ | | When set, camera preset supplies EXIF **FNumber** only from the preset; main UI aperture field is read-only |
 
 Lens presets **no longer** save `ExposureTime` or `FNumber` in the editor; any legacy values are stripped when saving or loading a Lens preset (`PresetEditor.tsx`).
 
@@ -135,8 +139,8 @@ After merging the four preset selections, the app may add:
 | Tag | Source | UI label (English) |
 | --- | ------ | ------------------ |
 | Preset merge result | Selected Camera / Lens / Film / Author presets | Shown indirectly via **Preset** column dropdowns and **Preview EXIF changes** |
-| `ExposureTime` | Manual “Shutter Speed” field (non-empty) | Shutter Speed |
-| `FNumber` | Manual aperture field (non-empty) | Aperture (f-stop) |
+| `ExposureTime` | Camera preset when **`fixed_shutter`** is set, else manual “Shutter Speed” when non-empty | Shutter Speed |
+| `FNumber` | Camera preset when **`fixed_aperture`** is set, else manual aperture when non-empty | Aperture (f-stop) |
 | `ImageDescription` | **Description** textarea (when changed from loaded baseline) | Description |
 | `Keywords` | **`mergeKeywordsDeduped`**(preset merged `Keywords`, parsed **Keywords** field). Case-insensitive dedupe; preset tokens first, then tokens from the field (comma / line separated) | Keywords |
 
