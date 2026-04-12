@@ -1460,7 +1460,15 @@ export function App(): React.ReactElement {
                 <tbody>
                   {CATS.map((cat, idx) => {
                     const id = formPending[idKeyForCategory(cat)] as number | null
-                    const name = catalog ? presetNameForId(catalog, cat, id) : 'None'
+                    let name = catalog ? presetNameForId(catalog, cat, id) : 'None'
+                    if (
+                      cat === 'Lens' &&
+                      lensFilter.state === 'disabled' &&
+                      cameraMetaForForm?.locks_lens
+                    ) {
+                      const fd = String(cameraMetaForForm.fixed_lens_display ?? '').trim()
+                      if (fd && fd !== 'None') name = fd
+                    }
                     const options =
                       cat === 'Lens'
                         ? lensFilter.allowed
