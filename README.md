@@ -37,6 +37,15 @@ npm run dev
 | `npm run preview`                 | electron-vite preview                                                                  |
 | `npm test` / `npm run test:watch` | **Vitest** (unit + integration-style tests)                                            |
 
+### macOS: install a release build to `/Applications`
+
+From the repository root (after `npm install`):
+
+```bash
+./install-mac-app
+```
+
+This runs **`npm run build`** (typecheck, Vite, **electron-builder**), then copies the packaged **`EXIFmod.app`** from **`release/`** to **`/Applications/EXIFmod.app`** with **`ditto`**, replacing an existing app bundle if present. The script exits with an error on non-macOS hosts.
 
 ## EXIF, presets, and domain behavior
 
@@ -47,6 +56,7 @@ Preset merge order, which tags are written or stripped, Film/Keywords, Author/Co
 
 | Path                 | Role                                                                                             |
 | -------------------- | ------------------------------------------------------------------------------------------------ |
+| `install-mac-app`    | macOS helper: build release (`npm run build`) and copy `EXIFmod.app` to `/Applications`          |
 | `src/main/`          | Main process: IPC, ExifTool runner, preset DB, filesystem, menus                                 |
 | `src/main/exifCore/` | EXIF merge/sanitize/write, SQL catalog (`constants.ts`, `store.ts`, `pure.ts`, …)                |
 | `src/renderer/`      | React UI; `@renderer` → `src/renderer/src`, `@shared` → `src/shared` (`electron.vite.config.ts`) |
@@ -88,7 +98,7 @@ Automated assistants should read **[`AGENTS.md`](AGENTS.md)** for repo-specific 
 
 With `npm run dev`, the process is the prebuilt **Electron.app** from `node_modules`. The name next to the Apple menu comes from that bundle’s **Info.plist** (`CFBundleName`), not from `app.setName()` or menu templates—`app.getName()` can still be `EXIFmod` while the menu bar shows **Electron**.
 
-**Packaged builds** (`npm run build`) apply `**build.productName`** (`EXIFmod`) to the `.app`, so the menu bar shows the correct name. Use a release build to verify branding.
+**Packaged builds** (`npm run build`) apply `**build.productName`** (`EXIFmod`) to the `.app`, so the menu bar shows the correct name. Use a release build to verify branding. To install that bundle into **`/Applications`**, use **`./install-mac-app`** (see **Getting started** above).
 
 **Optional (dev only):** You can edit `CFBundleName` / `CFBundleDisplayName` under `node_modules/electron/dist/Electron.app/Contents/Info.plist` (re-apply after Electron upgrades; `patch-package` can persist the change).
 

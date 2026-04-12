@@ -22,6 +22,7 @@ Optional **Ollama** integration calls a **local** HTTP server (`ollamaDescribeIm
 
 | Area | Role |
 | ---- | ---- |
+| `install-mac-app` | macOS: run `npm run build`, copy `release/EXIFmod.app` → `/Applications` |
 | `src/main/` | IPC handlers, menus, ExifTool runner, Ollama `fetch`, `previewImage`, DB paths |
 | `src/main/exifCore/` | Merge/sanitize/write, SQL catalog |
 | `src/renderer/` | React UI (`App.tsx`, preset editor, panels) |

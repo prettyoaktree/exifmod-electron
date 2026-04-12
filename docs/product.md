@@ -89,6 +89,12 @@ The interface language follows the **operating system** locale when a matching t
 
 ---
 
+## Installing a macOS build from source
+
+If you build **`EXIFmod.app`** from this repository, you can copy it to **`/Applications`** with the **`install-mac-app`** script at the repo root (it runs **`npm run build`** first). See **[README.md](../README.md)** (Getting started → **macOS: install a release build to `/Applications`**).
+
+---
+
 ## Relationship to technical documentation
 
 - `**[exif-preset-mapping.md](exif-preset-mapping.md)`** — Exact merge order, tag-level behavior, Film/Keywords, Author/Copyright formatting, and code references. Use it for implementation or deep EXIF questions.
