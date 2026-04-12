@@ -32,7 +32,7 @@ Presets are stored in a **local SQLite database** (managed by the app). They are
 
 | Category   | Typical use                                                                                                                           |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| **Camera** | Body make/model; lens system (fixed vs interchangeable), mount, adapter compatibility; optional lens make/model on fixed-lens bodies. |
+| **Camera** | Body make/model; lens system (fixed vs interchangeable), mount, adapter compatibility; optional lens make/model on fixed-lens bodies; optional **fixed shutter speed** and/or **fixed aperture** (stored with explicit DB flags; written as EXIF `ExposureTime` / `FNumber` only when enabled). |
 | **Lens**   | Lens-oriented fields; the UI can filter lens choices using camera/lens metadata from the catalog.                                     |
 | **Film**   | Film stock and ISO; keywords are composed for EXIF (see technical doc).                                                               |
 | **Author** | Author identity and optional copyright text (copyright is formatted on write — see technical doc).                                    |
@@ -48,7 +48,7 @@ For the current selection, the app shows a **metadata mapping** table:
 
 - **Current** — Values inferred from the file’s existing EXIF (where applicable).
 - **Preset** — The preset (or “None” / “Do Not Modify”) applied per category for **pending** edits.
-- **Shutter and aperture** — Editable fields validated before write (fractions or decimals for shutter; f-numbers for aperture).
+- **Shutter and aperture** — Editable when not pinned by the selected **camera** preset. If the camera preset defines a fixed shutter and/or fixed aperture, the **New** column shows those values **read-only** (same idea as a fixed-lens body’s **Lens** row). Otherwise, values are edited here and validated before write (fractions or decimals for shutter; f-numbers for aperture).
 - **Description** — Maps to EXIF **ImageDescription** (UTF‑8 byte limit enforced on write).
 - **Keywords** — Comma- or line-separated tokens merged with preset **Keywords** (film stock markers, deduplication, and total size limits apply).
 

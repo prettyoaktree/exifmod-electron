@@ -185,6 +185,10 @@
     "copyrightWrittenNone": "No Copyright tag will be written.",
     "iso": "ISO",
     "filmStockName": "Film stock",
+    "fixedShutter": "Fixed shutter speed",
+    "fixedAperture": "Fixed aperture (f-stop)",
+    "fixedShutterValueRequired": "Enter a shutter speed or turn off fixed shutter speed.",
+    "fixedApertureValueRequired": "Enter an aperture or turn off fixed aperture.",
     "save": "Save",
     "cancel": "Cancel"
   },

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatCopyrightForExif } from '@shared/copyrightFormat.js'
+import { validateExposureTimeForExif, validateFnumberForExif } from './exif/validate.js'
 import {
   filmStockDisplayFromKeywordsPayload,
   filmStockKeywordFromDisplayName,
@@ -54,6 +55,30 @@ function normalizeLensPayloadForSave(pl: Record<string, unknown>, category: Cat)
   if (category === 'Lens') {
     delete p['ExposureTime']
     delete p['FNumber']
+  }
+  return p
+}
+
+/** Camera: only persist lens / exposure tags when the corresponding fixed options are enabled. */
+function normalizeCameraPayloadForSave(
+  pl: Record<string, unknown>,
+  lensSystem: 'fixed' | 'interchangeable',
+  fixedShutter: boolean,
+  fixedAperture: boolean
+): Record<string, unknown> {
+  const p = { ...pl }
+  if (lensSystem === 'interchangeable') {
+    delete p['LensMake']
+    delete p['LensModel']
+  }
+  if (!fixedShutter) delete p['ExposureTime']
+  if (!fixedAperture) delete p['FNumber']
+  else if (p['FNumber'] != null && String(p['FNumber']).trim() !== '') {
+    const n = Number(String(p['FNumber']).trim())
+    if (Number.isFinite(n) && n > 0) p['FNumber'] = n
+  }
+  if (fixedShutter && p['ExposureTime'] != null) {
+    p['ExposureTime'] = String(p['ExposureTime']).trim()
   }
   return p
 }
@@ -154,6 +179,8 @@ export function PresetEditorModal(props: {
   const [lensSystem, setLensSystem] = useState<'fixed' | 'interchangeable'>('interchangeable')
   const [lensMount, setLensMount] = useState('')
   const [lensAdaptable, setLensAdaptable] = useState(false)
+  const [fixedShutter, setFixedShutter] = useState(false)
+  const [fixedAperture, setFixedAperture] = useState(false)
   const [mounts, setMounts] = useState<string[]>([])
   const [err, setErr] = useState<string | null>(null)
 
@@ -190,6 +217,8 @@ export function PresetEditorModal(props: {
           }
           setLensMount(rec.lens_mount ?? '')
           setLensAdaptable(Boolean(rec.lens_adaptable))
+          setFixedShutter(rec.fixed_shutter === true)
+          setFixedAperture(rec.fixed_aperture === true)
         }
       } else {
         setName('')
@@ -197,6 +226,8 @@ export function PresetEditorModal(props: {
         setLensSystem('interchangeable')
         setLensMount('')
         setLensAdaptable(false)
+        setFixedShutter(false)
+        setFixedAperture(false)
       }
     })()
   }, [mode, editId, category])
@@ -206,6 +237,33 @@ export function PresetEditorModal(props: {
     try {
       const cat = catToLower(category)
       let toSave = normalizeLensPayloadForSave(payload, category)
+      if (category === 'Camera') {
+        if (fixedShutter) {
+          const raw = String(payload['ExposureTime'] ?? '').trim()
+          if (!raw) {
+            setErr(t('presetEditor.fixedShutterValueRequired'))
+            return
+          }
+          const ve = validateExposureTimeForExif(raw)
+          if (ve) {
+            setErr(ve)
+            return
+          }
+        }
+        if (fixedAperture) {
+          const raw = String(payload['FNumber'] ?? '').trim()
+          if (!raw) {
+            setErr(t('presetEditor.fixedApertureValueRequired'))
+            return
+          }
+          const vf = validateFnumberForExif(raw)
+          if (vf) {
+            setErr(vf)
+            return
+          }
+        }
+        toSave = normalizeCameraPayloadForSave(toSave, lensSystem, fixedShutter, fixedAperture)
+      }
       if (category === 'Film') {
         toSave = normalizeFilmPayloadForSave(toSave)
       }
@@ -219,7 +277,9 @@ export function PresetEditorModal(props: {
           payload: toSave,
           lens_system: category === 'Camera' ? lensSystem : null,
           lens_mount: category === 'Camera' || category === 'Lens' ? lensMount || null : null,
-          lens_adaptable: category === 'Camera' ? lensAdaptable : null
+          lens_adaptable: category === 'Camera' ? lensAdaptable : null,
+          fixed_shutter: category === 'Camera' ? fixedShutter : undefined,
+          fixed_aperture: category === 'Camera' ? fixedAperture : undefined
         })
       } else if (editId != null) {
         await window.exifmod.updatePreset({
@@ -228,7 +288,9 @@ export function PresetEditorModal(props: {
           payload: toSave,
           lens_system: category === 'Camera' ? lensSystem : null,
           lens_mount: category === 'Camera' || category === 'Lens' ? lensMount || null : null,
-          lens_adaptable: category === 'Camera' ? lensAdaptable : null
+          lens_adaptable: category === 'Camera' ? lensAdaptable : null,
+          fixed_shutter: category === 'Camera' ? fixedShutter : undefined,
+          fixed_aperture: category === 'Camera' ? fixedAperture : undefined
         })
       }
       onSaved()
@@ -324,6 +386,66 @@ export function PresetEditorModal(props: {
                   />
                 </div>
               </>
+            )}
+            <div className="form-row">
+              <label className="form-label-inline">
+                <input
+                  type="checkbox"
+                  checked={fixedShutter}
+                  onChange={(e) => {
+                    const on = e.target.checked
+                    setFixedShutter(on)
+                    if (!on) {
+                      setPayload((prev) => {
+                        const n = { ...prev }
+                        delete n['ExposureTime']
+                        return n
+                      })
+                    }
+                  }}
+                />
+                <span>{t('presetEditor.fixedShutter')}</span>
+              </label>
+            </div>
+            {fixedShutter && (
+              <div className="form-row">
+                <label>{t('presetEditor.exposureTime')}</label>
+                <input
+                  className="input"
+                  value={String(payload['ExposureTime'] ?? '')}
+                  onChange={(e) => setField('ExposureTime', e.target.value)}
+                />
+              </div>
+            )}
+            <div className="form-row">
+              <label className="form-label-inline">
+                <input
+                  type="checkbox"
+                  checked={fixedAperture}
+                  onChange={(e) => {
+                    const on = e.target.checked
+                    setFixedAperture(on)
+                    if (!on) {
+                      setPayload((prev) => {
+                        const n = { ...prev }
+                        delete n['FNumber']
+                        return n
+                      })
+                    }
+                  }}
+                />
+                <span>{t('presetEditor.fixedAperture')}</span>
+              </label>
+            </div>
+            {fixedAperture && (
+              <div className="form-row">
+                <label>{t('presetEditor.fNumber')}</label>
+                <input
+                  className="input"
+                  value={String(payload['FNumber'] ?? '')}
+                  onChange={(e) => setField('FNumber', e.target.value)}
+                />
+              </div>
             )}
           </>
         )}

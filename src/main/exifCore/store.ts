@@ -4,6 +4,7 @@ import type { ConfigCatalog, DataPaths, MergeImportResult, MergeImportSkip } fro
 import { CONTROL_FIELDS, FALLBACK_LENS_MOUNT_NAMES, IMAGE_EXTENSIONS, LENS_MOUNT_DEFAULTS_FILENAME } from './constants.js'
 import { migrateLensMountDisplayNames, openDb } from './database.js'
 import { PresetStoreError } from './errors.js'
+import { formatExposureTimeForUi, formatFnumberForUi } from '../../shared/exifDisplayFormat.js'
 import { normalizeFilmPresetPayloadForMerge, stripFilmStockSuffix } from '../../shared/filmKeywords.js'
 import { sortedStrings, stripWriteExcludedFields } from './pure.js'
 import type { PersistedDatabase } from './sqlJs.js'
@@ -27,13 +28,17 @@ function payloadFingerprintCombined(
   payload: Record<string, unknown>,
   lens_system: string | null | undefined,
   lens_mount: string | null | undefined,
-  lens_adaptable: number | null | undefined
+  lens_adaptable: number | null | undefined,
+  fixed_shutter: number | null | undefined,
+  fixed_aperture: number | null | undefined
 ): string {
   const combined = {
     payload: sortKeysDeep(payload),
     lens_system,
     lens_mount,
-    lens_adaptable: lens_adaptable != null ? Boolean(lens_adaptable) : null
+    lens_adaptable: lens_adaptable != null ? Boolean(lens_adaptable) : null,
+    fixed_shutter: fixed_shutter != null ? Boolean(fixed_shutter) : null,
+    fixed_aperture: fixed_aperture != null ? Boolean(fixed_aperture) : null
   }
   return JSON.stringify(sortKeysDeep(combined))
 }
@@ -119,6 +124,18 @@ function normalizeLensMount(value: string | null | undefined, category: string):
 }
 
 function normalizeLensAdaptable(value: boolean | number | null | undefined, category: string): number | null {
+  if (category !== 'camera') return null
+  if (value == null) return 0
+  return value ? 1 : 0
+}
+
+function normalizeFixedShutterFlag(value: boolean | number | null | undefined, category: string): number | null {
+  if (category !== 'camera') return null
+  if (value == null) return 0
+  return value ? 1 : 0
+}
+
+function normalizeFixedApertureFlag(value: boolean | number | null | undefined, category: string): number | null {
   if (category !== 'camera') return null
   if (value == null) return 0
   return value ? 1 : 0
@@ -224,11 +241,20 @@ export async function importJsonPresets(paths: DataPaths): Promise<{ imported: n
       author: new Set(),
       film: new Set()
     }
-    const presetRows = db.all('SELECT category, payload_json, lens_system, lens_mount, lens_adaptable FROM presets')
+    const presetRows = db.all(
+      'SELECT category, payload_json, lens_system, lens_mount, lens_adaptable, fixed_shutter, fixed_aperture FROM presets'
+    )
     for (const row of presetRows) {
       const payload = JSON.parse(String(row['payload_json'])) as Record<string, unknown>
       existingFingerprints[String(row['category'])]!.add(
-        payloadFingerprintCombined(payload, row['lens_system'] as string | null, row['lens_mount'] as string | null, row['lens_adaptable'] as number | null)
+        payloadFingerprintCombined(
+          payload,
+          row['lens_system'] as string | null,
+          row['lens_mount'] as string | null,
+          row['lens_adaptable'] as number | null,
+          row['fixed_shutter'] as number | null,
+          row['fixed_aperture'] as number | null
+        )
       )
     }
 
@@ -258,7 +284,14 @@ export async function importJsonPresets(paths: DataPaths): Promise<{ imported: n
       for (const [k, v] of Object.entries(rawData)) {
         if (!CONTROL_FIELDS.has(k)) payload[k] = v
       }
-      const fp = payloadFingerprintCombined(payload, lens_system ?? null, lens_mount ?? null, lens_adaptable)
+      const fp = payloadFingerprintCombined(
+        payload,
+        lens_system ?? null,
+        lens_mount ?? null,
+        lens_adaptable,
+        category === 'camera' ? 0 : null,
+        category === 'camera' ? 0 : null
+      )
       if (existingFingerprints[category]!.has(fp)) {
         stats.skipped_duplicates++
         continue
@@ -266,9 +299,18 @@ export async function importJsonPresets(paths: DataPaths): Promise<{ imported: n
       try {
         db.runOnly(
           `INSERT OR IGNORE INTO presets
-          (category, name, payload_json, lens_system, lens_mount, lens_adaptable)
-          VALUES (?, ?, ?, ?, ?, ?)`,
-          [category, displayName, JSON.stringify(payload, Object.keys(payload).sort()), lens_system ?? null, lens_mount ?? null, lens_adaptable]
+          (category, name, payload_json, lens_system, lens_mount, lens_adaptable, fixed_shutter, fixed_aperture)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            category,
+            displayName,
+            JSON.stringify(payload, Object.keys(payload).sort()),
+            lens_system ?? null,
+            lens_mount ?? null,
+            lens_adaptable,
+            category === 'camera' ? 0 : null,
+            category === 'camera' ? 0 : null
+          ]
         )
         db.persist()
         const ch = db.get('SELECT changes() AS c')!
@@ -367,7 +409,14 @@ export async function loadCatalog(paths: DataPaths): Promise<{ catalog: ConfigCa
   const author_file_map: Record<string, number | null | undefined> = { None: null }
   const film_file_map: Record<string, number | null | undefined> = { None: null }
   const camera_metadata_map: ConfigCatalog['camera_metadata_map'] = {
-    None: { lens_system: null, lens_mount: null, lens_adaptable: false }
+    None: {
+      lens_system: null,
+      lens_mount: null,
+      lens_adaptable: false,
+      locks_lens: false,
+      locks_shutter: false,
+      locks_aperture: false
+    }
   }
   const lens_metadata_map: ConfigCatalog['lens_metadata_map'] = {
     None: { lens_mount: null }
@@ -381,6 +430,8 @@ export async function loadCatalog(paths: DataPaths): Promise<{ catalog: ConfigCa
     lens_system: string | null
     lens_mount: string | null
     lens_adaptable: number | null
+    fixed_shutter: number | null
+    fixed_aperture: number | null
   }[] = []
 
   try {
@@ -388,7 +439,7 @@ export async function loadCatalog(paths: DataPaths): Promise<{ catalog: ConfigCa
     const db = await openDb(paths)
     try {
       rows = db.all(
-        `SELECT id, category, name, payload_json, lens_system, lens_mount, lens_adaptable
+        `SELECT id, category, name, payload_json, lens_system, lens_mount, lens_adaptable, fixed_shutter, fixed_aperture
          FROM presets ORDER BY category, name`
       ) as typeof rows
     } finally {
@@ -411,15 +462,22 @@ export async function loadCatalog(paths: DataPaths): Promise<{ catalog: ConfigCa
         const hasLensData = Object.keys(payload).some((k) => k.startsWith('Lens'))
         lens_system = hasLensData ? 'fixed' : 'interchangeable'
       }
+      const shutterFlag = row.fixed_shutter != null ? Number(row.fixed_shutter) === 1 : false
+      const apertureFlag = row.fixed_aperture != null ? Number(row.fixed_aperture) === 1 : false
       camera_metadata_map[display_name] = {
         lens_system,
         lens_mount: row.lens_mount,
         lens_adaptable: row.lens_adaptable != null ? Boolean(row.lens_adaptable) : false,
+        locks_lens: lens_system === 'fixed',
         fixed_lens_display:
           String(payload['LensModel'] ?? '').trim() ||
           String(payload['LensMake'] ?? '').trim() ||
           String(payload['Lens'] ?? '').trim() ||
-          'None'
+          'None',
+        locks_shutter: shutterFlag,
+        locks_aperture: apertureFlag,
+        ...(shutterFlag ? { fixed_shutter_display: formatExposureTimeForUi(payload['ExposureTime']) } : {}),
+        ...(apertureFlag ? { fixed_aperture_display: formatFnumberForUi(payload['FNumber']) } : {})
       }
     } else if (category === 'lens') {
       lens_options.push(display_name)
@@ -456,18 +514,25 @@ export async function getPresetRecord(paths: DataPaths, presetRef: number | stri
   const db = await openDb(paths)
   try {
     const row = db.get(
-      `SELECT id, category, name, payload_json, lens_system, lens_mount, lens_adaptable FROM presets WHERE id = ?`,
+      `SELECT id, category, name, payload_json, lens_system, lens_mount, lens_adaptable, fixed_shutter, fixed_aperture FROM presets WHERE id = ?`,
       [id]
     )
     if (!row) return null
+    const cat = String(row['category'])
+    const fs = row['fixed_shutter']
+    const fa = row['fixed_aperture']
     return {
       id: Number(row['id']),
-      category: String(row['category']),
+      category: cat,
       name: String(row['name']),
       payload: JSON.parse(String(row['payload_json'])) as Record<string, unknown>,
       lens_system: row['lens_system'] as string | null,
       lens_mount: row['lens_mount'] as string | null,
-      lens_adaptable: row['lens_adaptable'] != null ? Boolean(row['lens_adaptable']) : null
+      lens_adaptable: row['lens_adaptable'] != null ? Boolean(row['lens_adaptable']) : null,
+      fixed_shutter:
+        cat === 'camera' ? (fs != null ? Boolean(Number(fs)) : null) : null,
+      fixed_aperture:
+        cat === 'camera' ? (fa != null ? Boolean(Number(fa)) : null) : null
     }
   } finally {
     db.close()
@@ -481,7 +546,9 @@ export async function createPreset(
   payload: Record<string, unknown>,
   lens_system?: string | null,
   lens_mount?: string | null,
-  lens_adaptable?: boolean | number | null
+  lens_adaptable?: boolean | number | null,
+  fixed_shutter?: boolean | number | null,
+  fixed_aperture?: boolean | number | null
 ): Promise<number> {
   const normalized_category = normalizeCategory(category)
   const normalized_name = String(name ?? '').trim()
@@ -490,15 +557,17 @@ export async function createPreset(
   const ls = normalizeLensSystem(lens_system, normalized_category)
   const lm = normalizeLensMount(lens_mount, normalized_category)
   const la = normalizeLensAdaptable(lens_adaptable, normalized_category)
+  const fs = normalizeFixedShutterFlag(fixed_shutter, normalized_category)
+  const fa = normalizeFixedApertureFlag(fixed_aperture, normalized_category)
 
   await ensureDatabaseInitialized(paths)
   const db = await openDb(paths)
   try {
     try {
       db.run(
-        `INSERT INTO presets (category, name, payload_json, lens_system, lens_mount, lens_adaptable)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [normalized_category, normalized_name, payload_json, ls, lm, la]
+        `INSERT INTO presets (category, name, payload_json, lens_system, lens_mount, lens_adaptable, fixed_shutter, fixed_aperture)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [normalized_category, normalized_name, payload_json, ls, lm, la, fs, fa]
       )
       const row = db.get('SELECT last_insert_rowid() AS id')!
       return Number(row['id'])
@@ -521,7 +590,9 @@ export async function updatePreset(
   payload: Record<string, unknown>,
   lens_system?: string | null,
   lens_mount?: string | null,
-  lens_adaptable?: boolean | number | null
+  lens_adaptable?: boolean | number | null,
+  fixed_shutter?: boolean | number | null,
+  fixed_aperture?: boolean | number | null
 ): Promise<number> {
   const existing = await getPresetRecord(paths, presetId)
   if (!existing) throw new PresetStoreError(`Preset id=${presetId} was not found.`)
@@ -532,14 +603,16 @@ export async function updatePreset(
   const ls = normalizeLensSystem(lens_system, category)
   const lm = normalizeLensMount(lens_mount, category)
   const la = normalizeLensAdaptable(lens_adaptable, category)
+  const fs = normalizeFixedShutterFlag(fixed_shutter, category)
+  const fa = normalizeFixedApertureFlag(fixed_aperture, category)
 
   await ensureDatabaseInitialized(paths)
   const db = await openDb(paths)
   try {
     try {
       db.run(
-        `UPDATE presets SET name = ?, payload_json = ?, lens_system = ?, lens_mount = ?, lens_adaptable = ? WHERE id = ?`,
-        [normalized_name, payload_json, ls, lm, la, presetId]
+        `UPDATE presets SET name = ?, payload_json = ?, lens_system = ?, lens_mount = ?, lens_adaptable = ?, fixed_shutter = ?, fixed_aperture = ? WHERE id = ?`,
+        [normalized_name, payload_json, ls, lm, la, fs, fa, presetId]
       )
       return presetId
     } catch (e: unknown) {
@@ -682,9 +755,7 @@ export async function mergePresetsFromSqliteFile(sourceFilePath: string, destPat
       )
     }
 
-    const readStmt = srcDb.prepare(
-      `SELECT category, name, payload_json, lens_system, lens_mount, lens_adaptable FROM presets ORDER BY id`
-    )
+    const readStmt = srcDb.prepare(`SELECT * FROM presets ORDER BY id`)
     try {
       while (readStmt.step()) {
         rows.push({ ...(readStmt.getAsObject() as Record<string, unknown>) })
@@ -754,9 +825,11 @@ export async function mergePresetsFromSqliteFile(sourceFilePath: string, destPat
         const ls = normalizeLensSystem(row['lens_system'] as string | null, category)
         const lm = normalizeLensMount(row['lens_mount'] as string | null, category)
         const la = normalizeLensAdaptable(row['lens_adaptable'] as boolean | number | null, category)
+        const fs = normalizeFixedShutterFlag(row['fixed_shutter'] as boolean | number | null, category)
+        const fa = normalizeFixedApertureFlag(row['fixed_aperture'] as boolean | number | null, category)
         dest.runOnly(
-          `INSERT INTO presets (category, name, payload_json, lens_system, lens_mount, lens_adaptable) VALUES (?, ?, ?, ?, ?, ?)`,
-          [category, name, payloadNorm, ls, lm, la]
+          `INSERT INTO presets (category, name, payload_json, lens_system, lens_mount, lens_adaptable, fixed_shutter, fixed_aperture) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [category, name, payloadNorm, ls, lm, la, fs, fa]
         )
         imported++
       } catch (e) {

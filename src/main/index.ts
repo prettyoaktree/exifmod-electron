@@ -441,7 +441,9 @@ function setupIpc(): void {
         input.payload,
         input.lens_system,
         input.lens_mount,
-        input.lens_adaptable
+        input.lens_adaptable,
+        input.fixed_shutter,
+        input.fixed_aperture
       )
     } catch (e) {
       throw localizeThrownPresetError(e)
@@ -459,7 +461,9 @@ function setupIpc(): void {
         input.payload,
         input.lens_system,
         input.lens_mount,
-        input.lens_adaptable
+        input.lens_adaptable,
+        input.fixed_shutter,
+        input.fixed_aperture
       )
     } catch (e) {
       throw localizeThrownPresetError(e)

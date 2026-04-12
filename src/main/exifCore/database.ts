@@ -11,6 +11,8 @@ const SCHEMA_STATEMENTS = [
     lens_system TEXT,
     lens_mount TEXT,
     lens_adaptable INTEGER,
+    fixed_shutter INTEGER,
+    fixed_aperture INTEGER,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(category, name)
@@ -25,11 +27,24 @@ const SCHEMA_STATEMENTS = [
    END`
 ]
 
+/** Add columns introduced after first release (existing DBs skip CREATE TABLE body). */
+function migratePresetTableColumns(db: PersistedDatabase): void {
+  const info = db.execRaw('PRAGMA table_info(presets)')
+  const cols = new Set((info[0]?.values ?? []).map((row) => String(row[1])))
+  if (!cols.has('fixed_shutter')) {
+    db.runOnly('ALTER TABLE presets ADD COLUMN fixed_shutter INTEGER')
+  }
+  if (!cols.has('fixed_aperture')) {
+    db.runOnly('ALTER TABLE presets ADD COLUMN fixed_aperture INTEGER')
+  }
+}
+
 export async function openDb(paths: DataPaths): Promise<PersistedDatabase> {
   const db = await openPersistedDb(paths)
   for (const s of SCHEMA_STATEMENTS) {
     db.runOnly(s)
   }
+  migratePresetTableColumns(db)
   db.persist()
   return db
 }

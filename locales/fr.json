@@ -185,6 +185,10 @@
     "copyrightWrittenNone": "Aucun tag Copyright ne sera enregistré.",
     "iso": "ISO",
     "filmStockName": "Pellicule / stock",
+    "fixedShutter": "Vitesse d’obturation fixe",
+    "fixedAperture": "Ouverture fixe (nombre f)",
+    "fixedShutterValueRequired": "Indiquez une vitesse ou désactivez la vitesse fixe.",
+    "fixedApertureValueRequired": "Indiquez une ouverture ou désactivez l’ouverture fixe.",
     "save": "Enregistrer",
     "cancel": "Annuler"
   },

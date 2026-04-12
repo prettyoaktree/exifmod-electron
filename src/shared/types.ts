@@ -5,6 +5,14 @@ export interface CameraMetadata {
   lens_mount: string | null
   lens_adaptable: boolean
   fixed_lens_display?: string
+  /** True when camera preset uses a fixed (built-in) lens. */
+  locks_lens?: boolean
+  /** True when camera preset pins EXIF ExposureTime from the preset only. */
+  locks_shutter?: boolean
+  /** True when camera preset pins EXIF FNumber from the preset only. */
+  locks_aperture?: boolean
+  fixed_shutter_display?: string
+  fixed_aperture_display?: string
 }
 
 export interface LensMetadata {
@@ -32,6 +40,10 @@ export interface PresetRecord {
   lens_system: string | null
   lens_mount: string | null
   lens_adaptable: boolean | null
+  /** Camera presets only: fixed mechanical shutter speed from preset. */
+  fixed_shutter: boolean | null
+  /** Camera presets only: fixed aperture from preset. */
+  fixed_aperture: boolean | null
 }
 
 export interface CreatePresetInput {
@@ -41,6 +53,8 @@ export interface CreatePresetInput {
   lens_system?: string | null
   lens_mount?: string | null
   lens_adaptable?: boolean | number | null
+  fixed_shutter?: boolean | number | null
+  fixed_aperture?: boolean | number | null
 }
 
 export interface UpdatePresetInput {
@@ -50,6 +64,8 @@ export interface UpdatePresetInput {
   lens_system?: string | null
   lens_mount?: string | null
   lens_adaptable?: boolean | number | null
+  fixed_shutter?: boolean | number | null
+  fixed_aperture?: boolean | number | null
 }
 
 export interface DataPaths {
