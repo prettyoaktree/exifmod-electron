@@ -164,6 +164,8 @@
     "author": "Auteur"
   },
   "presetEditor": {
+    "tableAttribute": "Attribut",
+    "tableValue": "Valeur",
     "titleNew": "Nouveau préréglage {{category}}",
     "titleEdit": "Modifier le préréglage {{category}}",
     "name": "Nom du préréglage",

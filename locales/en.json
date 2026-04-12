@@ -164,6 +164,8 @@
     "author": "Author"
   },
   "presetEditor": {
+    "tableAttribute": "Attribute",
+    "tableValue": "Value",
     "titleNew": "New {{category}} Preset",
     "titleEdit": "Edit {{category}} Preset",
     "name": "Preset Name",

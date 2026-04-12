@@ -330,8 +330,8 @@ export function PresetEditorModal(props: {
             </colgroup>
             <thead>
               <tr>
-                <th scope="col">{t('ui.attribute')}</th>
-                <th scope="col">{t('ui.newValue')}</th>
+                <th scope="col">{t('presetEditor.tableAttribute')}</th>
+                <th scope="col">{t('presetEditor.tableValue')}</th>
               </tr>
             </thead>
             <tbody>
