@@ -426,6 +426,69 @@ button.btn-sm {
   margin-top: 0.4rem;
 }
 
+.meta-current-with-clear {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  justify-content: flex-start;
+  min-width: 0;
+}
+
+.meta-current-with-clear__text {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.btn-meta-remove-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0.1rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.btn-meta-remove-icon__svg {
+  display: block;
+}
+
+.btn-meta-remove-icon:hover:not(:disabled) {
+  color: #991b1b;
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.btn-meta-remove-icon:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.meta-notes-current-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--foreground, #18181b);
+}
+
+.meta-notes-current-row__text {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+table.mapping td:nth-child(2) {
+  vertical-align: top;
+}
+
 .btn-ai-spark {
   flex-shrink: 0;
   display: inline-flex;
@@ -1427,6 +1490,55 @@ button.preset-slideout-close:focus-visible {
 .modal.modal-dialog-confirm {
   width: min(400px, 92vw);
   padding: 1.25rem;
+}
+
+.modal.modal-tutorial {
+  width: min(520px, 92vw);
+  max-height: min(85vh, 36rem);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tutorial-first-run-lead {
+  margin: 0 0 0.65rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.tutorial-step-meta {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.tutorial-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.tutorial-body-text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.modal-confirm-actions.tutorial-actions {
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: space-between;
+}
+
+.tutorial-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-left: auto;
 }
 
 .modal.modal-dialog-confirm.modal-ai-batch-errors {

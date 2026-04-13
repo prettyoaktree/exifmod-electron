@@ -13,6 +13,12 @@ describe('diffWritePayloadFromMetadata', () => {
     expect(writePayloadMatchesFile(proposed, meta)).toBe(true)
   })
 
+  it('includes Keywords when clearing to empty string vs file with keywords', () => {
+    const proposed = { Keywords: '' }
+    const meta = { Keywords: ['a', 'b'] }
+    expect(diffWritePayloadFromMetadata(proposed, meta)).toEqual({ Keywords: '' })
+  })
+
   it('omits ISO when values match as number vs string', () => {
     const proposed = { ISO: 400, Make: 'X' }
     const meta = { ISO: '400', Make: 'X' }

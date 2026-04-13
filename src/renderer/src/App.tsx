@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 import { withCopyrightAsWrittenToExif } from '@shared/copyrightFormat.js'
+import { applyCategoryClears } from '@shared/exifClearTags.js'
 import {
   formatKeywordsField,
   mergeKeywordsDeduped,
-  parseKeywordsField
+  parseKeywordsField,
+  stripFilmIdentityFromKeywords
 } from '@shared/filmKeywords.js'
 import {
   fitKeywordsForExif,
@@ -39,6 +41,7 @@ import {
 import { MetadataPresetCombo } from './MetadataPresetCombo.js'
 import { PresetEditorModal } from './PresetEditor.js'
 import { ManagePresetsPanel } from './ManagePresetsPanel.js'
+import { TutorialModal } from './TutorialModal.js'
 import type { Cat } from './categories.js'
 import { truncateMiddle } from './format/truncateMiddle.js'
 
@@ -65,6 +68,14 @@ interface PendingState {
   notesBaseline: string
   keywordsText: string
   keywordsBaseline: string
+  clearCamera: boolean
+  clearLens: boolean
+  clearFilm: boolean
+  clearAuthor: boolean
+  clearShutter: boolean
+  clearAperture: boolean
+  clearNotes: boolean
+  clearKeywords: boolean
 }
 
 function emptyPending(): PendingState {
@@ -78,7 +89,15 @@ function emptyPending(): PendingState {
     notesText: '',
     notesBaseline: '',
     keywordsText: '',
-    keywordsBaseline: ''
+    keywordsBaseline: '',
+    clearCamera: false,
+    clearLens: false,
+    clearFilm: false,
+    clearAuthor: false,
+    clearShutter: false,
+    clearAperture: false,
+    clearNotes: false,
+    clearKeywords: false
   }
 }
 
@@ -176,6 +195,10 @@ function mergePendingStateForNewValueUi(
   const kwSame = new Set(kwVals).size === 1
   const kwBaselineVals = states.map((s) => s.keywordsBaseline)
   const kwBaselineSame = new Set(kwBaselineVals).size === 1
+  const mergeBool = (key: keyof Pick<PendingState, 'clearCamera' | 'clearLens' | 'clearFilm' | 'clearAuthor' | 'clearShutter' | 'clearAperture' | 'clearNotes' | 'clearKeywords'>): boolean => {
+    const vals = states.map((s) => s[key])
+    return new Set(vals).size === 1 ? Boolean(vals[0]) : false
+  }
   return {
     cameraId: mergeId('cameraId'),
     lensId: mergeId('lensId'),
@@ -186,7 +209,15 @@ function mergePendingStateForNewValueUi(
     notesText: notesSame ? states[0]!.notesText : '',
     notesBaseline: baselineSame ? states[0]!.notesBaseline : '',
     keywordsText: kwSame ? states[0]!.keywordsText : '',
-    keywordsBaseline: kwBaselineSame ? states[0]!.keywordsBaseline : ''
+    keywordsBaseline: kwBaselineSame ? states[0]!.keywordsBaseline : '',
+    clearCamera: mergeBool('clearCamera'),
+    clearLens: mergeBool('clearLens'),
+    clearFilm: mergeBool('clearFilm'),
+    clearAuthor: mergeBool('clearAuthor'),
+    clearShutter: mergeBool('clearShutter'),
+    clearAperture: mergeBool('clearAperture'),
+    clearNotes: mergeBool('clearNotes'),
+    clearKeywords: mergeBool('clearKeywords')
   }
 }
 
@@ -213,6 +244,35 @@ function classifyStagedTextField(
   if (vals.every((v) => v === '')) return 'empty'
   if (new Set(vals).size === 1) return 'uniform'
   return 'mixed'
+}
+
+function RemoveFromImageIconButton(props: {
+  disabled: boolean
+  title: string
+  ariaLabel: string
+  onClick: () => void
+}): ReactElement {
+  return (
+    <button
+      type="button"
+      tabIndex={-1}
+      className="btn-meta-remove-icon"
+      disabled={props.disabled}
+      title={props.title}
+      aria-label={props.ariaLabel}
+      onClick={props.onClick}
+    >
+      <svg className="btn-meta-remove-icon__svg" viewBox="0 0 24 24" width="14" height="14" aria-hidden focusable="false">
+        <path
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.25"
+          strokeLinecap="round"
+          d="M6 6l12 12M18 6L6 18"
+        />
+      </svg>
+    </button>
+  )
 }
 
 const META_FIELD_COUNT = 8
@@ -272,6 +332,8 @@ export function App(): React.ReactElement {
     failures: { path: string; message: string }[]
     total: number
   }>(null)
+  const [tutorialOpen, setTutorialOpen] = useState(false)
+  const [tutorialFirstRun, setTutorialFirstRun] = useState(false)
   /** Horizontal split: files pane width as % of main content area (default 30%). */
   const [filesPaneWidthPct, setFilesPaneWidthPct] = useState(30)
   /** Vertical split within files pane: file list + actions region height % (default 60%). */
@@ -444,6 +506,20 @@ export function App(): React.ReactElement {
     return api.onPresetsImported(() => void reloadCatalog())
   }, [reloadCatalog])
 
+  const closeTutorial = useCallback(() => {
+    setTutorialOpen(false)
+    void window.exifmod?.markTutorialOnboardingSeen?.()
+  }, [])
+
+  useEffect(() => {
+    const api = window.exifmod
+    if (!api?.onTutorialStart) return
+    return api.onTutorialStart((payload) => {
+      setTutorialFirstRun(Boolean(payload?.firstRun))
+      setTutorialOpen(true)
+    })
+  }, [])
+
   useEffect(() => {
     const api = window.exifmod
     if (!api) return
@@ -585,34 +661,59 @@ export function App(): React.ReactElement {
         const camMeta = cameraMetaForPending(catalog, st.cameraId)
         const lockShutter = Boolean(camMeta?.locks_shutter)
         const lockAperture = Boolean(camMeta?.locks_aperture)
-        if (!lockShutter && st.exposureTime.trim()) {
+        if (!lockShutter && !st.clearShutter && st.exposureTime.trim()) {
           const e = validateExposureTimeForExif(st.exposureTime)
           if (e) return { payload: null, err: e }
           merged = { ...merged, ExposureTime: st.exposureTime.trim() }
         }
-        if (!lockAperture && st.fNumberText.trim()) {
+        if (!lockAperture && !st.clearAperture && st.fNumberText.trim()) {
           const e = validateFnumberForExif(st.fNumberText)
           if (e) return { payload: null, err: e }
           merged = { ...merged, FNumber: Number(st.fNumberText.trim()) }
         }
-        const notes = st.notesText.trim()
-        const base = st.notesBaseline.trim()
-        if (notes !== base) {
-          if (notes) {
-            const e = validateImageDescriptionForExif(notes)
-            if (e) return { payload: null, err: e }
-            merged = { ...merged, ImageDescription: notes }
+        if (st.clearNotes) {
+          merged = { ...merged, ImageDescription: '' }
+        } else {
+          const notes = st.notesText.trim()
+          const base = st.notesBaseline.trim()
+          if (notes !== base) {
+            if (notes) {
+              const e = validateImageDescriptionForExif(notes)
+              if (e) return { payload: null, err: e }
+              merged = { ...merged, ImageDescription: notes }
+            }
           }
         }
-        const presetKw = keywordsFromMergedPayloadField(merged['Keywords'])
-        const uiKw = parseKeywordsField(st.keywordsText)
-        const finalKw = fitKeywordsForExif(mergeKeywordsDeduped(presetKw, uiKw))
-        if (finalKw.length > 0) {
-          merged = { ...merged, Keywords: finalKw }
-        } else {
-          const { Keywords: _drop, ...rest } = merged
-          merged = rest
+        if (st.clearFilm) {
+          merged = { ...merged, ISO: '' }
         }
+        if (st.clearKeywords) {
+          merged = { ...merged, Keywords: '' }
+        } else {
+          const presetKw = keywordsFromMergedPayloadField(merged['Keywords'])
+          const uiKw = parseKeywordsField(st.keywordsText)
+          let kwCombined = mergeKeywordsDeduped(presetKw, uiKw)
+          if (st.clearFilm) {
+            kwCombined = stripFilmIdentityFromKeywords(kwCombined)
+          }
+          const finalKw = fitKeywordsForExif(kwCombined)
+          if (finalKw.length > 0) {
+            merged = { ...merged, Keywords: finalKw }
+          } else {
+            const { Keywords: _drop, ...rest } = merged
+            merged = rest
+            if (st.clearFilm) {
+              merged = { ...merged, Keywords: '' }
+            }
+          }
+        }
+        merged = applyCategoryClears(merged, {
+          clearCamera: st.clearCamera,
+          clearLens: st.clearLens,
+          clearAuthor: st.clearAuthor,
+          clearShutter: st.clearShutter && !lockShutter,
+          clearAperture: st.clearAperture && !lockAperture
+        })
         if (Object.keys(merged).length === 0) return { payload: null, err: null }
         return { payload: merged, err: null }
       } catch (e) {
@@ -906,8 +1007,54 @@ export function App(): React.ReactElement {
             : catalog.author_file_map
     const id = (map[internal] ?? null) as number | null
     const key = idKeyForCategory(cat)
-    updatePendingForPaths(stagingPaths, (s) => ({ ...s, [key]: id }))
+    const clearKey =
+      cat === 'Camera'
+        ? 'clearCamera'
+        : cat === 'Lens'
+          ? 'clearLens'
+          : cat === 'Film'
+            ? 'clearFilm'
+            : 'clearAuthor'
+    updatePendingForPaths(stagingPaths, (s) => ({ ...s, [key]: id, [clearKey]: false }))
   }
+
+  const removeFromImage = useCallback(
+    (
+      row:
+        | 'Camera'
+        | 'Lens'
+        | 'Film'
+        | 'Author'
+        | 'Shutter'
+        | 'Aperture'
+        | 'Notes'
+        | 'Keywords'
+    ) => {
+      updatePendingForPaths(stagingPaths, (s) => {
+        switch (row) {
+          case 'Camera':
+            return { ...s, clearCamera: true }
+          case 'Lens':
+            return { ...s, clearLens: true }
+          case 'Film':
+            return { ...s, clearFilm: true }
+          case 'Author':
+            return { ...s, clearAuthor: true }
+          case 'Shutter':
+            return { ...s, clearShutter: true, exposureTime: '' }
+          case 'Aperture':
+            return { ...s, clearAperture: true, fNumberText: '' }
+          case 'Notes':
+            return { ...s, clearNotes: true, notesText: s.notesBaseline }
+          case 'Keywords':
+            return { ...s, clearKeywords: true, keywordsText: '' }
+          default:
+            return s
+        }
+      })
+    },
+    [stagingPaths, updatePendingForPaths]
+  )
 
   const runWritePending = useCallback(
     async (todo: { path: string; payload: Record<string, unknown> }[]) => {
@@ -1040,7 +1187,10 @@ export function App(): React.ReactElement {
         return {
           ...s,
           notesText,
-          keywordsText: formatKeywordsField(mergedKw)
+          keywordsText: formatKeywordsField(mergedKw),
+          clearNotes: false,
+          clearKeywords: false,
+          clearFilm: false
         }
       })
     },
@@ -1230,6 +1380,81 @@ export function App(): React.ReactElement {
       : new Set(fnCurrent).size === 1
         ? fnCurrent[0]!
         : t('ui.multiple')
+
+  const notesCurrentLine = useMemo(() => {
+    if (!stagingPaths.length) return ''
+    const vals = stagingPaths.map((p) => imageDescriptionFromMetadata(metadataByPath[p] ?? {}))
+    if (new Set(vals).size > 1) return t('ui.multiple')
+    return vals[0] ?? ''
+  }, [stagingPaths, metadataByPath, t])
+
+  const keywordsCurrentLine = useMemo(() => {
+    if (!stagingPaths.length) return ''
+    const vals = stagingPaths.map((p) => keywordsFieldFromMetadata(metadataByPath[p] ?? {}))
+    if (new Set(vals).size > 1) return t('ui.multiple')
+    return vals[0] ?? ''
+  }, [stagingPaths, metadataByPath, t])
+
+  const removeHint = t('ui.removeFromImage')
+
+  const canRemoveCamera = useMemo(() => {
+    if (!staging.length) return false
+    if (inferredRow.Camera === 'Multiple') return true
+    return String(inferredRow.Camera ?? '').trim() !== ''
+  }, [staging.length, inferredRow.Camera])
+
+  const canRemoveLens = useMemo(() => {
+    if (!staging.length) return false
+    if (inferredRow.Lens === 'Multiple') return true
+    return String(inferredRow.Lens ?? '').trim() !== ''
+  }, [staging.length, inferredRow.Lens])
+
+  const canRemoveFilm = useMemo(() => {
+    if (!staging.length) return false
+    if (inferredRow.Film === 'Multiple') return true
+    if (String(inferredRow.Film ?? '').trim() !== '') return true
+    return stagingPaths.some((p) => {
+      const m = metadataByPath[p] ?? {}
+      return String(m['ISO'] ?? m['EXIF:ISO'] ?? '').trim() !== ''
+    })
+  }, [staging.length, inferredRow.Film, stagingPaths, metadataByPath])
+
+  const canRemoveAuthor = useMemo(() => {
+    if (!staging.length) return false
+    if (inferredRow.Author === 'Multiple') return true
+    return String(inferredRow.Author ?? '').trim() !== ''
+  }, [staging.length, inferredRow.Author])
+
+  const canRemoveCategory: Record<Cat, boolean> = {
+    Camera: canRemoveCamera,
+    Lens: canRemoveLens,
+    Film: canRemoveFilm,
+    Author: canRemoveAuthor
+  }
+
+  const canRemoveShutter = useMemo(() => {
+    if (!staging.length || shutterLocked) return false
+    if (exposureCurrentDisplay === t('ui.multiple')) return true
+    return exposureCurrentDisplay.trim() !== ''
+  }, [staging.length, shutterLocked, exposureCurrentDisplay, t])
+
+  const canRemoveAperture = useMemo(() => {
+    if (!staging.length || apertureLocked) return false
+    if (fnCurrentDisplay === t('ui.multiple')) return true
+    return fnCurrentDisplay.trim() !== ''
+  }, [staging.length, apertureLocked, fnCurrentDisplay, t])
+
+  const canRemoveNotes = useMemo(
+    () =>
+      stagingPaths.some((p) => imageDescriptionFromMetadata(metadataByPath[p] ?? {}).trim() !== ''),
+    [stagingPaths, metadataByPath]
+  )
+
+  const canRemoveKeywords = useMemo(
+    () =>
+      stagingPaths.some((p) => keywordsFieldFromMetadata(metadataByPath[p] ?? {}).trim() !== ''),
+    [stagingPaths, metadataByPath]
+  )
 
   return (
     <div className="app">
@@ -1456,11 +1681,23 @@ export function App(): React.ReactElement {
                       <tr key={cat}>
                         <td>{catLabel(cat)}</td>
                         <td>
-                          {inferredRow[cat] === 'Multiple' ? (
-                            <span className="meta-current-value-muted">{t('ui.multiple')}</span>
-                          ) : (
-                            inferredRow[cat]
-                          )}
+                          <div className="meta-current-with-clear">
+                            <span
+                              className={
+                                inferredRow[cat] === 'Multiple'
+                                  ? 'meta-current-value-muted meta-current-with-clear__text'
+                                  : 'meta-current-with-clear__text'
+                              }
+                            >
+                              {inferredRow[cat] === 'Multiple' ? t('ui.multiple') : inferredRow[cat]}
+                            </span>
+                            <RemoveFromImageIconButton
+                              disabled={!canRemoveCategory[cat]}
+                              title={removeHint}
+                              aria-label={t('ui.removeFromImageAria', { row: catLabel(cat) })}
+                              onClick={() => removeFromImage(cat)}
+                            />
+                          </div>
                         </td>
                         <td className="mapping-col-new-combo-cell">
                           <MetadataPresetCombo
@@ -1486,11 +1723,25 @@ export function App(): React.ReactElement {
                   <tr>
                     <td>{t('ui.shutterSpeed')}</td>
                     <td>
-                      {exposureCurrentDisplay === t('ui.multiple') ? (
-                        <span className="meta-current-value-muted">{exposureCurrentDisplay}</span>
-                      ) : (
-                        exposureCurrentDisplay
-                      )}
+                      <div className="meta-current-with-clear">
+                        <span
+                          className={
+                            exposureCurrentDisplay === t('ui.multiple')
+                              ? 'meta-current-value-muted meta-current-with-clear__text'
+                              : 'meta-current-with-clear__text'
+                          }
+                        >
+                          {exposureCurrentDisplay === t('ui.multiple')
+                            ? exposureCurrentDisplay
+                            : exposureCurrentDisplay || '—'}
+                        </span>
+                        <RemoveFromImageIconButton
+                          disabled={!canRemoveShutter}
+                          title={removeHint}
+                          aria-label={t('ui.removeFromImageAria', { row: t('ui.shutterSpeed') })}
+                          onClick={() => removeFromImage('Shutter')}
+                        />
+                      </div>
                     </td>
                     <td>
                       <input
@@ -1507,7 +1758,11 @@ export function App(): React.ReactElement {
                         disabled={!staging.length || shutterLocked}
                         value={shutterNewDisplay}
                         onChange={(e) =>
-                          updatePendingForPaths(staging, (s) => ({ ...s, exposureTime: e.target.value }))
+                          updatePendingForPaths(staging, (s) => ({
+                            ...s,
+                            exposureTime: e.target.value,
+                            clearShutter: false
+                          }))
                         }
                         onKeyDown={onMetaFieldTabKeyDown(4)}
                       />
@@ -1516,11 +1771,23 @@ export function App(): React.ReactElement {
                   <tr>
                     <td>{t('ui.apertureFStop')}</td>
                     <td>
-                      {fnCurrentDisplay === t('ui.multiple') ? (
-                        <span className="meta-current-value-muted">{fnCurrentDisplay}</span>
-                      ) : (
-                        fnCurrentDisplay
-                      )}
+                      <div className="meta-current-with-clear">
+                        <span
+                          className={
+                            fnCurrentDisplay === t('ui.multiple')
+                              ? 'meta-current-value-muted meta-current-with-clear__text'
+                              : 'meta-current-with-clear__text'
+                          }
+                        >
+                          {fnCurrentDisplay === t('ui.multiple') ? fnCurrentDisplay : fnCurrentDisplay || '—'}
+                        </span>
+                        <RemoveFromImageIconButton
+                          disabled={!canRemoveAperture}
+                          title={removeHint}
+                          aria-label={t('ui.removeFromImageAria', { row: t('ui.apertureFStop') })}
+                          onClick={() => removeFromImage('Aperture')}
+                        />
+                      </div>
                     </td>
                     <td>
                       <input
@@ -1537,7 +1804,11 @@ export function App(): React.ReactElement {
                         disabled={!staging.length || apertureLocked}
                         value={apertureNewDisplay}
                         onChange={(e) =>
-                          updatePendingForPaths(staging, (s) => ({ ...s, fNumberText: e.target.value }))
+                          updatePendingForPaths(staging, (s) => ({
+                            ...s,
+                            fNumberText: e.target.value,
+                            clearAperture: false
+                          }))
                         }
                         onKeyDown={onMetaFieldTabKeyDown(5)}
                       />
@@ -1648,6 +1919,28 @@ export function App(): React.ReactElement {
                   </button>
                   </div>
                 </div>
+                <div className="meta-notes-current-row">
+                  <span
+                    className={
+                      notesCurrentLine === t('ui.multiple')
+                        ? 'meta-notes-current-row__text meta-current-value-muted'
+                        : 'meta-notes-current-row__text'
+                    }
+                    title={notesCurrentLine !== t('ui.multiple') ? notesCurrentLine : undefined}
+                  >
+                    {notesCurrentLine === t('ui.multiple')
+                      ? t('ui.multiple')
+                      : notesCurrentLine.trim()
+                        ? truncateMiddle(notesCurrentLine, 120)
+                        : '—'}
+                  </span>
+                  <RemoveFromImageIconButton
+                    disabled={!canRemoveNotes}
+                    title={removeHint}
+                    aria-label={t('ui.removeFromImageAria', { row: t('ui.notesImageDescription') })}
+                    onClick={() => removeFromImage('Notes')}
+                  />
+                </div>
                 <textarea
                   ref={bindMetaRef(6)}
                   tabIndex={-1}
@@ -1658,12 +1951,34 @@ export function App(): React.ReactElement {
                   value={formPending.notesText}
                   onChange={(e) => {
                     const nextNotes = clampUtf8ByBytes(e.target.value)
-                    updatePendingForPaths(staging, (s) => ({ ...s, notesText: nextNotes }))
+                    updatePendingForPaths(staging, (s) => ({ ...s, notesText: nextNotes, clearNotes: false }))
                   }}
                   onKeyDown={onMetaFieldTabKeyDown(6)}
                 />
                 <div className="meta-notes-header meta-notes-header--keywords">
                   <h3 className="meta-notes-section-title">{t('ui.keywordsLabel')}</h3>
+                </div>
+                <div className="meta-notes-current-row">
+                  <span
+                    className={
+                      keywordsCurrentLine === t('ui.multiple')
+                        ? 'meta-notes-current-row__text meta-current-value-muted'
+                        : 'meta-notes-current-row__text'
+                    }
+                    title={keywordsCurrentLine !== t('ui.multiple') ? keywordsCurrentLine : undefined}
+                  >
+                    {keywordsCurrentLine === t('ui.multiple')
+                      ? t('ui.multiple')
+                      : keywordsCurrentLine.trim()
+                        ? truncateMiddle(keywordsCurrentLine, 120)
+                        : '—'}
+                  </span>
+                  <RemoveFromImageIconButton
+                    disabled={!canRemoveKeywords}
+                    title={removeHint}
+                    aria-label={t('ui.removeFromImageAria', { row: t('ui.keywordsLabel') })}
+                    onClick={() => removeFromImage('Keywords')}
+                  />
                 </div>
                 <textarea
                   ref={bindMetaRef(7)}
@@ -1676,7 +1991,12 @@ export function App(): React.ReactElement {
                   rows={2}
                   value={formPending.keywordsText}
                   onChange={(e) =>
-                    updatePendingForPaths(staging, (s) => ({ ...s, keywordsText: e.target.value }))
+                    updatePendingForPaths(staging, (s) => ({
+                      ...s,
+                      keywordsText: e.target.value,
+                      clearKeywords: false,
+                      clearFilm: false
+                    }))
                   }
                   onKeyDown={onMetaFieldTabKeyDown(7)}
                 />
@@ -1999,6 +2319,7 @@ export function App(): React.ReactElement {
           onSaved={() => void reloadCatalog()}
         />
       )}
+      <TutorialModal open={tutorialOpen} firstRun={tutorialFirstRun} onRequestClose={closeTutorial} />
     </div>
   )
 }
