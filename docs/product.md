@@ -66,6 +66,8 @@ When you quit EXIFmod: if Ollama **was already running** when the app started (t
 
 Use the **Edit** menu (or standard shortcuts such as **⌘C** / **Ctrl+C**, **⌘A** / **Ctrl+A**) to copy or select text in Description, Keywords, and the EXIF preview. On macOS, an Edit menu with standard roles is required for those shortcuts to apply to the web content.
 
+On macOS, **EXIFmod → About EXIFmod** opens the standard About window with the app icon, the same headline as the main window title bar area, release version **1.0.0**, and copyright **(c) 2026 Alon Yaffe, All Rights Reserved.**
+
 ---
 
 ## Manage Presets panel
