@@ -42,6 +42,11 @@ import type { CreatePresetInput, UpdatePresetInput } from '../shared/types.js'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
+/** Shown in the native About panel (macOS EXIFmod → About EXIFmod); increment when shipping releases. */
+const APP_RELEASE_VERSION = '1.0.0'
+
+const APP_COPYRIGHT = '(c) 2026 Alon Yaffe, All Rights Reserved.'
+
 /** Window / taskbar icon: packaged copies `build/icon.png` to Resources; dev uses repo `build/icon.png`. */
 function resolveAppIconPath(): string | undefined {
   if (app.isPackaged) {
@@ -59,6 +64,17 @@ function resolvePreloadScript(): string {
   if (existsSync(mjs)) return mjs
   if (existsSync(js)) return js
   return mjs
+}
+
+/** Native About panel: icon, same headline as the main window (`app.title`), version, copyright. */
+function applyAboutPanelOptions(): void {
+  const iconPath = resolveAppIconPath()
+  app.setAboutPanelOptions({
+    applicationName: i18next.t('app.title'),
+    applicationVersion: APP_RELEASE_VERSION,
+    copyright: APP_COPYRIGHT,
+    ...(iconPath ? { iconPath } : {})
+  })
 }
 
 let mainWindow: BrowserWindow | null = null
@@ -553,6 +569,7 @@ function setupIpc(): void {
 
 app.whenReady().then(async () => {
   await initMainI18n()
+  applyAboutPanelOptions()
   setSqlWasmPath(
     app.isPackaged
       ? join(process.resourcesPath, 'sql-wasm.wasm')
