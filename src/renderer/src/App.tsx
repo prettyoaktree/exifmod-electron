@@ -24,7 +24,12 @@ import {
   imageDescriptionFromMetadata,
   keywordsFieldFromMetadata
 } from './exif/infer.js'
-import { diffWritePayloadFromMetadata } from './exif/payloadDiff.js'
+import {
+  diffToAttributeHighlights,
+  diffWritePayloadFromMetadata,
+  emptyDiffAttributeHighlights,
+  mergeDiffAttributeHighlights
+} from './exif/payloadDiff.js'
 import {
   clampUtf8ByBytes,
   validateExposureTimeForExif,
@@ -144,46 +149,6 @@ function idKeyForCategory(cat: Cat): keyof PendingState {
   return cat === 'Camera' ? 'cameraId' : cat === 'Lens' ? 'lensId' : cat === 'Film' ? 'filmId' : 'authorId'
 }
 
-function notesPendingForState(pend: PendingState): boolean {
-  return pend.notesText.trim() !== pend.notesBaseline.trim() && pend.notesText.trim() !== ''
-}
-
-/** Per staged path(s), which metadata attributes have uncommitted edits (for table row highlights). */
-function aggregatePendingAttributeHighlights(
-  paths: string[],
-  pendingByPath: Record<string, PendingState>,
-  catalog: ConfigCatalog | null
-): Record<Cat, boolean> & { shutter: boolean; aperture: boolean; notes: boolean; keywords: boolean } {
-  const cats: Cat[] = ['Camera', 'Lens', 'Film', 'Author']
-  const out = {
-    Camera: false,
-    Lens: false,
-    Film: false,
-    Author: false,
-    shutter: false,
-    aperture: false,
-    notes: false,
-    keywords: false
-  }
-  for (const path of paths) {
-    const pend = pendingByPath[pathKey(path)]
-    if (!pend) continue
-    const camMeta = cameraMetaForPending(catalog, pend.cameraId)
-    for (const cat of cats) {
-      const id = pend[idKeyForCategory(cat)]
-      if (id != null) out[cat] = true
-    }
-    if (camMeta?.locks_lens) out.Lens = true
-    if (pend.exposureTime.trim() !== '') out.shutter = true
-    if (camMeta?.locks_shutter) out.shutter = true
-    if (pend.fNumberText.trim() !== '') out.aperture = true
-    if (camMeta?.locks_aperture) out.aperture = true
-    if (notesPendingForState(pend)) out.notes = true
-    if (pend.keywordsText.trim() !== pend.keywordsBaseline.trim()) out.keywords = true
-  }
-  return out
-}
-
 /** Values shown in New Value controls: when multiple files are staged, only show a pending value if it is identical on every staged file. */
 function mergePendingStateForNewValueUi(
   paths: string[],
@@ -286,8 +251,10 @@ export function App(): React.ReactElement {
   const [exifPreviewOpen, setExifPreviewOpen] = useState(false)
   const [exifPreviewBody, setExifPreviewBody] = useState('')
   const [exifPreviewLoading, setExifPreviewLoading] = useState(false)
-  /** True when at least one file in the folder has a non-empty merged write payload (matches Write action). */
+  /** True when at least one file would change on write vs last read (matches EXIF preview / Write). */
   const [hasPendingToWrite, setHasPendingToWrite] = useState(false)
+  /** Per pathKey: tags that would change (same diff as preview); drives row highlights and file-list badge. */
+  const [writeDiffByPath, setWriteDiffByPath] = useState<Record<string, Record<string, unknown>>>({})
   const [writeConfirmTodo, setWriteConfirmTodo] = useState<
     { path: string; payload: Record<string, unknown> }[] | null
   >(null)
@@ -501,6 +468,7 @@ export function App(): React.ReactElement {
         setCurrentIndex(list.length ? selectIndex : null)
         setMetadataByPath({})
         setPendingByPath({})
+        setWriteDiffByPath({})
       })()
     })
   }, [])
@@ -517,10 +485,15 @@ export function App(): React.ReactElement {
     [files, selectedIndices, currentIndex]
   )
 
-  const pendingAttributeHighlights = useMemo(
-    () => aggregatePendingAttributeHighlights(stagingPaths, pendingByPath, catalog),
-    [stagingPaths, pendingByPath, catalog]
-  )
+  const pendingAttributeHighlights = useMemo(() => {
+    let acc = emptyDiffAttributeHighlights()
+    for (const path of stagingPaths) {
+      const diff = writeDiffByPath[pathKey(path)]
+      if (!diff || Object.keys(diff).length === 0) continue
+      acc = mergeDiffAttributeHighlights(acc, diffToAttributeHighlights(diff))
+    }
+    return acc
+  }, [stagingPaths, writeDiffByPath])
 
   const formPending = useMemo(
     () => mergePendingStateForNewValueUi(stagingPaths, pendingByPath),
@@ -657,30 +630,39 @@ export function App(): React.ReactElement {
             setExifPreviewBody('')
             setExifPreviewLoading(false)
             setHasPendingToWrite(false)
+            setWriteDiffByPath({})
           }
           return
         }
         setExifPreviewLoading(true)
         const parts: string[] = []
+        const nextDiff: Record<string, Record<string, unknown>> = {}
         let anyWouldChange = false
         for (const path of files) {
           if (cancelled) return
           const st = pendingByPath[pathKey(path)]
           if (!st) continue
+          const pk = pathKey(path)
           const { payload, err } = await buildMergedPayloadForState(st)
           if (cancelled) return
           const previewPayload = withCopyrightAsWrittenToExif(payload)
-          if (err || !previewPayload || Object.keys(previewPayload).length === 0) continue
-          const meta = metadataByPath[pathKey(path)] ?? {}
+          if (err || !previewPayload || Object.keys(previewPayload).length === 0) {
+            nextDiff[pk] = {}
+            continue
+          }
+          const meta = metadataByPath[pk] ?? {}
           const diff = diffWritePayloadFromMetadata(previewPayload, meta)
-          if (Object.keys(diff).length === 0) continue
-          anyWouldChange = true
-          parts.push(`// ${path}\n${JSON.stringify(diff, null, 2)}`)
+          nextDiff[pk] = diff
+          if (Object.keys(diff).length > 0) {
+            anyWouldChange = true
+            parts.push(`// ${path}\n${JSON.stringify(diff, null, 2)}`)
+          }
         }
         if (!cancelled) {
           setExifPreviewBody(parts.join('\n\n'))
           setExifPreviewLoading(false)
           setHasPendingToWrite(anyWouldChange)
+          setWriteDiffByPath(nextDiff)
         }
       })()
     }, 250)
@@ -801,6 +783,7 @@ export function App(): React.ReactElement {
     setCurrentIndex(list.length ? 0 : null)
     setMetadataByPath({})
     setPendingByPath({})
+    setWriteDiffByPath({})
   }
 
   const folderTitle = useMemo(() => {
@@ -1326,17 +1309,8 @@ export function App(): React.ReactElement {
                       const sel = selectedIndices.has(i)
                       const cur = currentIndex === i
                       const pk = pathKey(f)
-                      const pend = pendingByPath[pk]
-                      const hasPend =
-                        pend &&
-                        (pend.cameraId != null ||
-                          pend.lensId != null ||
-                          pend.filmId != null ||
-                          pend.authorId != null ||
-                          pend.exposureTime.trim() !== '' ||
-                          pend.fNumberText.trim() !== '' ||
-                          (pend.notesText.trim() !== pend.notesBaseline.trim() && pend.notesText.trim() !== '') ||
-                          pend.keywordsText.trim() !== pend.keywordsBaseline.trim())
+                      const diffRow = writeDiffByPath[pk]
+                      const hasPend = diffRow != null && Object.keys(diffRow).length > 0
                       return (
                         <li
                           key={f}

@@ -132,3 +132,110 @@ export function writePayloadMatchesFile(
 ): boolean {
   return Object.keys(diffWritePayloadFromMetadata(proposed, fileMetadata)).length === 0
 }
+
+/** Maps to metadata table row highlights (Camera/Lens/Film/Author + shutter/aperture/notes/keywords). */
+export interface DiffAttributeHighlights {
+  Camera: boolean
+  Lens: boolean
+  Film: boolean
+  Author: boolean
+  shutter: boolean
+  aperture: boolean
+  notes: boolean
+  keywords: boolean
+}
+
+export function emptyDiffAttributeHighlights(): DiffAttributeHighlights {
+  return {
+    Camera: false,
+    Lens: false,
+    Film: false,
+    Author: false,
+    shutter: false,
+    aperture: false,
+    notes: false,
+    keywords: false
+  }
+}
+
+export function mergeDiffAttributeHighlights(a: DiffAttributeHighlights, b: DiffAttributeHighlights): DiffAttributeHighlights {
+  return {
+    Camera: a.Camera || b.Camera,
+    Lens: a.Lens || b.Lens,
+    Film: a.Film || b.Film,
+    Author: a.Author || b.Author,
+    shutter: a.shutter || b.shutter,
+    aperture: a.aperture || b.aperture,
+    notes: a.notes || b.notes,
+    keywords: a.keywords || b.keywords
+  }
+}
+
+function localExifTagName(key: string): string {
+  const i = key.lastIndexOf(':')
+  return i >= 0 ? key.slice(i + 1) : key
+}
+
+/**
+ * Which UI rows should show “pending” styling, from a write diff (output of `diffWritePayloadFromMetadata`).
+ * Unknown tag names are ignored so we do not highlight categories when we cannot classify the change.
+ */
+export function diffToAttributeHighlights(diff: Record<string, unknown>): DiffAttributeHighlights {
+  const h = emptyDiffAttributeHighlights()
+  for (const rawKey of Object.keys(diff)) {
+    const k = localExifTagName(rawKey)
+    switch (k) {
+      case 'ExposureTime':
+      case 'ShutterSpeedValue':
+        h.shutter = true
+        break
+      case 'FNumber':
+      case 'ApertureValue':
+        h.aperture = true
+        break
+      case 'ImageDescription':
+        h.notes = true
+        break
+      case 'Keywords':
+        h.keywords = true
+        break
+      case 'ISO':
+      case 'RecommendedExposureIndex':
+      case 'SensitivityType':
+        h.Film = true
+        break
+      case 'Artist':
+      case 'Creator':
+      case 'Author':
+      case 'Copyright':
+        h.Author = true
+        break
+      case 'LensModel':
+      case 'Lens':
+      case 'LensMake':
+      case 'FocalLength':
+      case 'FocalLengthIn35mmFilmFormat':
+      case 'FocalLengthIn35mmFormat':
+      case 'MaxApertureValue':
+      case 'LensSerialNumber':
+        h.Lens = true
+        break
+      case 'Make':
+      case 'Model':
+      case 'BodySerialNumber':
+      case 'SerialNumber':
+      case 'CameraSerialNumber':
+      case 'HostComputer':
+      case 'Software':
+      case 'DateTimeOriginal':
+      case 'CreateDate':
+      case 'ModifyDate':
+      case 'OffsetTimeOriginal':
+        h.Camera = true
+        break
+      default:
+        break
+    }
+  }
+  return h
+}

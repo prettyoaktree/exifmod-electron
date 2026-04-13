@@ -169,6 +169,8 @@ The **Current** column does not read preset IDs; it **infers** display strings f
 
 Lists **only tags that would change** for each file in the open folder: `diffWritePayloadFromMetadata` compares the merged write payload (after Copyright formatting) to the last **`exiftool -j`** read for that path (`metadataByPath`). **Keywords** comparison uses the same `fitKeywordsForExif` normalization as the UI. If no file would change any tag, the preview body is **empty** (the UI shows “—”). **Write pending** only queues files with a non-empty diff.
 
+The file-list **Pending** badge and metadata-table **pending row styling** use the same per-file diff (via `diffToAttributeHighlights` in `src/renderer/src/exif/payloadDiff.ts`), so choosing presets that match what is already on disk does not show as pending.
+
 ---
 
 ## Quick reference: merge order

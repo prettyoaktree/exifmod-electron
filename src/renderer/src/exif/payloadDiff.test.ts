@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { diffWritePayloadFromMetadata, writePayloadMatchesFile } from './payloadDiff.js'
+import {
+  diffToAttributeHighlights,
+  diffWritePayloadFromMetadata,
+  mergeDiffAttributeHighlights,
+  writePayloadMatchesFile
+} from './payloadDiff.js'
 
 describe('diffWritePayloadFromMetadata', () => {
   it('returns empty when Keywords match after fit (order-independent)', () => {
@@ -18,5 +23,24 @@ describe('diffWritePayloadFromMetadata', () => {
     const proposed = { Make: 'Canon', Model: '5D' }
     const meta = { Make: 'Nikon', Model: '5D' }
     expect(diffWritePayloadFromMetadata(proposed, meta)).toEqual({ Make: 'Canon' })
+  })
+})
+
+describe('diffToAttributeHighlights', () => {
+  it('maps EXIF keys to UI rows', () => {
+    expect(diffToAttributeHighlights({ ExposureTime: '1/60', FNumber: 8, LensModel: 'X' })).toEqual(
+      expect.objectContaining({ shutter: true, aperture: true, Lens: true })
+    )
+    expect(diffToAttributeHighlights({ Make: 'Kodak', Model: 'Instamatic' })).toEqual(
+      expect.objectContaining({ Camera: true, Lens: false })
+    )
+  })
+
+  it('merges OR across staged files', () => {
+    const a = diffToAttributeHighlights({ Make: 'X' })
+    const b = diffToAttributeHighlights({ ISO: 400 })
+    expect(mergeDiffAttributeHighlights(a, b)).toEqual(
+      expect.objectContaining({ Camera: true, Film: true })
+    )
   })
 })
