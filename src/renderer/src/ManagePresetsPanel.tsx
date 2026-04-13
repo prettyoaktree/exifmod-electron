@@ -2,6 +2,7 @@ import { useState, type ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ConfigCatalog } from '@shared/types.js'
 import type { Cat } from './categories.js'
+import { filterOptionsByDisplayQuery } from './metadataPresetFilter.js'
 
 const CATS: Cat[] = ['Camera', 'Lens', 'Film', 'Author']
 
@@ -108,6 +109,12 @@ export function ManagePresetsPanel(props: {
   const { catalog, onClose, onAdd, onEdit } = props
   const catLabel = (cat: Cat): string => t(CAT_I18N[cat])
   const [catOpen, setCatOpen] = useState<Record<Cat, boolean>>(collapsedCats)
+  const [filterByCat, setFilterByCat] = useState<Record<Cat, string>>({
+    Camera: '',
+    Lens: '',
+    Film: '',
+    Author: ''
+  })
 
   return (
     <div className="preset-slideout-backdrop" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -145,6 +152,8 @@ export function ManagePresetsPanel(props: {
             const names = valuesForCategory(catalog, cat)
             const map = mapForCategory(catalog, cat)
             const open = catOpen[cat]
+            const filterQ = filterByCat[cat]
+            const filteredNames = filterOptionsByDisplayQuery(names, filterQ, (n) => n)
             return (
               <section key={cat} className="preset-slideout-section">
                 <div className="preset-slideout-cat-row">
@@ -152,7 +161,14 @@ export function ManagePresetsPanel(props: {
                     type="button"
                     className="preset-slideout-cat-toggle"
                     aria-expanded={open}
-                    onClick={() => setCatOpen((o) => ({ ...o, [cat]: !o[cat] }))}
+                    onClick={() =>
+                      setCatOpen((o) => {
+                        if (o[cat]) {
+                          setFilterByCat((f) => ({ ...f, [cat]: '' }))
+                        }
+                        return { ...o, [cat]: !o[cat] }
+                      })
+                    }
                   >
                     <PresetChevron open={open} />
                     <span className="preset-slideout-cat-title">{catLabel(cat)}</span>
@@ -168,26 +184,44 @@ export function ManagePresetsPanel(props: {
                   </button>
                 </div>
                 {open ? (
-                  <ul className="preset-slideout-list">
-                    {names.map((name) => {
-                      const id = map[name]
-                      return (
-                        <li key={name}>
-                          <span className="preset-slideout-name">{name}</span>
-                          <button
-                            type="button"
-                            className="preset-slideout-icon-btn preset-slideout-icon-btn-row"
-                            aria-label={t('ui.edit')}
-                            title={t('ui.edit')}
-                            disabled={id == null}
-                            onClick={() => id != null && onEdit(cat, id)}
-                          >
-                            <IconPencil />
-                          </button>
+                  <>
+                    <div className="preset-slideout-filter-row">
+                      <input
+                        type="search"
+                        className="input preset-slideout-filter"
+                        value={filterQ}
+                        placeholder={t('ui.filterPresetsPlaceholder')}
+                        aria-label={t('ui.filterPresetsAria', { category: catLabel(cat) })}
+                        onChange={(e) => setFilterByCat((f) => ({ ...f, [cat]: e.target.value }))}
+                      />
+                    </div>
+                    <ul className="preset-slideout-list">
+                      {filteredNames.length === 0 ? (
+                        <li className="preset-slideout-list-empty" role="presentation">
+                          {t('ui.presetListNoMatches')}
                         </li>
-                      )
-                    })}
-                  </ul>
+                      ) : (
+                        filteredNames.map((name) => {
+                          const id = map[name]
+                          return (
+                            <li key={name}>
+                              <span className="preset-slideout-name">{name}</span>
+                              <button
+                                type="button"
+                                className="preset-slideout-icon-btn preset-slideout-icon-btn-row"
+                                aria-label={t('ui.edit')}
+                                title={t('ui.edit')}
+                                disabled={id == null}
+                                onClick={() => id != null && onEdit(cat, id)}
+                              >
+                                <IconPencil />
+                              </button>
+                            </li>
+                          )
+                        })
+                      )}
+                    </ul>
+                  </>
                 ) : null}
               </section>
             )

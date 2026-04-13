@@ -47,7 +47,7 @@ You can **create** and **edit** presets from the **Manage Presets** panel. Prese
 For the current selection, the app shows a **metadata mapping** table:
 
 - **Current** — Values inferred from the file’s existing EXIF (where applicable).
-- **Preset** — The preset (or “None” / “Do Not Modify”) applied per category for **pending** edits.
+- **Preset** — The preset (or “None” / “Do Not Modify”) applied per category for **pending** edits. The **New** preset fields are **searchable**: type to filter the list, or open it with the chevron; **Tab** and **Arrow** keys still move between metadata fields when the list is closed.
 - **Shutter and aperture** — Editable when not pinned by the selected **camera** preset. If the camera preset defines a fixed shutter and/or fixed aperture, the **New** column shows those values **read-only** (same idea as a fixed-lens body’s **Lens** row). Otherwise, values are edited here and validated before write (fractions or decimals for shutter; f-numbers for aperture).
 - **Description** — Maps to EXIF **ImageDescription** (UTF‑8 byte limit enforced on write).
 - **Keywords** — Comma- or line-separated tokens merged with preset **Keywords** (film stock markers, deduplication, and total size limits apply).
@@ -65,6 +65,12 @@ When you quit EXIFmod: if Ollama **was already running** when the app started (t
 ### Clipboard and menus
 
 Use the **Edit** menu (or standard shortcuts such as **⌘C** / **Ctrl+C**, **⌘A** / **Ctrl+A**) to copy or select text in Description, Keywords, and the EXIF preview. On macOS, an Edit menu with standard roles is required for those shortcuts to apply to the web content.
+
+---
+
+## Manage Presets panel
+
+The **Manage Presets** slide-out lists presets by category. When a category is expanded, a **filter** field above the list narrows names by substring (independent filter per category). Collapsing a category clears its filter.
 
 ---
 

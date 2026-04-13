@@ -36,6 +36,7 @@ import {
   validateFnumberForExif,
   validateImageDescriptionForExif
 } from './exif/validate.js'
+import { MetadataPresetCombo } from './MetadataPresetCombo.js'
 import { PresetEditorModal } from './PresetEditor.js'
 import { ManagePresetsPanel } from './ManagePresetsPanel.js'
 import type { Cat } from './categories.js'
@@ -1461,29 +1462,23 @@ export function App(): React.ReactElement {
                             inferredRow[cat]
                           )}
                         </td>
-                        <td>
-                          <select
+                        <td className="mapping-col-new-combo-cell">
+                          <MetadataPresetCombo
                             ref={bindMetaRef(idx)}
-                            tabIndex={-1}
-                            className={[
-                              id == null || (cat === 'Lens' && lensFilter.state === 'disabled')
-                                ? 'input input--neutral-value'
-                                : 'input',
-                              pendingAttributeHighlights[cat] ? 'meta-value-pending' : ''
-                            ]
-                              .filter(Boolean)
-                              .join(' ')}
+                            options={options ?? ['None']}
+                            valueInternal={name}
+                            valueDisplay={internalToDisplay(name)}
+                            toDisplay={internalToDisplay}
+                            onPickDisplay={(display) => setCategoryPreset(cat, display)}
                             disabled={!staging.length || !catalog || (cat === 'Lens' && lensFilter.state === 'disabled')}
-                            value={internalToDisplay(name)}
-                            onChange={(e) => setCategoryPreset(cat, e.target.value)}
-                            onKeyDown={onMetaFieldTabKeyDown(idx)}
-                          >
-                            {(options ?? ['None']).map((opt) => (
-                              <option key={opt} value={internalToDisplay(opt)}>
-                                {internalToDisplay(opt)}
-                              </option>
-                            ))}
-                          </select>
+                            neutralValue={
+                              id == null || (cat === 'Lens' && lensFilter.state === 'disabled')
+                            }
+                            pendingHighlight={pendingAttributeHighlights[cat]}
+                            onKeyDownTabChain={onMetaFieldTabKeyDown(idx)}
+                            noMatchesLabel={t('ui.presetListNoMatches')}
+                            ariaLabel={t('ui.presetPickerAria', { category: catLabel(cat) })}
+                          />
                         </td>
                       </tr>
                     )
