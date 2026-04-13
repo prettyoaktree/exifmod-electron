@@ -756,8 +756,10 @@ table.mapping.mapping-desc-kw tbody td {
   vertical-align: top;
 }
 
-table.mapping.mapping-desc-kw tbody td.mapping-col-remove-cell {
-  vertical-align: middle;
+/* Border + padding on textareas sit slightly below the cell edge; nudge checkbox to match. */
+table.mapping.mapping-desc-kw tbody td.mapping-col-remove-cell .meta-remove-checkbox {
+  display: block;
+  margin: 3px auto 0;
 }
 
 .meta-section-commit {
