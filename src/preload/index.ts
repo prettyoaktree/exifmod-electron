@@ -66,6 +66,12 @@ const api = {
     ipcRenderer.on('presets:imported', fn)
     return () => ipcRenderer.removeListener('presets:imported', fn)
   },
+  onTutorialStart: (cb: (payload?: { firstRun?: boolean }) => void) => {
+    const fn = (_e: unknown, payload?: { firstRun?: boolean }): void => cb(payload)
+    ipcRenderer.on('tutorial:start', fn)
+    return () => ipcRenderer.removeListener('tutorial:start', fn)
+  },
+  markTutorialOnboardingSeen: () => ipcRenderer.invoke('app:markTutorialOnboardingSeen') as Promise<void>,
   onStartupPath: (cb: (p: string) => void) => {
     startupPathSubscribers.add(cb)
     const queued = pendingStartupPaths.splice(0, pendingStartupPaths.length)

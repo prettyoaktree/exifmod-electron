@@ -83,6 +83,28 @@ export function formatKeywordsField(keywords: string[]): string {
 /**
  * Stock hint for catalog matching: prefer keyword containing `Film Stock`, else legacy = token after `film`.
  */
+/**
+ * Remove film catalog identity tokens from a keyword list (marker `film`, `… Film Stock`, legacy stock hint).
+ * Used when clearing Film row metadata without removing unrelated keywords.
+ */
+export function stripFilmIdentityFromKeywords(tokens: string[]): string[] {
+  const trimmed = tokens.map((x) => x.trim()).filter(Boolean)
+  if (trimmed.length === 0) return []
+  const hint = filmStockHintFromExifKeywords(trimmed)
+  const stockKw = hint ? filmStockKeywordFromDisplayName(hint) : ''
+  return trimmed.filter((k) => {
+    const kl = k.toLowerCase()
+    if (kl === 'film') return false
+    if (k.includes('Film Stock')) return false
+    if (stockKw && k === stockKw) return false
+    if (hint) {
+      const base = stripFilmStockSuffix(k)
+      if (base.toLowerCase() === hint.toLowerCase()) return false
+    }
+    return true
+  })
+}
+
 export function filmStockHintFromExifKeywords(keywordValues: string[]): string {
   const trimmed = keywordValues.map((k) => k.trim()).filter(Boolean)
   const hasFilm = trimmed.some((k) => k.toLowerCase() === 'film')

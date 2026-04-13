@@ -51,6 +51,7 @@ For the current selection, the app shows a **metadata mapping** table:
 - **Shutter and aperture** — Editable when not pinned by the selected **camera** preset. If the camera preset defines a fixed shutter and/or fixed aperture, the **New** column shows those values **read-only** (same idea as a fixed-lens body’s **Lens** row). Otherwise, values are edited here and validated before write (fractions or decimals for shutter; f-numbers for aperture).
 - **Description** — Maps to EXIF **ImageDescription** (UTF‑8 byte limit enforced on write).
 - **Keywords** — Comma- or line-separated tokens merged with preset **Keywords** (film stock markers, deduplication, and total size limits apply).
+- **Remove from image** — A red **×** control beside each **Current** value (and beside the on-file summary lines for Description and Keywords) marks that value to be **cleared on the file** at the next write (ExifTool empty assignment), without typing a replacement. Hover / focus shows the hint **Remove from image**. An empty **New** field still means **do not change** what is on the file; only this control requests a delete. The **Film** row’s control clears **ISO** and film-identity **Keywords** tokens (marker `film`, `… Film Stock`, legacy stock hint) while leaving unrelated keywords. The control is disabled when there is nothing on disk to remove for that row (or when shutter/aperture are read-only due to a fixed camera preset).
 
 When multiple files are selected, the UI can show **Multiple** where values differ. For **Description** and **Keywords**, if the selected files do not all share the same text, the fields show **placeholders** that explain that typing applies one pending value to every selected file (overwriting differing values), while the **AI** control still **appends** to each file’s description and **merges** keywords (see below). Pending changes can target **all selected files** when you write.
 
@@ -65,6 +66,8 @@ When you quit EXIFmod: if Ollama **was already running** when the app started (t
 ### Clipboard and menus
 
 Use the **Edit** menu (or standard shortcuts such as **⌘C** / **Ctrl+C**, **⌘A** / **Ctrl+A**) to copy or select text in Description, Keywords, and the EXIF preview. On macOS, an Edit menu with standard roles is required for those shortcuts to apply to the web content.
+
+**Help → Tutorial…** opens a short guided walkthrough of the main workflow. The first time you launch the app, that tutorial opens automatically; after you close or finish it, the app remembers not to show it again on startup. Developers can pass **`--simulate-first-run`** on the command line (for example with `npm run dev -- --simulate-first-run`) to open the same automatic tutorial without writing that “seen” flag—useful for testing the first-run experience repeatedly.
 
 On macOS, **EXIFmod → About EXIFmod** opens the standard About window with the app icon, the same headline as the main window title bar area, release version **1.0.0**, and copyright **© 2026 Alon Yaffe, All Rights Reserved.**
 

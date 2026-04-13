@@ -190,6 +190,52 @@ function getDataPaths() {
 
 const LAST_IMAGE_FOLDER_FILE = 'last-image-folder.txt'
 
+/** Written when the user finishes or dismisses the onboarding tutorial (not written when using `--simulate-first-run`). */
+const TUTORIAL_ONBOARDING_SEEN_FILE = 'tutorial-onboarding-seen.txt'
+
+/**
+ * Development / QA: show the first-run tutorial on launch without persisting completion.
+ * Example: `npm run dev -- --simulate-first-run`
+ */
+const SIMULATE_FIRST_RUN = process.argv.includes('--simulate-first-run')
+
+function isTutorialOnboardingSeen(): boolean {
+  try {
+    return existsSync(join(app.getPath('userData'), TUTORIAL_ONBOARDING_SEEN_FILE))
+  } catch {
+    return false
+  }
+}
+
+function markTutorialOnboardingSeenFile(): void {
+  try {
+    writeFileSync(join(app.getPath('userData'), TUTORIAL_ONBOARDING_SEEN_FILE), '1\n', 'utf8')
+  } catch {
+    /* ignore */
+  }
+}
+
+function shouldAutoOpenTutorial(): boolean {
+  return SIMULATE_FIRST_RUN || !isTutorialOnboardingSeen()
+}
+
+function deliverTutorialStart(payload: { firstRun?: boolean } = {}): void {
+  const win = mainWindow
+  if (!win) return
+  const send = (): void => {
+    win.webContents.send('tutorial:start', payload)
+  }
+  const wc = win.webContents
+  if (wc.isLoading()) wc.once('did-finish-load', send)
+  else send()
+}
+
+function scheduleTutorialAutoOpenIfNeeded(): void {
+  const win = mainWindow
+  if (!win || !shouldAutoOpenTutorial()) return
+  deliverTutorialStart({ firstRun: true })
+}
+
 function getLastImageFolderForDialog(): string | undefined {
   try {
     const p = join(app.getPath('userData'), LAST_IMAGE_FOLDER_FILE)
@@ -269,9 +315,20 @@ function createWindow(): void {
         { type: 'separator' },
         { role: 'selectAll' }
       ]
+    },
+    {
+      label: i18next.t('menu.help'),
+      submenu: [
+        {
+          label: i18next.t('menu.tutorial'),
+          click: () => deliverTutorialStart({ firstRun: false })
+        }
+      ]
     }
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+
+  scheduleTutorialAutoOpenIfNeeded()
 }
 
 async function runMergeImport(sourcePath: string, win: BrowserWindow | null | undefined): Promise<void> {
@@ -371,6 +428,10 @@ function setupIpc(): void {
   ipcMain.handle('app:getPaths', () => getDataPaths())
 
   ipcMain.handle('app:getLocale', () => resolveLocaleTag(app.getLocale()))
+
+  ipcMain.handle('app:markTutorialOnboardingSeen', () => {
+    if (!SIMULATE_FIRST_RUN) markTutorialOnboardingSeenFile()
+  })
 
   ipcMain.handle('app:preflight', async () => {
     const paths = getDataPaths()

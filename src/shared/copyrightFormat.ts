@@ -17,8 +17,13 @@ export function formatCopyrightForExif(userCopyright: string): string | null {
 export function withCopyrightAsWrittenToExif(payload: Record<string, unknown> | null): Record<string, unknown> | null {
   if (!payload) return null
   if (!Object.prototype.hasOwnProperty.call(payload, 'Copyright')) return { ...payload }
-  const formatted = formatCopyrightForExif(String(payload['Copyright'] ?? ''))
   const out = { ...payload }
+  const raw = out['Copyright']
+  if (raw === '') {
+    out['Copyright'] = ''
+    return out
+  }
+  const formatted = formatCopyrightForExif(String(raw ?? ''))
   if (formatted === null) delete out['Copyright']
   else out['Copyright'] = formatted
   return out

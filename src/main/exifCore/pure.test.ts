@@ -15,6 +15,10 @@ describe('sanitizeWritePayload', () => {
     expect(sanitizeWritePayload({ Make: 'X', Copyright: '  ' })).toEqual({ Make: 'X' })
   })
 
+  it('preserves empty Copyright for explicit delete on file', () => {
+    expect(sanitizeWritePayload({ Make: 'X', Copyright: '' })).toEqual({ Make: 'X', Copyright: '' })
+  })
+
   it('does not double-prefix Copyright that already has © and year', () => {
     const y = new Date().getFullYear()
     const already = `© ${y} Alon Yaffe. All rights reserved.`
@@ -41,6 +45,11 @@ describe('buildApplyCommand', () => {
     expect(cmd).toContain('-Keywords=b')
     expect(cmd).toContain('-DigitalSourceType=')
     expect(cmd[cmd.length - 1]).toBe('/tmp/a.jpg')
+  })
+
+  it('emits Keywords= when Keywords is an empty array (delete)', () => {
+    const cmd = buildApplyCommand('/bin/exiftool', '/tmp/a.jpg', { Keywords: [] })
+    expect(cmd).toContain('-Keywords=')
   })
 })
 
