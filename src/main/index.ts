@@ -45,7 +45,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 /** Shown in the native About panel (macOS EXIFmod → About EXIFmod); increment when shipping releases. */
 const APP_RELEASE_VERSION = '1.0.0'
 
-const APP_COPYRIGHT = '(c) 2026 Alon Yaffe, All Rights Reserved.'
+const APP_COPYRIGHT = '© 2026 Alon Yaffe, All Rights Reserved.'
 
 /** Window / taskbar icon: packaged copies `build/icon.png` to Resources; dev uses repo `build/icon.png`. */
 function resolveAppIconPath(): string | undefined {
