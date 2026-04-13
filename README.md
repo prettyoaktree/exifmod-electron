@@ -17,6 +17,7 @@ Electron desktop app for editing EXIF metadata using a preset catalog.
 | ------------------------------------------------------------ | ---------------------------------------------------------- |
 | `[docs/product.md](docs/product.md)`                         | Product overview, user-facing features, and workflows      |
 | `[docs/exif-preset-mapping.md](docs/exif-preset-mapping.md)` | EXIF tags, preset merge rules, and implementation pointers |
+| `[docs/macos-signing-distribution.md](docs/macos-signing-distribution.md)` | **macOS:** Developer ID signing and notarization for release DMGs |
 
 
 **Maintenance:** When you implement or change behavior, **keep these docs aligned** with the app—especially `docs/product.md` for anything users see, and `docs/exif-preset-mapping.md` for EXIF/preset semantics.

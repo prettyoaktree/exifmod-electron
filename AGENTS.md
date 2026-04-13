@@ -15,6 +15,7 @@ Optional **Ollama** integration calls a **local** HTTP server (`ollamaDescribeIm
 | [`README.md`](README.md) | Setup, scripts, layout, conventions |
 | [`docs/product.md`](docs/product.md) | User-visible behavior and workflows |
 | [`docs/exif-preset-mapping.md`](docs/exif-preset-mapping.md) | EXIF tags, preset merge order, Film/Keywords, AI behavior |
+| [`docs/macos-signing-distribution.md`](docs/macos-signing-distribution.md) | macOS release signing, notarization, electron-builder (no secrets in repo) |
 
 **Rule:** If you change something users see or EXIF/preset semantics, update **`docs/product.md`** and/or **`docs/exif-preset-mapping.md`** in the same change when appropriate.
 
