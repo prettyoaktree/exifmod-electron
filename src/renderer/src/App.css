@@ -4,18 +4,29 @@
   --border: #e4e4e7;
   --text: #18181b;
   --muted: #71717a;
-  --accent: #2563eb;
+  --accent: #16a34a;
+  --accent-hover: #15803d;
+  /** Matches --accent (#16a34a); used in rgba() for rings and tints. */
+  --accent-rgb: 22, 163, 74;
+  /** Primary actions tied to the file list (e.g. Open Folder), distinct from selection/metadata green. */
+  --file-action-accent: #2563eb;
+  --file-action-accent-hover: #1d4ed8;
+  /** Metadata title row + Preview EXIF strip (green family, ties to selection). */
+  --selection-header-bg: linear-gradient(
+    180deg,
+    rgba(var(--accent-rgb), 0.11) 0%,
+    rgba(var(--accent-rgb), 0.04) 100%
+  );
+  --selection-header-inset: inset 3px 0 0 var(--accent);
   --danger: #b91c1c;
   --pending-badge-bg: #fee2e2;
   --pending-badge-text: #991b1b;
   --pending-control-ring: rgba(220, 38, 38, 0.45);
-  /** Manage Presets slideout + preset modal + main window panel headers (keep in sync). */
+  /** Manage Presets slideout + preset modal + in-pane panel headers (keep in sync). */
   --shaded-panel-header-bg: linear-gradient(180deg, #eef2f7 0%, #e8edf4 100%);
   --shaded-panel-header-inset: inset 0 -1px 0 rgba(24, 24, 27, 0.06);
   --chrome-border: rgba(24, 24, 27, 0.1);
   --chrome-radius: 12px;
-  /** Matches `.app-header` vertical padding + one title line + bottom border (keep in sync). */
-  --app-header-height: calc(0.75rem + 0.75rem + 1.25rem + 1px);
   font-family:
     ui-sans-serif,
     system-ui,
@@ -41,32 +52,12 @@ body {
   height: 100vh;
 }
 
-.app-header {
-  display: flex;
-  align-items: center;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--shaded-panel-header-bg);
-  box-shadow: var(--shaded-panel-header-inset);
-}
-
-.app-header h1 {
-  font-size: 0.95rem;
-  font-weight: 600;
-  line-height: 1.3;
-  margin: 0;
-  letter-spacing: -0.01em;
-  color: var(--text);
-  min-width: 0;
-  text-wrap: balance;
-}
-
 .app-body {
   display: flex;
   flex: 1;
   min-height: 0;
   gap: 0;
-  padding: 0.65rem;
+  padding: 0.35rem;
   background: var(--bg);
 }
 
@@ -168,6 +159,18 @@ button.file-panel-open-folder {
   border-radius: 10px;
 }
 
+button.btn-primary.file-panel-open-folder {
+  background: var(--file-action-accent);
+  border-color: var(--file-action-accent);
+  color: #fff;
+}
+
+button.btn-primary.file-panel-open-folder:hover {
+  background: var(--file-action-accent-hover);
+  border-color: var(--file-action-accent-hover);
+  color: #fff;
+}
+
 .file-panel-folder-row {
   display: flex;
   align-items: center;
@@ -243,7 +246,7 @@ button.btn-sm {
 }
 
 .file-list-row.selected {
-  background: rgba(37, 99, 235, 0.09);
+  background: rgba(var(--accent-rgb), 0.09);
 }
 
 .file-list-row.current {
@@ -275,33 +278,14 @@ button.btn-sm {
   box-shadow: 0 0 0 1px var(--pending-control-ring);
 }
 
-.meta-notes-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
-  /** Same as `.btn-ai-spark` min-height — keeps label→field gap even when row has no button */
-  min-height: 2rem;
-  margin-bottom: 0.25rem;
-}
-
-.meta-notes-header-tools {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 0.4rem 0.5rem;
-  max-width: min(28rem, 100%);
-}
-
-/** Collapsible single-line strip left of the AI button when Ollama is down but the CLI exists. */
+/** Collapsible strip to the left of the AI button when Ollama is down but the CLI exists. */
 .meta-notes-ollama-drawer {
-  flex-shrink: 1;
+  flex: 1 1 auto;
   min-width: 0;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  max-width: min(28rem, 100%);
+  max-width: 100%;
   overflow: hidden;
   transition:
     max-width 0.24s ease,
@@ -349,7 +333,7 @@ button.btn-sm {
 }
 
 .meta-notes-ollama-drawer-link--start:hover {
-  color: #1d4ed8;
+  color: var(--accent-hover);
 }
 
 .meta-notes-ollama-drawer-link--dismiss {
@@ -366,7 +350,7 @@ button.btn-sm {
 
 .meta-notes-ollama-drawer-link:focus-visible {
   border-radius: 3px;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.35);
 }
 
 .meta-notes-ollama-drawer-inline-error {
@@ -398,16 +382,75 @@ button.btn-sm {
 
 .meta-notes-ollama-drawer-expand:hover {
   color: var(--accent);
-  border-color: rgba(37, 99, 235, 0.45);
-  background: rgba(37, 99, 235, 0.06);
+  border-color: rgba(var(--accent-rgb), 0.45);
+  background: rgba(var(--accent-rgb), 0.06);
 }
 
 .meta-notes-ollama-drawer-expand-icon {
   display: block;
 }
 
-/** Same visual as `.meta-section h2` / mapping thead — explicit so Keywords matches Notes. */
-.meta-notes-wrap .meta-notes-section-title {
+/**
+ * Same column tracks as `table.mapping` (attribute | current | new | remove)
+ * so the AI cluster lines up with the Remove column checkboxes.
+ */
+.meta-subsection-head {
+  display: grid;
+  grid-template-columns: 13.5rem minmax(0, 1fr) minmax(0, 1fr) 4.5rem;
+  align-items: center;
+  margin-bottom: 0.35rem;
+  min-height: 2rem;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.meta-subsection-title-cell {
+  grid-column: 1 / 3;
+  padding: 0.5rem 0.35rem 0.5rem 0;
+  min-width: 0;
+}
+
+/**
+ * Spans the “New Value” + “Remove” tracks so the Ollama drawer can use the flexible width.
+ * Inner grid: drawer | 4.5rem (spark aligned with Remove column).
+ */
+.meta-subsection-ai-cell {
+  grid-column: 3 / 5;
+  padding: 0.5rem 0 0.5rem 0.35rem;
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: visible;
+  position: relative;
+  z-index: 2;
+}
+
+.meta-subsection-ai-anchor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4.5rem;
+  column-gap: 0.35rem;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.meta-subsection-ai-drawer-slot {
+  grid-column: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-width: 0;
+}
+
+.meta-subsection-ai-anchor > .btn-ai-spark {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
+  position: relative;
+  z-index: 3;
+}
+
+.meta-subsection-title {
   margin: 0;
   font-size: 0.7rem;
   font-weight: 600;
@@ -415,78 +458,6 @@ button.btn-sm {
   letter-spacing: 0.06em;
   color: var(--muted);
   line-height: 1.3;
-}
-
-.meta-notes-header .meta-notes-section-title {
-  margin-bottom: 0;
-}
-
-/** Same row spacing as Notes title + AI; top gap after Notes field */
-.meta-notes-header--keywords {
-  margin-top: 0.4rem;
-}
-
-.meta-current-with-clear {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
-  justify-content: flex-start;
-  min-width: 0;
-}
-
-.meta-current-with-clear__text {
-  flex: 1;
-  min-width: 0;
-  word-break: break-word;
-}
-
-.btn-meta-remove-icon {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  padding: 0.1rem;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: #dc2626;
-  cursor: pointer;
-  line-height: 0;
-}
-
-.btn-meta-remove-icon__svg {
-  display: block;
-}
-
-.btn-meta-remove-icon:hover:not(:disabled) {
-  color: #991b1b;
-  background: rgba(220, 38, 38, 0.1);
-}
-
-.btn-meta-remove-icon:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.meta-notes-current-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
-  margin-bottom: 0.3rem;
-  font-size: 0.75rem;
-  line-height: 1.35;
-  color: var(--foreground, #18181b);
-}
-
-.meta-notes-current-row__text {
-  flex: 1;
-  min-width: 0;
-  word-break: break-word;
-}
-
-table.mapping td:nth-child(2) {
-  vertical-align: top;
 }
 
 .btn-ai-spark {
@@ -507,23 +478,23 @@ table.mapping td:nth-child(2) {
 
 .btn-ai-spark:hover:not(:disabled) {
   color: var(--accent);
-  border-color: rgba(37, 99, 235, 0.45);
-  background: rgba(37, 99, 235, 0.06);
+  border-color: rgba(var(--accent-rgb), 0.45);
+  background: rgba(var(--accent-rgb), 0.06);
 }
 
-/** Ollama reachable: blue border while idle (may still be disabled until files are selected). */
+/** Ollama reachable: green border while idle (may still be disabled until files are selected). */
 .btn-ai-spark--ollama-ready:not(.btn-ai-spark--loading) {
-  border-color: rgba(37, 99, 235, 0.55);
-  background: rgba(37, 99, 235, 0.05);
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.05);
 }
 
 .btn-ai-spark--ollama-ready:disabled:not(.btn-ai-spark--loading) {
   opacity: 0.88;
-  border-color: rgba(37, 99, 235, 0.45);
+  border-color: rgba(var(--accent-rgb), 0.45);
 }
 
 /**
- * Animated blue border while:
+ * Animated green border while:
  * - initial startup warmup (`checking`), or
  * - after the user chose Start Ollama (`launching`).
  * Not used when Ollama is down and the user has not started it yet (`server_down`).
@@ -532,8 +503,8 @@ table.mapping td:nth-child(2) {
   opacity: 1;
   cursor: wait;
   color: var(--accent);
-  border-color: rgba(37, 99, 235, 0.55);
-  background: rgba(37, 99, 235, 0.07);
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.07);
   animation: btn-ai-spark-launch-ring 1.35s ease-in-out infinite;
 }
 
@@ -545,16 +516,16 @@ table.mapping td:nth-child(2) {
 @keyframes btn-ai-spark-launch-ring {
   0%,
   100% {
-    border-color: rgba(37, 99, 235, 0.38);
+    border-color: rgba(var(--accent-rgb), 0.38);
     box-shadow:
       0 1px 0 rgba(255, 255, 255, 0.9) inset,
-      0 0 0 0 rgba(37, 99, 235, 0.2);
+      0 0 0 0 rgba(var(--accent-rgb), 0.2);
   }
   50% {
-    border-color: rgba(37, 99, 235, 0.85);
+    border-color: rgba(var(--accent-rgb), 0.85);
     box-shadow:
       0 1px 0 rgba(255, 255, 255, 0.9) inset,
-      0 0 0 4px rgba(37, 99, 235, 0.28);
+      0 0 0 4px rgba(var(--accent-rgb), 0.28);
   }
 }
 
@@ -562,8 +533,8 @@ table.mapping td:nth-child(2) {
 .btn-ai-spark--loading:disabled {
   opacity: 1;
   cursor: wait;
-  border-color: rgba(37, 99, 235, 0.4);
-  background: rgba(37, 99, 235, 0.07);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  background: rgba(var(--accent-rgb), 0.07);
   color: var(--accent);
   animation: btn-ai-spark-pulse 1.25s ease-in-out infinite;
 }
@@ -577,12 +548,12 @@ table.mapping td:nth-child(2) {
   100% {
     box-shadow:
       0 1px 0 rgba(255, 255, 255, 0.9) inset,
-      0 0 0 0 rgba(37, 99, 235, 0.25);
+      0 0 0 0 rgba(var(--accent-rgb), 0.25);
   }
   50% {
     box-shadow:
       0 1px 0 rgba(255, 255, 255, 0.9) inset,
-      0 0 0 3px rgba(37, 99, 235, 0.2);
+      0 0 0 3px rgba(var(--accent-rgb), 0.2);
   }
 }
 
@@ -673,9 +644,15 @@ table.mapping td:nth-child(2) {
 .meta-panel > .meta-section:first-child .meta-section-head {
   margin: 0;
   padding: 0.75rem 1rem;
-  background: var(--shaded-panel-header-bg);
-  box-shadow: var(--shaded-panel-header-inset);
+  background: var(--selection-header-bg);
+  box-shadow:
+    var(--selection-header-inset),
+    var(--shaded-panel-header-inset);
   border-bottom: 1px solid var(--border);
+}
+
+.meta-panel > .meta-section:first-child .meta-section-head .panel-pane-title {
+  color: var(--accent);
 }
 
 .meta-panel > .meta-section:first-child > p {
@@ -762,6 +739,27 @@ button.btn-meta-gear:focus-visible {
   line-height: 1.35;
 }
 
+.meta-notes-wrap--tables {
+  margin-top: 0.65rem;
+}
+
+.notes-area.notes-area--in-table {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 3.25rem;
+  margin: 0;
+  resize: vertical;
+}
+
+table.mapping.mapping-desc-kw tbody td {
+  vertical-align: top;
+}
+
+table.mapping.mapping-desc-kw tbody td.mapping-col-remove-cell {
+  vertical-align: middle;
+}
+
 .meta-section-commit {
   flex-shrink: 0;
   display: flex;
@@ -786,9 +784,32 @@ table.mapping col.mapping-col-attribute {
   width: 13.5rem;
 }
 
+table.mapping col.mapping-col-remove {
+  width: 4.5rem;
+}
+
 table.mapping col.mapping-col-current,
 table.mapping col.mapping-col-new {
-  width: calc((100% - 13.5rem) / 2);
+  width: calc((100% - 13.5rem - 4.5rem) / 2);
+}
+
+table.mapping th.mapping-col-remove-head,
+table.mapping td.mapping-col-remove-cell {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.meta-remove-checkbox {
+  width: 1rem;
+  height: 1rem;
+  margin: 0 auto;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.meta-remove-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 table.mapping th,
@@ -881,7 +902,7 @@ table.mapping tbody tr:last-child td {
 .metadata-preset-combo-toggle:focus-visible {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.18);
 }
 
 .metadata-preset-combo-toggle:disabled {
@@ -990,7 +1011,7 @@ table.mapping .input:focus,
 .notes-area:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.18);
 }
 
 .meta-panel .input:disabled,
@@ -1010,7 +1031,7 @@ table.mapping .input:disabled,
 
 .meta-panel .notes-area:read-only:focus {
   border-color: #c4c4c8;
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.22);
 }
 
 .actions-row {
@@ -1043,8 +1064,8 @@ button.btn-primary {
 }
 
 button.btn-primary:hover {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
   color: #fff;
 }
 
@@ -1107,8 +1128,9 @@ pre.preview-json {
 .exif-preview-section {
   flex-shrink: 0;
   outline: none;
-  background: linear-gradient(180deg, #eef2f7 0%, #e4e9f3 100%);
+  background: var(--selection-header-bg);
   box-shadow:
+    var(--selection-header-inset),
     inset 0 1px 0 rgba(255, 255, 255, 0.65),
     inset 0 -1px 0 rgba(24, 24, 27, 0.05);
 }
@@ -1138,7 +1160,7 @@ pre.preview-json {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--muted);
+  color: var(--accent);
   background: transparent;
   border: none;
   padding: 0.25rem 0.35rem;
@@ -1148,7 +1170,7 @@ pre.preview-json {
 }
 
 .exif-preview-toggle:hover {
-  color: var(--accent);
+  color: var(--accent-hover);
   background: rgba(255, 255, 255, 0.5);
 }
 
@@ -1179,7 +1201,7 @@ pre.preview-json {
 
 .preset-slideout-backdrop {
   position: fixed;
-  top: var(--app-header-height);
+  top: 0;
   left: 0;
   right: 0;
   bottom: 0;
@@ -1310,7 +1332,7 @@ button.preset-slideout-close:focus-visible {
 .preset-slideout-filter:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.18);
 }
 
 .preset-slideout-cat-toggle {
@@ -1526,6 +1548,89 @@ button.preset-slideout-close:focus-visible {
   font-size: 0.9rem;
   line-height: 1.5;
   color: var(--text);
+}
+
+/** Inline callouts in tutorial copy (aligned with main-window control colors). */
+.tutorial-ref {
+  font-weight: 600;
+}
+
+.tutorial-ref--blue {
+  color: var(--file-action-accent);
+}
+
+.tutorial-ref--green {
+  color: var(--accent);
+}
+
+.tutorial-ref--red {
+  color: var(--pending-badge-text);
+}
+
+.tutorial-ref--pending-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+  background: var(--pending-badge-bg);
+  color: var(--pending-badge-text);
+  vertical-align: 0.12em;
+}
+
+.tutorial-ref--ai-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: 0 0.12rem;
+  vertical-align: -0.35em;
+  border: 1px solid #d4d4d8;
+  border-radius: 6px;
+  background: #fafafa;
+  color: var(--muted);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+}
+
+.tutorial-ref--ai-chip .tutorial-ai-spark-svg {
+  display: block;
+}
+
+.tutorial-ref--gear-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  margin: 0 0.15rem;
+  vertical-align: -0.38em;
+  border-radius: 6px;
+  color: var(--muted);
+  background: transparent;
+}
+
+.tutorial-ref--gear-wrap:hover {
+  background: rgba(24, 24, 27, 0.06);
+  color: var(--text);
+}
+
+.tutorial-gear-svg {
+  display: block;
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.modal-tutorial .btn-primary.tutorial-modal-btn-primary {
+  background: var(--file-action-accent);
+  border-color: var(--file-action-accent);
+  color: #fff;
+}
+
+.modal-tutorial .btn-primary.tutorial-modal-btn-primary:hover {
+  background: var(--file-action-accent-hover);
+  border-color: var(--file-action-accent-hover);
+  color: #fff;
 }
 
 .modal-confirm-actions.tutorial-actions {

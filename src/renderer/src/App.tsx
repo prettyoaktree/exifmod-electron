@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { anyStagedClear, mergeRemoveTriState, type RemoveTriState } from './metaRemoveTriState.js'
 import { useTranslation } from 'react-i18next'
 import { withCopyrightAsWrittenToExif } from '@shared/copyrightFormat.js'
 import { applyCategoryClears } from '@shared/exifClearTags.js'
@@ -169,6 +170,10 @@ function idKeyForCategory(cat: Cat): keyof PendingState {
   return cat === 'Camera' ? 'cameraId' : cat === 'Lens' ? 'lensId' : cat === 'Film' ? 'filmId' : 'authorId'
 }
 
+function categoryToClearKey(cat: Cat): 'clearCamera' | 'clearLens' | 'clearFilm' | 'clearAuthor' {
+  return cat === 'Camera' ? 'clearCamera' : cat === 'Lens' ? 'clearLens' : cat === 'Film' ? 'clearFilm' : 'clearAuthor'
+}
+
 /** Values shown in New Value controls: when multiple files are staged, only show a pending value if it is identical on every staged file. */
 function mergePendingStateForNewValueUi(
   paths: string[],
@@ -246,32 +251,41 @@ function classifyStagedTextField(
   return 'mixed'
 }
 
-function RemoveFromImageIconButton(props: {
+/** Notes New empty (Do Not Modify): use on-file description for AI room and append base. */
+function effectiveDescriptionForAiRoom(st: PendingState, fileMeta: Record<string, unknown>): string {
+  const t = st.notesText.trim()
+  if (t) return t
+  const fromMeta = imageDescriptionFromMetadata(fileMeta).trim()
+  if (fromMeta) return fromMeta
+  return st.notesBaseline.trim()
+}
+
+function MetaRemoveCheckbox(props: {
+  tri: RemoveTriState
   disabled: boolean
   title: string
   ariaLabel: string
-  onClick: () => void
+  ariaLabelMixed: string
+  onCheckedChange: (checked: boolean) => void
 }): ReactElement {
+  const ref = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.indeterminate = props.tri === 'mixed'
+  }, [props.tri])
   return (
-    <button
-      type="button"
+    <input
+      ref={ref}
+      type="checkbox"
+      className="meta-remove-checkbox"
       tabIndex={-1}
-      className="btn-meta-remove-icon"
+      checked={props.tri === 'allOn'}
       disabled={props.disabled}
       title={props.title}
-      aria-label={props.ariaLabel}
-      onClick={props.onClick}
-    >
-      <svg className="btn-meta-remove-icon__svg" viewBox="0 0 24 24" width="14" height="14" aria-hidden focusable="false">
-        <path
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.25"
-          strokeLinecap="round"
-          d="M6 6l12 12M18 6L6 18"
-        />
-      </svg>
-    </button>
+      aria-label={props.tri === 'mixed' ? props.ariaLabelMixed : props.ariaLabel}
+      onChange={(e) => props.onCheckedChange(e.target.checked)}
+    />
   )
 }
 
@@ -285,6 +299,7 @@ const FILE_LIST_AREA_MAX_PCT = 82
 export function App(): React.ReactElement {
   const { t } = useTranslation()
   const noneDisplay = t('ui.doNotModify')
+  const emptyCurrentDisplay = t('ui.currentValueEmpty')
   const internalToDisplay = (name: string): string => (name === 'None' ? noneDisplay : name)
   const displayToInternal = (text: string): string => (text === noneDisplay ? 'None' : text)
   const catLabel = (cat: Cat): string => t(CAT_I18N[cat])
@@ -577,6 +592,46 @@ export function App(): React.ReactElement {
     [stagingPaths, pendingByPath]
   )
 
+  type ClearKey = keyof Pick<
+    PendingState,
+    | 'clearCamera'
+    | 'clearLens'
+    | 'clearFilm'
+    | 'clearAuthor'
+    | 'clearShutter'
+    | 'clearAperture'
+    | 'clearNotes'
+    | 'clearKeywords'
+  >
+
+  const removeTri = useMemo(
+    () => ({
+      clearCamera: mergeRemoveTriState(stagingPaths, (p) => Boolean((pendingByPath[pathKey(p)] ?? emptyPending()).clearCamera)),
+      clearLens: mergeRemoveTriState(stagingPaths, (p) => Boolean((pendingByPath[pathKey(p)] ?? emptyPending()).clearLens)),
+      clearFilm: mergeRemoveTriState(stagingPaths, (p) => Boolean((pendingByPath[pathKey(p)] ?? emptyPending()).clearFilm)),
+      clearAuthor: mergeRemoveTriState(stagingPaths, (p) => Boolean((pendingByPath[pathKey(p)] ?? emptyPending()).clearAuthor)),
+      clearShutter: mergeRemoveTriState(stagingPaths, (p) => Boolean((pendingByPath[pathKey(p)] ?? emptyPending()).clearShutter)),
+      clearAperture: mergeRemoveTriState(stagingPaths, (p) => Boolean((pendingByPath[pathKey(p)] ?? emptyPending()).clearAperture)),
+      clearNotes: mergeRemoveTriState(stagingPaths, (p) => Boolean((pendingByPath[pathKey(p)] ?? emptyPending()).clearNotes)),
+      clearKeywords: mergeRemoveTriState(stagingPaths, (p) => Boolean((pendingByPath[pathKey(p)] ?? emptyPending()).clearKeywords))
+    }),
+    [stagingPaths, pendingByPath]
+  )
+
+  const anyClearFlags = useMemo(
+    () => ({
+      clearCamera: anyStagedClear(stagingPaths, (p) => Boolean((pendingByPath[pathKey(p)] ?? emptyPending()).clearCamera)),
+      clearLens: anyStagedClear(stagingPaths, (p) => Boolean((pendingByPath[pathKey(p)] ?? emptyPending()).clearLens)),
+      clearFilm: anyStagedClear(stagingPaths, (p) => Boolean((pendingByPath[pathKey(p)] ?? emptyPending()).clearFilm)),
+      clearAuthor: anyStagedClear(stagingPaths, (p) => Boolean((pendingByPath[pathKey(p)] ?? emptyPending()).clearAuthor)),
+      clearShutter: anyStagedClear(stagingPaths, (p) => Boolean((pendingByPath[pathKey(p)] ?? emptyPending()).clearShutter)),
+      clearAperture: anyStagedClear(stagingPaths, (p) => Boolean((pendingByPath[pathKey(p)] ?? emptyPending()).clearAperture)),
+      clearNotes: anyStagedClear(stagingPaths, (p) => Boolean((pendingByPath[pathKey(p)] ?? emptyPending()).clearNotes)),
+      clearKeywords: anyStagedClear(stagingPaths, (p) => Boolean((pendingByPath[pathKey(p)] ?? emptyPending()).clearKeywords))
+    }),
+    [stagingPaths, pendingByPath]
+  )
+
   const stagingKey = stagingPaths.join('\0')
 
   const updatePendingForPaths = useCallback((paths: string[], updater: (p: PendingState) => PendingState) => {
@@ -612,11 +667,9 @@ export function App(): React.ReactElement {
           const k = pathKey(path)
           const row = next[k] ?? emptyPending()
           const md = meta[path]!
-          if (row.notesText === '' && row.notesBaseline === '') {
-            const desc = imageDescriptionFromMetadata(md)
-            const kw = keywordsFieldFromMetadata(md)
-            next[k] = { ...row, notesText: desc, notesBaseline: desc, keywordsText: kw, keywordsBaseline: kw }
-          }
+          const desc = imageDescriptionFromMetadata(md)
+          const kw = keywordsFieldFromMetadata(md)
+          next[k] = { ...row, notesBaseline: desc, keywordsBaseline: kw }
         }
         return next
       })
@@ -673,16 +726,10 @@ export function App(): React.ReactElement {
         }
         if (st.clearNotes) {
           merged = { ...merged, ImageDescription: '' }
-        } else {
-          const notes = st.notesText.trim()
-          const base = st.notesBaseline.trim()
-          if (notes !== base) {
-            if (notes) {
-              const e = validateImageDescriptionForExif(notes)
-              if (e) return { payload: null, err: e }
-              merged = { ...merged, ImageDescription: notes }
-            }
-          }
+        } else if (st.notesText.trim()) {
+          const e = validateImageDescriptionForExif(st.notesText)
+          if (e) return { payload: null, err: e }
+          merged = { ...merged, ImageDescription: st.notesText.trim() }
         }
         if (st.clearFilm) {
           merged = { ...merged, ISO: '' }
@@ -1018,39 +1065,16 @@ export function App(): React.ReactElement {
     updatePendingForPaths(stagingPaths, (s) => ({ ...s, [key]: id, [clearKey]: false }))
   }
 
-  const removeFromImage = useCallback(
-    (
-      row:
-        | 'Camera'
-        | 'Lens'
-        | 'Film'
-        | 'Author'
-        | 'Shutter'
-        | 'Aperture'
-        | 'Notes'
-        | 'Keywords'
-    ) => {
+  const setClearFlag = useCallback(
+    (key: ClearKey, checked: boolean) => {
       updatePendingForPaths(stagingPaths, (s) => {
-        switch (row) {
-          case 'Camera':
-            return { ...s, clearCamera: true }
-          case 'Lens':
-            return { ...s, clearLens: true }
-          case 'Film':
-            return { ...s, clearFilm: true }
-          case 'Author':
-            return { ...s, clearAuthor: true }
-          case 'Shutter':
-            return { ...s, clearShutter: true, exposureTime: '' }
-          case 'Aperture':
-            return { ...s, clearAperture: true, fNumberText: '' }
-          case 'Notes':
-            return { ...s, clearNotes: true, notesText: s.notesBaseline }
-          case 'Keywords':
-            return { ...s, clearKeywords: true, keywordsText: '' }
-          default:
-            return s
-        }
+        const n = { ...s, [key]: checked }
+        if (!checked) return n
+        if (key === 'clearShutter') return { ...n, exposureTime: '' }
+        if (key === 'clearAperture') return { ...n, fNumberText: '' }
+        if (key === 'clearNotes') return { ...n, notesText: '' }
+        if (key === 'clearKeywords') return { ...n, keywordsText: '' }
+        return n
       })
     },
     [stagingPaths, updatePendingForPaths]
@@ -1102,9 +1126,7 @@ export function App(): React.ReactElement {
             const kw = keywordsFieldFromMetadata(md)
             next[pathKey(path)] = {
               ...emptyPending(),
-              notesText: desc,
               notesBaseline: desc,
-              keywordsText: kw,
               keywordsBaseline: kw
             }
           }
@@ -1152,7 +1174,7 @@ export function App(): React.ReactElement {
         const md = metadataByPath[k] ?? {}
         const desc = imageDescriptionFromMetadata(md)
         const kw = keywordsFieldFromMetadata(md)
-        next[k] = { ...emptyPending(), notesText: desc, notesBaseline: desc, keywordsText: kw, keywordsBaseline: kw }
+        next[k] = { ...emptyPending(), notesBaseline: desc, keywordsBaseline: kw }
       }
       return next
     })
@@ -1181,7 +1203,8 @@ export function App(): React.ReactElement {
       updatePendingForPaths([path], (s) => {
         let notesText = s.notesText
         if (r.description.trim()) {
-          notesText = mergeImageDescriptionAppend(s.notesText, r.description)
+          const base = s.notesText.trim() ? s.notesText : s.notesBaseline
+          notesText = mergeImageDescriptionAppend(base, r.description)
         }
         const mergedKw = fitKeywordsForExif(mergeKeywordsDeduped(parseKeywordsField(s.keywordsText), r.keywords))
         return {
@@ -1206,7 +1229,8 @@ export function App(): React.ReactElement {
     }
     const path = stagingPaths[0]!
     const st = pendingByPath[pathKey(path)]
-    const maxDescriptionUtf8Bytes = st ? remainingUtf8BytesForAiDescription(st.notesText) : 0
+    const md = metadataByPath[pathKey(path)] ?? {}
+    const maxDescriptionUtf8Bytes = st ? remainingUtf8BytesForAiDescription(effectiveDescriptionForAiRoom(st, md)) : 0
     if (maxDescriptionUtf8Bytes <= 0) {
       alert(t('ui.aiDescribeNoRoom'))
       return
@@ -1228,7 +1252,7 @@ export function App(): React.ReactElement {
     } finally {
       setAiDescribeBusy(null)
     }
-  }, [stagingPaths, pendingByPath, t, applyOllamaResultToPending, handleOllamaDescribeTransportFailure])
+  }, [stagingPaths, pendingByPath, metadataByPath, t, applyOllamaResultToPending, handleOllamaDescribeTransportFailure])
 
   const runAiDescribeBatch = useCallback(
     async (paths: string[]) => {
@@ -1246,7 +1270,8 @@ export function App(): React.ReactElement {
           const path = paths[i]!
           setAiDescribeBusy({ mode: 'batch', current: i + 1, total })
           const st = pendingByPathRef.current[pathKey(path)]
-          const maxDescriptionUtf8Bytes = st ? remainingUtf8BytesForAiDescription(st.notesText) : 0
+          const md = metadataByPath[pathKey(path)] ?? {}
+          const maxDescriptionUtf8Bytes = st ? remainingUtf8BytesForAiDescription(effectiveDescriptionForAiRoom(st, md)) : 0
           if (maxDescriptionUtf8Bytes <= 0) continue
           const r = await api.ollamaDescribeImage(path, { maxDescriptionUtf8Bytes })
           if (!r.ok) {
@@ -1268,7 +1293,7 @@ export function App(): React.ReactElement {
         setAiBatchErrorsDialog({ failures, total })
       }
     },
-    [t, applyOllamaResultToPending, handleOllamaDescribeTransportFailure]
+    [t, metadataByPath, applyOllamaResultToPending, handleOllamaDescribeTransportFailure]
   )
 
   const onAiButtonClick = useCallback(() => {
@@ -1279,7 +1304,8 @@ export function App(): React.ReactElement {
     }
     const targets = stagingPaths.filter((p) => {
       const st = pendingByPath[pathKey(p)]
-      return st && remainingUtf8BytesForAiDescription(st.notesText) > 0
+      const md = metadataByPath[pathKey(p)] ?? {}
+      return st && remainingUtf8BytesForAiDescription(effectiveDescriptionForAiRoom(st, md)) > 0
     })
     if (!targets.length) {
       alert(t('ui.aiDescribeNoRoom'))
@@ -1290,7 +1316,7 @@ export function App(): React.ReactElement {
       return
     }
     void runAiDescribeSingle()
-  }, [stagingPaths, pendingByPath, t, runAiDescribeSingle])
+  }, [stagingPaths, pendingByPath, metadataByPath, t, runAiDescribeSingle])
 
   const onOllamaInlineStart = useCallback(async () => {
     const api = window.exifmod
@@ -1318,9 +1344,10 @@ export function App(): React.ReactElement {
     () =>
       stagingPaths.some((p) => {
         const st = pendingByPath[pathKey(p)]
-        return st ? remainingUtf8BytesForAiDescription(st.notesText) > 0 : false
+        const md = metadataByPath[pathKey(p)] ?? {}
+        return st ? remainingUtf8BytesForAiDescription(effectiveDescriptionForAiRoom(st, md)) > 0 : false
       }),
-    [stagingPaths, pendingByPath]
+    [stagingPaths, pendingByPath, metadataByPath]
   )
 
   const notesPlaceholderUi = useMemo(() => {
@@ -1395,7 +1422,7 @@ export function App(): React.ReactElement {
     return vals[0] ?? ''
   }, [stagingPaths, metadataByPath, t])
 
-  const removeHint = t('ui.removeFromImage')
+  const removeTitle = t('ui.removeFromImage')
 
   const canRemoveCamera = useMemo(() => {
     if (!staging.length) return false
@@ -1469,9 +1496,6 @@ export function App(): React.ReactElement {
           <strong>{t('ui.warningPrefix')}</strong> {preflight.join(' · ')}
         </div>
       )}
-      <header className="app-header">
-        <h1>{t('app.title')}</h1>
-      </header>
       <div className="app-body" ref={appBodyRef}>
         <div
           className="file-panel"
@@ -1649,12 +1673,14 @@ export function App(): React.ReactElement {
                   <col className="mapping-col-attribute" />
                   <col className="mapping-col-current" />
                   <col className="mapping-col-new" />
+                  <col className="mapping-col-remove" />
                 </colgroup>
                 <thead>
                   <tr>
                     <th>{t('ui.attribute')}</th>
                     <th>{t('ui.currentValue')}</th>
                     <th>{t('ui.newValue')}</th>
+                    <th className="mapping-col-remove-head">{t('ui.removeColumn')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1677,27 +1703,22 @@ export function App(): React.ReactElement {
                           : cat === 'Film'
                             ? catalog?.film_values
                             : catalog?.author_values
+                    const ck = categoryToClearKey(cat)
                     return (
                       <tr key={cat}>
                         <td>{catLabel(cat)}</td>
                         <td>
-                          <div className="meta-current-with-clear">
-                            <span
-                              className={
-                                inferredRow[cat] === 'Multiple'
-                                  ? 'meta-current-value-muted meta-current-with-clear__text'
-                                  : 'meta-current-with-clear__text'
-                              }
-                            >
-                              {inferredRow[cat] === 'Multiple' ? t('ui.multiple') : inferredRow[cat]}
-                            </span>
-                            <RemoveFromImageIconButton
-                              disabled={!canRemoveCategory[cat]}
-                              title={removeHint}
-                              aria-label={t('ui.removeFromImageAria', { row: catLabel(cat) })}
-                              onClick={() => removeFromImage(cat)}
-                            />
-                          </div>
+                          <span
+                            className={
+                              inferredRow[cat] === 'Multiple' || !String(inferredRow[cat] ?? '').trim()
+                                ? 'meta-current-value-muted'
+                                : undefined
+                            }
+                          >
+                            {inferredRow[cat] === 'Multiple'
+                              ? t('ui.multiple')
+                              : String(inferredRow[cat] ?? '').trim() || emptyCurrentDisplay}
+                          </span>
                         </td>
                         <td className="mapping-col-new-combo-cell">
                           <MetadataPresetCombo
@@ -1707,7 +1728,12 @@ export function App(): React.ReactElement {
                             valueDisplay={internalToDisplay(name)}
                             toDisplay={internalToDisplay}
                             onPickDisplay={(display) => setCategoryPreset(cat, display)}
-                            disabled={!staging.length || !catalog || (cat === 'Lens' && lensFilter.state === 'disabled')}
+                            disabled={
+                              !staging.length ||
+                              !catalog ||
+                              (cat === 'Lens' && lensFilter.state === 'disabled') ||
+                              anyClearFlags[ck]
+                            }
                             neutralValue={
                               id == null || (cat === 'Lens' && lensFilter.state === 'disabled')
                             }
@@ -1717,31 +1743,33 @@ export function App(): React.ReactElement {
                             ariaLabel={t('ui.presetPickerAria', { category: catLabel(cat) })}
                           />
                         </td>
+                        <td className="mapping-col-remove-cell">
+                          <MetaRemoveCheckbox
+                            tri={removeTri[ck]}
+                            disabled={!canRemoveCategory[cat] && removeTri[ck] === 'allOff'}
+                            title={removeTitle}
+                            aria-label={t('ui.removeFromImageAria', { row: catLabel(cat) })}
+                            ariaLabelMixed={t('ui.removeMixed')}
+                            onCheckedChange={(c) => setClearFlag(ck, c)}
+                          />
+                        </td>
                       </tr>
                     )
                   })}
                   <tr>
                     <td>{t('ui.shutterSpeed')}</td>
                     <td>
-                      <div className="meta-current-with-clear">
-                        <span
-                          className={
-                            exposureCurrentDisplay === t('ui.multiple')
-                              ? 'meta-current-value-muted meta-current-with-clear__text'
-                              : 'meta-current-with-clear__text'
-                          }
-                        >
-                          {exposureCurrentDisplay === t('ui.multiple')
-                            ? exposureCurrentDisplay
-                            : exposureCurrentDisplay || '—'}
-                        </span>
-                        <RemoveFromImageIconButton
-                          disabled={!canRemoveShutter}
-                          title={removeHint}
-                          aria-label={t('ui.removeFromImageAria', { row: t('ui.shutterSpeed') })}
-                          onClick={() => removeFromImage('Shutter')}
-                        />
-                      </div>
+                      <span
+                        className={
+                          exposureCurrentDisplay === t('ui.multiple') || !exposureCurrentDisplay.trim()
+                            ? 'meta-current-value-muted'
+                            : undefined
+                        }
+                      >
+                        {exposureCurrentDisplay === t('ui.multiple')
+                          ? exposureCurrentDisplay
+                          : exposureCurrentDisplay || emptyCurrentDisplay}
+                      </span>
                     </td>
                     <td>
                       <input
@@ -1755,7 +1783,7 @@ export function App(): React.ReactElement {
                           .filter(Boolean)
                           .join(' ')}
                         placeholder={noneDisplay}
-                        disabled={!staging.length || shutterLocked}
+                        disabled={!staging.length || shutterLocked || anyClearFlags.clearShutter}
                         value={shutterNewDisplay}
                         onChange={(e) =>
                           updatePendingForPaths(staging, (s) => ({
@@ -1767,27 +1795,31 @@ export function App(): React.ReactElement {
                         onKeyDown={onMetaFieldTabKeyDown(4)}
                       />
                     </td>
+                    <td className="mapping-col-remove-cell">
+                      <MetaRemoveCheckbox
+                        tri={removeTri.clearShutter}
+                        disabled={!canRemoveShutter && removeTri.clearShutter === 'allOff'}
+                        title={removeTitle}
+                        aria-label={t('ui.removeFromImageAria', { row: t('ui.shutterSpeed') })}
+                        ariaLabelMixed={t('ui.removeMixed')}
+                        onCheckedChange={(c) => setClearFlag('clearShutter', c)}
+                      />
+                    </td>
                   </tr>
                   <tr>
                     <td>{t('ui.apertureFStop')}</td>
                     <td>
-                      <div className="meta-current-with-clear">
-                        <span
-                          className={
-                            fnCurrentDisplay === t('ui.multiple')
-                              ? 'meta-current-value-muted meta-current-with-clear__text'
-                              : 'meta-current-with-clear__text'
-                          }
-                        >
-                          {fnCurrentDisplay === t('ui.multiple') ? fnCurrentDisplay : fnCurrentDisplay || '—'}
-                        </span>
-                        <RemoveFromImageIconButton
-                          disabled={!canRemoveAperture}
-                          title={removeHint}
-                          aria-label={t('ui.removeFromImageAria', { row: t('ui.apertureFStop') })}
-                          onClick={() => removeFromImage('Aperture')}
-                        />
-                      </div>
+                      <span
+                        className={
+                          fnCurrentDisplay === t('ui.multiple') || !fnCurrentDisplay.trim()
+                            ? 'meta-current-value-muted'
+                            : undefined
+                        }
+                      >
+                        {fnCurrentDisplay === t('ui.multiple')
+                          ? fnCurrentDisplay
+                          : fnCurrentDisplay || emptyCurrentDisplay}
+                      </span>
                     </td>
                     <td>
                       <input
@@ -1801,7 +1833,7 @@ export function App(): React.ReactElement {
                           .filter(Boolean)
                           .join(' ')}
                         placeholder={noneDisplay}
-                        disabled={!staging.length || apertureLocked}
+                        disabled={!staging.length || apertureLocked || anyClearFlags.clearAperture}
                         value={apertureNewDisplay}
                         onChange={(e) =>
                           updatePendingForPaths(staging, (s) => ({
@@ -1813,193 +1845,249 @@ export function App(): React.ReactElement {
                         onKeyDown={onMetaFieldTabKeyDown(5)}
                       />
                     </td>
+                    <td className="mapping-col-remove-cell">
+                      <MetaRemoveCheckbox
+                        tri={removeTri.clearAperture}
+                        disabled={!canRemoveAperture && removeTri.clearAperture === 'allOff'}
+                        title={removeTitle}
+                        aria-label={t('ui.removeFromImageAria', { row: t('ui.apertureFStop') })}
+                        ariaLabelMixed={t('ui.removeMixed')}
+                        onCheckedChange={(c) => setClearFlag('clearAperture', c)}
+                      />
+                    </td>
                   </tr>
                 </tbody>
               </table>
 
-              <div className="meta-notes-wrap">
-                <div className="meta-notes-header">
-                  <h2 className="meta-notes-section-title">{t('ui.notesImageDescription')}</h2>
-                  <div className="meta-notes-header-tools">
-                    {ollamaSession === 'server_down' && (
-                      <div
+              <div className="meta-notes-wrap meta-notes-wrap--tables">
+                <div className="meta-subsection-head">
+                  <div className="meta-subsection-title-cell">
+                    <h2 className="meta-subsection-title">{t('ui.descriptionAndKeywords')}</h2>
+                  </div>
+                  <div className="meta-subsection-ai-cell">
+                    <div className="meta-subsection-ai-anchor">
+                      <div className="meta-subsection-ai-drawer-slot">
+                        {ollamaSession === 'server_down' && (
+                          <div
+                            className={[
+                              'meta-notes-ollama-drawer',
+                              ollamaCtaCollapsed ? 'meta-notes-ollama-drawer--collapsed' : ''
+                            ]
+                              .filter(Boolean)
+                              .join(' ')}
+                            role="region"
+                            aria-label={t('ui.ollamaDrawerRegionLabel')}
+                          >
+                            {!ollamaCtaCollapsed ? (
+                              <p className="meta-notes-ollama-drawer-line">
+                                <span className="meta-notes-ollama-drawer-msg">{t('ui.ollamaInlineHint')}</span>{' '}
+                                <button
+                                  type="button"
+                                  tabIndex={-1}
+                                  className="meta-notes-ollama-drawer-link meta-notes-ollama-drawer-link--start"
+                                  onClick={() => void onOllamaInlineStart()}
+                                >
+                                  {t('ui.ollamaInlineStart')}
+                                </button>{' '}
+                                <button
+                                  type="button"
+                                  tabIndex={-1}
+                                  className="meta-notes-ollama-drawer-link meta-notes-ollama-drawer-link--dismiss"
+                                  onClick={onOllamaInlineDismiss}
+                                >
+                                  {t('dialog.ollamaButtonNotNow')}
+                                </button>
+                                {ollamaStartError ? (
+                                  <span className="meta-notes-ollama-drawer-inline-error" title={ollamaStartError}>
+                                    {' '}
+                                    · {ollamaStartError}
+                                  </span>
+                                ) : null}
+                              </p>
+                            ) : (
+                              <button
+                                type="button"
+                                tabIndex={-1}
+                                className="meta-notes-ollama-drawer-expand"
+                                onClick={() => setOllamaCtaCollapsed(false)}
+                                title={t('ui.ollamaDrawerExpand')}
+                                aria-label={t('ui.ollamaDrawerExpand')}
+                                aria-expanded="false"
+                              >
+                                <svg
+                                  className="meta-notes-ollama-drawer-expand-icon"
+                                  viewBox="0 0 24 24"
+                                  width="18"
+                                  height="18"
+                                  aria-hidden
+                                  focusable="false"
+                                >
+                                  <path
+                                    fill="currentColor"
+                                    d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
+                                  />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        tabIndex={-1}
                         className={[
-                          'meta-notes-ollama-drawer',
-                          ollamaCtaCollapsed ? 'meta-notes-ollama-drawer--collapsed' : ''
+                          'btn-ai-spark',
+                          (ollamaSession === 'checking' || ollamaSession === 'launching') && !aiDescribeBusy
+                            ? 'btn-ai-spark--ollama-launching'
+                            : '',
+                          ollamaSession === 'ready' && !aiDescribeBusy ? 'btn-ai-spark--ollama-ready' : '',
+                          aiDescribeBusy ? 'btn-ai-spark--loading' : ''
                         ]
                           .filter(Boolean)
                           .join(' ')}
-                        role="region"
-                        aria-label={t('ui.ollamaDrawerRegionLabel')}
+                        aria-busy={
+                          !!aiDescribeBusy || ollamaSession === 'checking' || ollamaSession === 'launching'
+                        }
+                        disabled={aiButtonDisabled}
+                        title={aiButtonTitle}
+                        aria-label={aiButtonTitle}
+                        onClick={() => void onAiButtonClick()}
                       >
-                        {!ollamaCtaCollapsed ? (
-                          <p className="meta-notes-ollama-drawer-line">
-                            <span className="meta-notes-ollama-drawer-msg">{t('ui.ollamaInlineHint')}</span>{' '}
-                            <button
-                              type="button"
-                              tabIndex={-1}
-                              className="meta-notes-ollama-drawer-link meta-notes-ollama-drawer-link--start"
-                              onClick={() => void onOllamaInlineStart()}
-                            >
-                              {t('ui.ollamaInlineStart')}
-                            </button>{' '}
-                            <button
-                              type="button"
-                              tabIndex={-1}
-                              className="meta-notes-ollama-drawer-link meta-notes-ollama-drawer-link--dismiss"
-                              onClick={onOllamaInlineDismiss}
-                            >
-                              {t('dialog.ollamaButtonNotNow')}
-                            </button>
-                            {ollamaStartError ? (
-                              <span className="meta-notes-ollama-drawer-inline-error" title={ollamaStartError}>
-                                {' '}
-                                · {ollamaStartError}
-                              </span>
-                            ) : null}
-                          </p>
+                        {aiDescribeBusy ? (
+                          <span className="btn-ai-spark-loading">{aiDescribeBusyLabel}</span>
                         ) : (
-                          <button
-                            type="button"
-                            tabIndex={-1}
-                            className="meta-notes-ollama-drawer-expand"
-                            onClick={() => setOllamaCtaCollapsed(false)}
-                            title={t('ui.ollamaDrawerExpand')}
-                            aria-label={t('ui.ollamaDrawerExpand')}
-                            aria-expanded="false"
-                          >
-                            <svg
-                              className="meta-notes-ollama-drawer-expand-icon"
-                              viewBox="0 0 24 24"
-                              width="18"
-                              height="18"
-                              aria-hidden
-                              focusable="false"
-                            >
-                              <path
-                                fill="currentColor"
-                                d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
-                              />
-                            </svg>
-                          </button>
+                          <svg className="btn-ai-spark-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden focusable="false">
+                            <path
+                              fill="currentColor"
+                              d="M12 2l1.2 4.2L17.4 7.4l-4.2 1.2L12 12.8l-1.2-4.2L6.6 7.4l4.2-1.2L12 2zm7 8l.8 2.8 2.8.8-2.8.8L19 17.4l-.8-2.8-2.8-.8 2.8-.8L19 10zM6 14l.6 2.2 2.2.6-2.2.6L6 19.8l-.6-2.2-2.2-.6 2.2-.6L6 14z"
+                            />
+                          </svg>
                         )}
-                      </div>
-                    )}
-                    <button
-                    type="button"
-                    tabIndex={-1}
-                    className={[
-                      'btn-ai-spark',
-                      (ollamaSession === 'checking' || ollamaSession === 'launching') && !aiDescribeBusy
-                        ? 'btn-ai-spark--ollama-launching'
-                        : '',
-                      ollamaSession === 'ready' && !aiDescribeBusy ? 'btn-ai-spark--ollama-ready' : '',
-                      aiDescribeBusy ? 'btn-ai-spark--loading' : ''
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                    aria-busy={
-                      !!aiDescribeBusy || ollamaSession === 'checking' || ollamaSession === 'launching'
-                    }
-                    disabled={aiButtonDisabled}
-                    title={aiButtonTitle}
-                    aria-label={aiButtonTitle}
-                    onClick={() => void onAiButtonClick()}
-                  >
-                    {aiDescribeBusy ? (
-                      <span className="btn-ai-spark-loading">{aiDescribeBusyLabel}</span>
-                    ) : (
-                      <svg className="btn-ai-spark-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden focusable="false">
-                        <path
-                          fill="currentColor"
-                          d="M12 2l1.2 4.2L17.4 7.4l-4.2 1.2L12 12.8l-1.2-4.2L6.6 7.4l4.2-1.2L12 2zm7 8l.8 2.8 2.8.8-2.8.8L19 17.4l-.8-2.8-2.8-.8 2.8-.8L19 10zM6 14l.6 2.2 2.2.6-2.2.6L6 19.8l-.6-2.2-2.2-.6 2.2-.6L6 14z"
-                        />
-                      </svg>
-                    )}
-                  </button>
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="meta-notes-current-row">
-                  <span
-                    className={
-                      notesCurrentLine === t('ui.multiple')
-                        ? 'meta-notes-current-row__text meta-current-value-muted'
-                        : 'meta-notes-current-row__text'
-                    }
-                    title={notesCurrentLine !== t('ui.multiple') ? notesCurrentLine : undefined}
-                  >
-                    {notesCurrentLine === t('ui.multiple')
-                      ? t('ui.multiple')
-                      : notesCurrentLine.trim()
-                        ? truncateMiddle(notesCurrentLine, 120)
-                        : '—'}
-                  </span>
-                  <RemoveFromImageIconButton
-                    disabled={!canRemoveNotes}
-                    title={removeHint}
-                    aria-label={t('ui.removeFromImageAria', { row: t('ui.notesImageDescription') })}
-                    onClick={() => removeFromImage('Notes')}
-                  />
-                </div>
-                <textarea
-                  ref={bindMetaRef(6)}
-                  tabIndex={-1}
-                  className={['notes-area', pendingAttributeHighlights.notes ? 'meta-value-pending' : ''].filter(Boolean).join(' ')}
-                  readOnly={!staging.length}
-                  rows={3}
-                  placeholder={notesPlaceholderUi}
-                  value={formPending.notesText}
-                  onChange={(e) => {
-                    const nextNotes = clampUtf8ByBytes(e.target.value)
-                    updatePendingForPaths(staging, (s) => ({ ...s, notesText: nextNotes, clearNotes: false }))
-                  }}
-                  onKeyDown={onMetaFieldTabKeyDown(6)}
-                />
-                <div className="meta-notes-header meta-notes-header--keywords">
-                  <h3 className="meta-notes-section-title">{t('ui.keywordsLabel')}</h3>
-                </div>
-                <div className="meta-notes-current-row">
-                  <span
-                    className={
-                      keywordsCurrentLine === t('ui.multiple')
-                        ? 'meta-notes-current-row__text meta-current-value-muted'
-                        : 'meta-notes-current-row__text'
-                    }
-                    title={keywordsCurrentLine !== t('ui.multiple') ? keywordsCurrentLine : undefined}
-                  >
-                    {keywordsCurrentLine === t('ui.multiple')
-                      ? t('ui.multiple')
-                      : keywordsCurrentLine.trim()
-                        ? truncateMiddle(keywordsCurrentLine, 120)
-                        : '—'}
-                  </span>
-                  <RemoveFromImageIconButton
-                    disabled={!canRemoveKeywords}
-                    title={removeHint}
-                    aria-label={t('ui.removeFromImageAria', { row: t('ui.keywordsLabel') })}
-                    onClick={() => removeFromImage('Keywords')}
-                  />
-                </div>
-                <textarea
-                  ref={bindMetaRef(7)}
-                  tabIndex={-1}
-                  className={['notes-area notes-area--keywords', pendingAttributeHighlights.keywords ? 'meta-value-pending' : '']
-                    .filter(Boolean)
-                    .join(' ')}
-                  readOnly={!staging.length}
-                  placeholder={keywordsPlaceholderUi}
-                  rows={2}
-                  value={formPending.keywordsText}
-                  onChange={(e) =>
-                    updatePendingForPaths(staging, (s) => ({
-                      ...s,
-                      keywordsText: e.target.value,
-                      clearKeywords: false,
-                      clearFilm: false
-                    }))
-                  }
-                  onKeyDown={onMetaFieldTabKeyDown(7)}
-                />
+                <table className="mapping mapping-slim mapping-desc-kw">
+                  <colgroup>
+                    <col className="mapping-col-attribute" />
+                    <col className="mapping-col-current" />
+                    <col className="mapping-col-new" />
+                    <col className="mapping-col-remove" />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th>{t('ui.attribute')}</th>
+                      <th>{t('ui.currentValue')}</th>
+                      <th>{t('ui.newValue')}</th>
+                      <th className="mapping-col-remove-head">{t('ui.removeColumn')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>{t('ui.notesImageDescription')}</td>
+                      <td>
+                        <span
+                          className={
+                            notesCurrentLine === t('ui.multiple') || !notesCurrentLine.trim()
+                              ? 'meta-current-value-muted'
+                              : undefined
+                          }
+                          title={notesCurrentLine !== t('ui.multiple') ? notesCurrentLine : undefined}
+                        >
+                          {notesCurrentLine === t('ui.multiple')
+                            ? t('ui.multiple')
+                            : notesCurrentLine.trim()
+                              ? truncateMiddle(notesCurrentLine, 200)
+                              : emptyCurrentDisplay}
+                        </span>
+                      </td>
+                      <td>
+                        <textarea
+                          ref={bindMetaRef(6)}
+                          tabIndex={-1}
+                          className={['notes-area notes-area--in-table', pendingAttributeHighlights.notes ? 'meta-value-pending' : '']
+                            .filter(Boolean)
+                            .join(' ')}
+                          readOnly={!staging.length}
+                          rows={3}
+                          placeholder={notesPlaceholderUi}
+                          value={formPending.notesText}
+                          disabled={!staging.length || anyClearFlags.clearNotes}
+                          onChange={(e) => {
+                            const nextNotes = clampUtf8ByBytes(e.target.value)
+                            updatePendingForPaths(staging, (s) => ({ ...s, notesText: nextNotes, clearNotes: false }))
+                          }}
+                          onKeyDown={onMetaFieldTabKeyDown(6)}
+                        />
+                      </td>
+                      <td className="mapping-col-remove-cell">
+                        <MetaRemoveCheckbox
+                          tri={removeTri.clearNotes}
+                          disabled={!canRemoveNotes && removeTri.clearNotes === 'allOff'}
+                          title={removeTitle}
+                          aria-label={t('ui.removeFromImageAria', { row: t('ui.notesImageDescription') })}
+                          ariaLabelMixed={t('ui.removeMixed')}
+                          onCheckedChange={(c) => setClearFlag('clearNotes', c)}
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>{t('ui.keywordsLabel')}</td>
+                      <td>
+                        <span
+                          className={
+                            keywordsCurrentLine === t('ui.multiple') || !keywordsCurrentLine.trim()
+                              ? 'meta-current-value-muted'
+                              : undefined
+                          }
+                          title={keywordsCurrentLine !== t('ui.multiple') ? keywordsCurrentLine : undefined}
+                        >
+                          {keywordsCurrentLine === t('ui.multiple')
+                            ? t('ui.multiple')
+                            : keywordsCurrentLine.trim()
+                              ? truncateMiddle(keywordsCurrentLine, 200)
+                              : emptyCurrentDisplay}
+                        </span>
+                      </td>
+                      <td>
+                        <textarea
+                          ref={bindMetaRef(7)}
+                          tabIndex={-1}
+                          className={[
+                            'notes-area notes-area--keywords notes-area--in-table',
+                            pendingAttributeHighlights.keywords ? 'meta-value-pending' : ''
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                          readOnly={!staging.length}
+                          placeholder={keywordsPlaceholderUi}
+                          rows={2}
+                          value={formPending.keywordsText}
+                          disabled={!staging.length || anyClearFlags.clearKeywords}
+                          onChange={(e) =>
+                            updatePendingForPaths(staging, (s) => ({
+                              ...s,
+                              keywordsText: e.target.value,
+                              clearKeywords: false,
+                              clearFilm: false
+                            }))
+                          }
+                          onKeyDown={onMetaFieldTabKeyDown(7)}
+                        />
+                      </td>
+                      <td className="mapping-col-remove-cell">
+                        <MetaRemoveCheckbox
+                          tri={removeTri.clearKeywords}
+                          disabled={!canRemoveKeywords && removeTri.clearKeywords === 'allOff'}
+                          title={removeTitle}
+                          aria-label={t('ui.removeFromImageAria', { row: t('ui.keywordsLabel') })}
+                          ariaLabelMixed={t('ui.removeMixed')}
+                          onCheckedChange={(c) => setClearFlag('clearKeywords', c)}
+                        />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -2030,8 +2118,15 @@ export function App(): React.ReactElement {
               {t('ui.previewExifChanges')}
             </button>
             {exifPreviewOpen ? (
-              <pre className="preview-json exif-preview-pre">
-                {exifPreviewLoading ? t('ui.previewExifLoading') : exifPreviewBody || '—'}
+              <pre
+                className={[
+                  'preview-json exif-preview-pre',
+                  !exifPreviewLoading && !exifPreviewBody ? 'meta-current-value-muted' : ''
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              >
+                {exifPreviewLoading ? t('ui.previewExifLoading') : exifPreviewBody || emptyCurrentDisplay}
               </pre>
             ) : null}
           </div>
