@@ -5,6 +5,7 @@ import {
   mergeKeywordsDeduped,
   normalizeFilmPresetPayloadForMerge,
   parseKeywordsField,
+  stripFilmIdentityFromKeywords,
   stripFilmStockSuffix
 } from './filmKeywords.js'
 
@@ -67,5 +68,15 @@ describe('mergeKeywordsDeduped', () => {
 describe('parseKeywordsField', () => {
   it('splits on comma and newline', () => {
     expect(parseKeywordsField('a, b\nc')).toEqual(['a', 'b', 'c'])
+  })
+})
+
+describe('stripFilmIdentityFromKeywords', () => {
+  it('removes film marker and Film Stock token', () => {
+    expect(stripFilmIdentityFromKeywords(['film', 'Kodak Portra 400 Film Stock', 'beach'])).toEqual(['beach'])
+  })
+
+  it('removes legacy stock hint after film', () => {
+    expect(stripFilmIdentityFromKeywords(['film', 'Legacy Stock', 'x'])).toEqual(['x'])
   })
 })
