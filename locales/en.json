@@ -6,8 +6,28 @@
   "menu": {
     "edit": "Edit",
     "file": "File",
+    "help": "Help",
+    "tutorial": "Tutorial…",
     "importPresetDatabase": "Import Preset Database…",
     "exportPresetDatabase": "Export Preset Database…"
+  },
+  "tutorial": {
+    "firstRunLead": "Here is a quick tour of the basics.",
+    "stepOf": "Step {{current}} of {{total}}",
+    "next": "Next",
+    "back": "Back",
+    "done": "Done",
+    "close": "Close",
+    "step1Title": "What EXIFmod does",
+    "step1Body": "EXIFmod helps you apply consistent metadata (camera, lens, film, author, exposure, description, and keywords) across photos using a saved preset catalog, then writes those values into your image files with ExifTool. Edits stay pending until you commit them.",
+    "step2Title": "Open a folder",
+    "step2Body": "Start with {{openFolder}} (or choose a folder another way). The app lists supported images in that folder (JPEG and TIFF). Select one or more files to load their current metadata and preview.",
+    "step3Title": "Presets and fields",
+    "step3Body": "For each category (Camera, Lens, Film, Author), pick a preset or leave values unchanged. Adjust shutter and aperture when allowed, and edit Description and Keywords. If a local Ollama server is available, the AI control can suggest text for the selected file(s).",
+    "step4Title": "Preview and write",
+    "step4Body": "Use {{previewExif}} to see only tags that would change. {{writePending}} saves metadata to files that differ; {{clearPending}} discards uncommitted edits.",
+    "step5Title": "Presets catalog and backup",
+    "step5Body": "Use {{managePresets}} to add or edit presets. From the File menu, {{importDb}} merges presets from another database and {{exportDb}} saves a backup. On launch, the app checks that the preset database and ExifTool are usable."
   },
   "dialog": {
     "sqliteDatabase": "SQLite database",
@@ -108,6 +128,9 @@
     "keywordsLabel": "Keywords",
     "keywordsPlaceholder": "Optional comma-separated keywords.",
     "keywordsPlaceholderMixed": "Selected images have different keywords. Keywords you type here become the same pending keywords for every selected file, replacing their differing values. The AI control merges suggested keywords with each file’s existing keywords.",
+    "removeFromImage": "Remove from image",
+    "removeFromImageTooltip": "Clear this value on the file when you write, without setting a new value.",
+    "removeFromImageAria": "Remove from image: {{row}}",
     "aiBatchConfirmLead": "Generate AI descriptions and keywords for {{count}} file(s)?",
     "aiBatchConfirmDetail": "For each file, AI output is appended to the existing description (within the EXIF byte limit) and suggested keywords are merged with existing keywords. Nothing is removed unless there is no room left for new text. Pending edits are unique per file.",
     "aiBatchGenerate": "Generate",

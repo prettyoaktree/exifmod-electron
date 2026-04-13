@@ -37,7 +37,12 @@ function keywordsFromFileMeta(meta: Record<string, unknown>): string[] {
 
 /** Same effective keywords after fit (merge order can differ from on-disk order). */
 function keywordListsEquivalent(proposed: unknown, meta: Record<string, unknown>): boolean {
-  const p = Array.isArray(proposed) ? proposed.map((x) => String(x)) : []
+  const p =
+    proposed === ''
+      ? []
+      : Array.isArray(proposed)
+        ? proposed.map((x) => String(x))
+        : []
   const fromFile = keywordsFromFileMeta(meta)
   const a = fitKeywordsForExif(p)
   const b = fitKeywordsForExif(fromFile)
@@ -104,6 +109,9 @@ function tagMatches(key: string, proposed: unknown, meta: Record<string, unknown
 
 function fnumberMatches(proposed: unknown, meta: Record<string, unknown>): boolean {
   const raw = fnumberRawFromMetadata(meta)
+  if (proposed === '' || proposed === null || (typeof proposed === 'string' && !proposed.trim())) {
+    return raw == null || String(raw).trim() === ''
+  }
   return numLikeEq(proposed, raw)
 }
 

@@ -43,6 +43,8 @@ export interface ExifmodApi {
   >
   ollamaTryStartServer: () => Promise<{ ok: true } | { ok: false; error: string }>
   onPresetsImported: (cb: () => void) => () => void
+  onTutorialStart: (cb: (payload?: { firstRun?: boolean }) => void) => () => void
+  markTutorialOnboardingSeen: () => Promise<void>
   onStartupPath: (cb: (p: string) => void) => () => void
   onOllamaLaunching: (cb: () => void) => () => void
 }

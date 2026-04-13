@@ -6,8 +6,28 @@
   "menu": {
     "edit": "Édition",
     "file": "Fichier",
+    "help": "Aide",
+    "tutorial": "Tutoriel…",
     "importPresetDatabase": "Importer la base de préréglages…",
     "exportPresetDatabase": "Exporter la base de préréglages…"
+  },
+  "tutorial": {
+    "firstRunLead": "Voici un rapide tour des bases.",
+    "stepOf": "Étape {{current}} sur {{total}}",
+    "next": "Suivant",
+    "back": "Précédent",
+    "done": "Terminé",
+    "close": "Fermer",
+    "step1Title": "À quoi sert EXIFmod",
+    "step1Body": "EXIFmod applique des métadonnées cohérentes (appareil, objectif, film, auteur, exposition, description et mots-clés) à vos photos via un catalogue de préréglages, puis écrit ces valeurs dans les fichiers image avec ExifTool. Les modifications restent en attente jusqu’à validation.",
+    "step2Title": "Ouvrir un dossier",
+    "step2Body": "Commencez par {{openFolder}} (ou choisissez un dossier autrement). L’application liste les images prises en charge (JPEG et TIFF). Sélectionnez un ou plusieurs fichiers pour charger leurs métadonnées et l’aperçu.",
+    "step3Title": "Préréglages et champs",
+    "step3Body": "Pour chaque catégorie (Appareil, Objectif, Film, Auteur), choisissez un préréglage ou laissez les valeurs inchangées. Ajustez l’obturation et l’ouverture lorsque c’est possible, et éditez Description et Mots-clés. Si un serveur Ollama local est disponible, le bouton IA peut proposer du texte pour le ou les fichiers sélectionnés.",
+    "step4Title": "Aperçu et écriture",
+    "step4Body": "Utilisez {{previewExif}} pour voir uniquement les balises qui changeraient. {{writePending}} enregistre les métadonnées sur les fichiers concernés ; {{clearPending}} abandonne les modifications non enregistrées.",
+    "step5Title": "Catalogue et sauvegarde",
+    "step5Body": "Utilisez {{managePresets}} pour ajouter ou modifier des préréglages. Dans le menu Fichier, {{importDb}} fusionne des préréglages depuis une autre base et {{exportDb}} enregistre une sauvegarde. Au lancement, l’application vérifie la base de préréglages et ExifTool."
   },
   "dialog": {
     "sqliteDatabase": "Base SQLite",
@@ -108,6 +128,9 @@
     "keywordsLabel": "Mots-clés",
     "keywordsPlaceholder": "Mots-clés séparés par des virgules (facultatif).",
     "keywordsPlaceholderMixed": "Les images sélectionnées ont des mots-clés différents. Les mots-clés saisis ici deviennent les mêmes mots-clés en attente pour chaque fichier sélectionné, en remplaçant les valeurs divergentes. Le bouton IA fusionne les suggestions avec les mots-clés existants de chaque fichier.",
+    "removeFromImage": "Retirer du fichier",
+    "removeFromImageTooltip": "Effacer cette valeur sur le fichier à l’écriture, sans en définir une nouvelle.",
+    "removeFromImageAria": "Retirer du fichier : {{row}}",
     "aiBatchConfirmLead": "Générer des descriptions et mots-clés IA pour {{count}} fichier(s) ?",
     "aiBatchConfirmDetail": "Pour chaque fichier, la sortie de l’IA est ajoutée à la description existante (dans la limite d’octets EXIF) et les mots-clés suggérés sont fusionnés avec les mots-clés existants. Rien n’est supprimé tant qu’il reste de la place pour du nouveau texte. Les modifications en attente sont propres à chaque fichier.",
     "aiBatchGenerate": "Générer",

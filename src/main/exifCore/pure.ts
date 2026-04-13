@@ -22,9 +22,14 @@ export function stripWriteExcludedFields(payload: Record<string, unknown>): Reco
 export function sanitizeWritePayload(payload: Record<string, unknown>): Record<string, unknown> {
   const out = stripWriteExcludedFields(payload)
   if (Object.prototype.hasOwnProperty.call(out, 'Copyright')) {
-    const formatted = formatCopyrightForExif(String(out['Copyright'] ?? ''))
-    if (formatted === null) delete out['Copyright']
-    else out['Copyright'] = formatted
+    const c = out['Copyright']
+    /** Empty string = explicit delete from file (preserve through formatting). */
+    if (c === '') out['Copyright'] = ''
+    else {
+      const formatted = formatCopyrightForExif(String(c ?? ''))
+      if (formatted === null) delete out['Copyright']
+      else out['Copyright'] = formatted
+    }
   }
   return out
 }
@@ -44,8 +49,12 @@ export function buildApplyCommand(exiftoolPath: string, filePath: string, exifDa
   const cmd = [exiftoolPath, '-overwrite_original', '-charset', 'EXIF=utf8']
   for (const [key, value] of Object.entries(data)) {
     if (Array.isArray(value)) {
-      for (const item of value) {
-        cmd.push(`-${key}=${item}`)
+      if (value.length === 0 && key === 'Keywords') {
+        cmd.push(`-${key}=`)
+      } else {
+        for (const item of value) {
+          cmd.push(`-${key}=${item}`)
+        }
       }
     } else {
       cmd.push(`-${key}=${value}`)
