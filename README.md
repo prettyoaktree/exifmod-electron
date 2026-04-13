@@ -17,7 +17,6 @@ Electron desktop app for editing EXIF metadata using a preset catalog.
 | ------------------------------------------------------------ | ---------------------------------------------------------- |
 | `[docs/product.md](docs/product.md)`                         | Product overview, user-facing features, and workflows      |
 | `[docs/exif-preset-mapping.md](docs/exif-preset-mapping.md)` | EXIF tags, preset merge rules, and implementation pointers |
-| `[docs/macos-signing-distribution.md](docs/macos-signing-distribution.md)` | **macOS:** Developer ID signing and notarization for release DMGs |
 
 
 **Maintenance:** When you implement or change behavior, **keep these docs aligned** with the app—especially `docs/product.md` for anything users see, and `docs/exif-preset-mapping.md` for EXIF/preset semantics.
@@ -47,6 +46,20 @@ From the repository root (after `npm install`):
 ```
 
 This runs **`npm run build`** (typecheck, Vite, **electron-builder**), then copies the packaged **`EXIFmod.app`** from **`release/`** to **`/Applications/EXIFmod.app`** with **`ditto`**, replacing an existing app bundle if present. The script exits with an error on non-macOS hosts.
+
+### macOS: release signing and notarization
+
+Release builds use **electron-builder** with **hardened runtime** and entitlements under `build/`. To produce a **Developer ID**–signed, **notarized** app for distribution outside the Mac App Store:
+
+1. Install a **Developer ID Application** certificate (private key in your login keychain), or set **`CSC_LINK`** to a `.p12`/`.pfx` and **`CSC_KEY_PASSWORD`**. See [electron-builder code signing](https://www.electron.build/code-signing) for details.
+2. For **notarization** via App Store Connect API key, set (do not commit these values or `.p8` files):
+   - **`APPLE_API_KEY`** — absolute path to the downloaded `.p8` key file
+   - **`APPLE_API_KEY_ID`** — Key ID from App Store Connect
+   - **`APPLE_API_ISSUER`** — Issuer ID (UUID) from App Store Connect
+
+If those three variables are unset, **`npm run build`** still completes and **`scripts/afterSign.mjs`** skips notarization (useful for local unsigned or ad-hoc builds). With them set, the app is submitted to Apple’s **notarytool** and stapled after success.
+
+Verify a shipped build with Apple’s tooling (examples): `codesign -dv --verbose=4` on the `.app`, `spctl -a -vv /path/to/EXIFmod.app`, and `stapler validate` as needed.
 
 ## EXIF, presets, and domain behavior
 

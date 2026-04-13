@@ -6,20 +6,19 @@ Concise instructions for AI coding agents and automated assistants working in th
 
 **EXIFmod** is an **Electron** desktop app for editing **EXIF** metadata using a **preset catalog** stored in **SQLite** (via **sql.js**). The main process runs **ExifTool** for read/write. The renderer is **React** (Vite) with **i18next**; strings live in `**locales/`**.
 
-Optional **Ollama** integration calls a **local** HTTP server (`ollamaDescribeImage`, cached startup warmup, uncached `**ollamaCheckAvailability`** after describe transport failures, inline `**ollamaTryStartServer**` when the user starts `**ollama serve**` from the UI); EXIFmod does **not** bundle Ollama.
+Optional **Ollama** integration calls a **local** HTTP server (`ollamaDescribeImage`, cached startup warmup, uncached `**ollamaCheckAvailability`** after describe transport failures, inline `**ollamaTryStartServer`** when the user starts `**ollama serve**` from the UI); EXIFmod does **not** bundle Ollama.
 
 ## Authoritative docs (read before risky changes)
 
 
 | Document                                                                   | Use when                                                                   |
 | -------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `[README.md](README.md)`                                                   | Setup, scripts, layout, conventions                                        |
+| `[README.md](README.md)`                                                   | Setup, scripts, layout, conventions; **macOS release signing** (Developer ID + notarization env vars) |
 | `[docs/product.md](docs/product.md)`                                       | User-visible behavior and workflows                                        |
 | `[docs/exif-preset-mapping.md](docs/exif-preset-mapping.md)`               | EXIF tags, preset merge order, Film/Keywords, AI behavior                  |
-| `[docs/macos-signing-distribution.md](docs/macos-signing-distribution.md)` | macOS release signing, notarization, electron-builder (no secrets in repo) |
 
 
-**Rule:** If you change something users see or EXIF/preset semantics, update `**docs/product.md`** and/or `**docs/exif-preset-mapping.md**` in the same change when appropriate.
+**Rule:** If you change something users see or EXIF/preset semantics, update `**docs/product.md`** and/or `**docs/exif-preset-mapping.md`** in the same change when appropriate.
 
 ## Repository layout
 
@@ -42,7 +41,7 @@ Path aliases: `@shared` → `src/shared`, `@renderer` → `src/renderer/src` (se
 1. **Renderer** must not use Node `fs`, `child_process`, or raw `ipcRenderer`. Use `**window.exifmod`** (preload) for all privileged operations.
 2. **New IPC:** Add handler in `src/main/index.ts`, method on `window.exifmod` in `src/preload/index.ts`, types in `src/renderer/src/vite-env.d.ts` (and `src/shared/types.ts` if needed).
 3. **EXIF limits and merge helpers** belong in `src/shared/` (`exifLimits.ts`, `filmKeywords.ts`); keep main/renderer behavior aligned with those helpers.
-4. **UI copy** goes through `**locales/en.json`** (and `**locales/fr.json**` for French). New locales require registering the base code in `src/shared/i18n/resolveLocale.ts`. Preserve `{{placeholders}}` in translations.
+4. **UI copy** goes through `**locales/en.json`** (and `**locales/fr.json`** for French). New locales require registering the base code in `src/shared/i18n/resolveLocale.ts`. Preserve `{{placeholders}}` in translations.
 
 ## Commands
 
