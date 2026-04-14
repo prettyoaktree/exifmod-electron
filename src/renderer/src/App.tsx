@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { withCopyrightAsWrittenToExif } from '@shared/copyrightFormat.js'
 import { applyCategoryClears } from '@shared/exifClearTags.js'
 import {
+  extractFilmIdentityKeywords,
   formatKeywordsField,
   mergeKeywordsDeduped,
   parseKeywordsField,
@@ -251,13 +252,9 @@ function classifyStagedTextField(
   return 'mixed'
 }
 
-/** Notes New empty (Do Not Modify): use on-file description for AI room and append base. */
-function effectiveDescriptionForAiRoom(st: PendingState, fileMeta: Record<string, unknown>): string {
-  const t = st.notesText.trim()
-  if (t) return t
-  const fromMeta = imageDescriptionFromMetadata(fileMeta).trim()
-  if (fromMeta) return fromMeta
-  return st.notesBaseline.trim()
+/** AI append scope is the pending New Description field only, not on-file Current Description. */
+function effectiveDescriptionForAiRoom(st: PendingState): string {
+  return st.notesText.trim()
 }
 
 function MetaRemoveCheckbox(props: {
@@ -335,6 +332,8 @@ export function App(): React.ReactElement {
     { path: string; payload: Record<string, unknown> }[] | null
   >(null)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
+  const [quitConfirmOpen, setQuitConfirmOpen] = useState(false)
+  const quitConfirmOpenRef = useRef(false)
   const [aiDescribeBusy, setAiDescribeBusy] = useState<AiDescribeBusy>(null)
   const [ollamaSession, setOllamaSession] = useState<OllamaSession>('checking')
   /** Shown next to the inline Start control when `ollamaTryStartServer` fails (user can retry). */
@@ -770,6 +769,39 @@ export function App(): React.ReactElement {
     [t, catalog]
   )
 
+  /** Same “would write change anything?” rule as the Write button / preview (not debounced). */
+  const computeFolderHasPendingWrites = useCallback(async (): Promise<boolean> => {
+    if (!catalog) return false
+    for (const path of files) {
+      const st = pendingByPath[pathKey(path)]
+      if (!st) continue
+      const { payload, err } = await buildMergedPayloadForState(st)
+      if (err || !payload || Object.keys(payload).length === 0) continue
+      const previewPayload = withCopyrightAsWrittenToExif(payload)
+      const meta = metadataByPath[pathKey(path)] ?? {}
+      const diff = diffWritePayloadFromMetadata(previewPayload, meta)
+      if (Object.keys(diff).length > 0) return true
+    }
+    return false
+  }, [catalog, files, pendingByPath, metadataByPath, buildMergedPayloadForState])
+
+  useEffect(() => {
+    const api = window.exifmod
+    if (!api?.onAppCloseRequested || !api.confirmAppClose) return
+    return api.onAppCloseRequested(() => {
+      void (async () => {
+        if (quitConfirmOpenRef.current) return
+        const hasPending = await computeFolderHasPendingWrites()
+        if (!hasPending) {
+          api.confirmAppClose()
+          return
+        }
+        quitConfirmOpenRef.current = true
+        setQuitConfirmOpen(true)
+      })()
+    })
+  }, [computeFolderHasPendingWrites])
+
   useEffect(() => {
     let cancelled = false
     const timer = window.setTimeout(() => {
@@ -1203,10 +1235,12 @@ export function App(): React.ReactElement {
       updatePendingForPaths([path], (s) => {
         let notesText = s.notesText
         if (r.description.trim()) {
-          const base = s.notesText.trim() ? s.notesText : s.notesBaseline
-          notesText = mergeImageDescriptionAppend(base, r.description)
+          notesText = mergeImageDescriptionAppend(s.notesText, r.description)
         }
-        const mergedKw = fitKeywordsForExif(mergeKeywordsDeduped(parseKeywordsField(s.keywordsText), r.keywords))
+        const md = metadataByPath[pathKey(path)] ?? {}
+        const filmKeywordsFromCurrent = extractFilmIdentityKeywords(parseKeywordsField(keywordsFieldFromMetadata(md)))
+        const appendedKw = mergeKeywordsDeduped(parseKeywordsField(s.keywordsText), r.keywords)
+        const mergedKw = fitKeywordsForExif(mergeKeywordsDeduped(filmKeywordsFromCurrent, appendedKw))
         return {
           ...s,
           notesText,
@@ -1217,7 +1251,7 @@ export function App(): React.ReactElement {
         }
       })
     },
-    [updatePendingForPaths]
+    [updatePendingForPaths, metadataByPath]
   )
 
   const runAiDescribeSingle = useCallback(async () => {
@@ -1229,8 +1263,7 @@ export function App(): React.ReactElement {
     }
     const path = stagingPaths[0]!
     const st = pendingByPath[pathKey(path)]
-    const md = metadataByPath[pathKey(path)] ?? {}
-    const maxDescriptionUtf8Bytes = st ? remainingUtf8BytesForAiDescription(effectiveDescriptionForAiRoom(st, md)) : 0
+    const maxDescriptionUtf8Bytes = st ? remainingUtf8BytesForAiDescription(effectiveDescriptionForAiRoom(st)) : 0
     if (maxDescriptionUtf8Bytes <= 0) {
       alert(t('ui.aiDescribeNoRoom'))
       return
@@ -1270,8 +1303,7 @@ export function App(): React.ReactElement {
           const path = paths[i]!
           setAiDescribeBusy({ mode: 'batch', current: i + 1, total })
           const st = pendingByPathRef.current[pathKey(path)]
-          const md = metadataByPath[pathKey(path)] ?? {}
-          const maxDescriptionUtf8Bytes = st ? remainingUtf8BytesForAiDescription(effectiveDescriptionForAiRoom(st, md)) : 0
+          const maxDescriptionUtf8Bytes = st ? remainingUtf8BytesForAiDescription(effectiveDescriptionForAiRoom(st)) : 0
           if (maxDescriptionUtf8Bytes <= 0) continue
           const r = await api.ollamaDescribeImage(path, { maxDescriptionUtf8Bytes })
           if (!r.ok) {
@@ -1305,7 +1337,7 @@ export function App(): React.ReactElement {
     const targets = stagingPaths.filter((p) => {
       const st = pendingByPath[pathKey(p)]
       const md = metadataByPath[pathKey(p)] ?? {}
-      return st && remainingUtf8BytesForAiDescription(effectiveDescriptionForAiRoom(st, md)) > 0
+      return st && remainingUtf8BytesForAiDescription(effectiveDescriptionForAiRoom(st)) > 0
     })
     if (!targets.length) {
       alert(t('ui.aiDescribeNoRoom'))
@@ -1345,7 +1377,7 @@ export function App(): React.ReactElement {
       stagingPaths.some((p) => {
         const st = pendingByPath[pathKey(p)]
         const md = metadataByPath[pathKey(p)] ?? {}
-        return st ? remainingUtf8BytesForAiDescription(effectiveDescriptionForAiRoom(st, md)) > 0 : false
+        return st ? remainingUtf8BytesForAiDescription(effectiveDescriptionForAiRoom(st)) > 0 : false
       }),
     [stagingPaths, pendingByPath, metadataByPath]
   )
@@ -1421,6 +1453,10 @@ export function App(): React.ReactElement {
     if (new Set(vals).size > 1) return t('ui.multiple')
     return vals[0] ?? ''
   }, [stagingPaths, metadataByPath, t])
+  const canCopyNotesCurrent =
+    stagingPaths.length > 0 && notesCurrentLine !== t('ui.multiple') && notesCurrentLine.trim().length > 0
+  const canCopyKeywordsCurrent =
+    stagingPaths.length > 0 && keywordsCurrentLine !== t('ui.multiple') && keywordsCurrentLine.trim().length > 0
 
   const removeTitle = t('ui.removeFromImage')
 
@@ -1971,6 +2007,7 @@ export function App(): React.ReactElement {
                   <colgroup>
                     <col className="mapping-col-attribute" />
                     <col className="mapping-col-current" />
+                    <col className="mapping-col-copy" />
                     <col className="mapping-col-new" />
                     <col className="mapping-col-remove" />
                   </colgroup>
@@ -1978,6 +2015,7 @@ export function App(): React.ReactElement {
                     <tr>
                       <th>{t('ui.attribute')}</th>
                       <th>{t('ui.currentValue')}</th>
+                      <th className="mapping-col-copy-head" aria-label={t('ui.copyColumn')}></th>
                       <th>{t('ui.newValue')}</th>
                       <th className="mapping-col-remove-head">{t('ui.removeColumn')}</th>
                     </tr>
@@ -2000,6 +2038,24 @@ export function App(): React.ReactElement {
                               ? truncateMiddle(notesCurrentLine, 200)
                               : emptyCurrentDisplay}
                         </span>
+                      </td>
+                      <td className="mapping-col-copy-cell">
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          className="btn btn-icon meta-copy-current-btn"
+                          disabled={!canCopyNotesCurrent || anyClearFlags.clearNotes}
+                          title={t('ui.copyCurrentToNew', { row: t('ui.notesImageDescription') })}
+                          aria-label={t('ui.copyCurrentToNew', { row: t('ui.notesImageDescription') })}
+                          onClick={() => {
+                            const nextNotes = clampUtf8ByBytes(notesCurrentLine)
+                            updatePendingForPaths(staging, (s) => ({ ...s, notesText: nextNotes, clearNotes: false }))
+                          }}
+                        >
+                          <span className="meta-copy-current-glyph" aria-hidden>
+                            ⧉
+                          </span>
+                        </button>
                       </td>
                       <td>
                         <textarea
@@ -2048,6 +2104,31 @@ export function App(): React.ReactElement {
                               ? truncateMiddle(keywordsCurrentLine, 200)
                               : emptyCurrentDisplay}
                         </span>
+                      </td>
+                      <td className="mapping-col-copy-cell">
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          className="btn btn-icon meta-copy-current-btn"
+                          disabled={!canCopyKeywordsCurrent || anyClearFlags.clearKeywords}
+                          title={t('ui.copyCurrentToNew', { row: t('ui.keywordsLabel') })}
+                          aria-label={t('ui.copyCurrentToNew', { row: t('ui.keywordsLabel') })}
+                          onClick={() => {
+                            const currentKeywords = parseKeywordsField(keywordsCurrentLine)
+                            const filmKeywords = extractFilmIdentityKeywords(currentKeywords)
+                            const merged = fitKeywordsForExif(mergeKeywordsDeduped(filmKeywords, currentKeywords))
+                            updatePendingForPaths(staging, (s) => ({
+                              ...s,
+                              keywordsText: formatKeywordsField(merged),
+                              clearKeywords: false,
+                              clearFilm: false
+                            }))
+                          }}
+                        >
+                          <span className="meta-copy-current-glyph" aria-hidden>
+                            ⧉
+                          </span>
+                        </button>
                       </td>
                       <td>
                         <textarea
@@ -2259,6 +2340,54 @@ export function App(): React.ReactElement {
                 }}
               >
                 {t('ui.clearPendingChanges')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {quitConfirmOpen ? (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              quitConfirmOpenRef.current = false
+              setQuitConfirmOpen(false)
+            }
+          }}
+        >
+          <div
+            className="modal modal-dialog-confirm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="quit-pending-title"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <h3 id="quit-pending-title" className="modal-confirm-heading">
+              {t('ui.quitPendingLead')}
+            </h3>
+            <p className="modal-confirm-detail">{t('ui.quitPendingDetail')}</p>
+            <div className="modal-confirm-actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  quitConfirmOpenRef.current = false
+                  setQuitConfirmOpen(false)
+                }}
+              >
+                {t('dialog.buttonCancel')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => {
+                  quitConfirmOpenRef.current = false
+                  setQuitConfirmOpen(false)
+                  window.exifmod?.confirmAppClose()
+                }}
+              >
+                {t('ui.quitPendingConfirm')}
               </button>
             </div>
           </div>

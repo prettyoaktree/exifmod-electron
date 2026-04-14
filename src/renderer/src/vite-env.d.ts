@@ -47,6 +47,8 @@ export interface ExifmodApi {
   markTutorialOnboardingSeen: () => Promise<void>
   onStartupPath: (cb: (p: string) => void) => () => void
   onOllamaLaunching: (cb: () => void) => () => void
+  onAppCloseRequested: (cb: () => void) => () => void
+  confirmAppClose: () => void
 }
 
 declare global {
