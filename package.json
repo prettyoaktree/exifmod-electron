@@ -16,6 +16,7 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "tsc -p tsconfig.node.json --noEmit && electron-vite build && electron-builder",
+    "release:github": "tsc -p tsconfig.node.json --noEmit && electron-vite build && electron-builder --publish always",
     "build:vite": "electron-vite build",
     "preview": "electron-vite preview",
     "test": "vitest run",
@@ -23,6 +24,7 @@
     "postinstall": "echo ok"
   },
   "dependencies": {
+    "electron-updater": "^6.8.3",
     "i18next": "^26.0.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -44,7 +46,11 @@
     "vitest": "^2.1.8"
   },
   "build": {
-    "publish": null,
+    "publish": {
+      "provider": "github",
+      "owner": "prettyoaktree",
+      "repo": "exifmod-electron"
+    },
     "appId": "dev.ay.exifmod",
     "productName": "EXIFmod",
     "directories": {
@@ -71,6 +77,12 @@
       "target": [
         {
           "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
           "arch": [
             "universal"
           ]
