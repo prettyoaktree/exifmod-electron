@@ -7,9 +7,24 @@
     "edit": "Édition",
     "file": "Fichier",
     "help": "Aide",
+    "checkForUpdates": "Rechercher des mises à jour…",
     "tutorial": "Tutoriel…",
     "importPresetDatabase": "Importer la base de préréglages…",
     "exportPresetDatabase": "Exporter la base de préréglages…"
+  },
+  "updater": {
+    "updateAvailableTitle": "Mise à jour disponible",
+    "updateAvailableDetail": "EXIFmod {{version}} est disponible. Télécharger la mise à jour maintenant ?",
+    "downloadButton": "Télécharger",
+    "laterButton": "Pas maintenant",
+    "downloadedTitle": "Mise à jour prête",
+    "downloadedDetail": "La mise à jour a été téléchargée. Redémarrez EXIFmod pour l’installer.",
+    "restartButton": "Redémarrer et installer",
+    "upToDateTitle": "EXIFmod est à jour",
+    "upToDateDetail": "Vous utilisez déjà EXIFmod {{version}}.",
+    "checkFailedTitle": "Échec de la recherche de mises à jour",
+    "devOnlyTitle": "Mises à jour",
+    "devOnlyDetail": "Les mises à jour automatiques ne sont disponibles que dans l’application de production signée."
   },
   "tutorial": {
     "firstRunLead": "Voici un rapide tour des bases.",
