@@ -1,0 +1,34 @@
+# Maintainer notes (local only)
+
+Copy this file to **`maintainer.md`** in the repository root. That file is **gitignored** — keep Apple credentials and secret values **out of git**.
+
+## GitHub Actions secrets (`exifmod-electron` repo)
+
+In **Settings → Secrets and variables → Actions**, configure:
+
+| Secret | Purpose |
+| ------ | ------- |
+| `CSC_LINK` | Base64-encoded **Developer ID Application** `.p12` (same format expected by `apple-actions/import-codesign-certs`). |
+| `CSC_KEY_PASSWORD` | Password for the `.p12`. |
+| `APPLE_API_KEY_P8_BASE64` | Base64-encoded contents of the App Store Connect **API key** `.p8` file. |
+| `APPLE_API_KEY_ID` | Key ID from App Store Connect. |
+| `APPLE_API_ISSUER` | Issuer ID (UUID) from App Store Connect. |
+
+The workflow [`.github/workflows/release-macos.yml`](.github/workflows/release-macos.yml) writes the `.p8` to a temp path and exports `APPLE_API_KEY`, `APPLE_API_KEY_ID`, and `APPLE_API_ISSUER` for [`scripts/afterSign.mjs`](scripts/afterSign.mjs).
+
+## Release checklist
+
+1. Land changes on `main` via PR (protected branch).
+2. Bump `version` in `package.json` to match the release you intend to ship.
+3. Push git tag `v<version>` (must match `package.json`, e.g. `v1.0.2` for `1.0.2`).
+4. Confirm the **Release (macOS)** workflow uploaded `EXIFmod-<version>.dmg`, `EXIFmod-<version>.zip`, and `latest-mac.yml` to GitHub Releases.
+
+## Homebrew cask bump
+
+After the app release exists, run (from this repo, with a clean clone of the tap):
+
+```bash
+TAP_DIR=/path/to/homebrew-exifmod ./scripts/publish-homebrew-tap-release.sh
+```
+
+That updates the cask to download the DMG from **this** repo’s releases (not from the tap repo’s releases).

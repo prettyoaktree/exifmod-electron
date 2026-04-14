@@ -13,9 +13,12 @@ Optional **Ollama** integration calls a **local** HTTP server (`ollamaDescribeIm
 
 | Document                                                                   | Use when                                                                   |
 | -------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `[README.md](README.md)`                                                   | Setup, scripts, layout, conventions; **macOS release signing** (Developer ID + notarization env vars) |
+| `[README.md](README.md)`                                                   | User-facing overview, install, dev quickstart, links to deeper docs        |
+| `[docs/architecture.md](docs/architecture.md)`                             | Technical layout, IPC/preload boundaries, packaging/releases pointers      |
 | `[docs/product.md](docs/product.md)`                                       | User-visible behavior and workflows                                        |
 | `[docs/exif-preset-mapping.md](docs/exif-preset-mapping.md)`               | EXIF tags, preset merge order, Film/Keywords, AI behavior                  |
+
+**Maintainer-only (local, not committed):** create `maintainer.md` at the repo root (see `maintainer.md.example`) for Apple signing, notarization, and GitHub Actions secrets — it is listed in `.gitignore` and must never contain committed secrets.
 
 
 **Rule:** If you change something users see or EXIF/preset semantics, update `**docs/product.md`** and/or `**docs/exif-preset-mapping.md`** in the same change when appropriate.
@@ -26,7 +29,7 @@ Optional **Ollama** integration calls a **local** HTTP server (`ollamaDescribeIm
 | Area                 | Role                                                                              |
 | -------------------- | --------------------------------------------------------------------------------- |
 | `install-mac-app`    | macOS: run `npm run build`, copy `release/EXIFmod.app` → `/Applications`          |
-| `homebrew-exifmod/`  | Tap mirror; `scripts/publish-homebrew-tap-release.sh` reads `version` from `package.json`, builds, uploads to [homebrew-exifmod releases](https://github.com/prettyoaktree/homebrew-exifmod/releases), bumps cask PR, prunes older releases |
+| `homebrew-exifmod/`  | Tap mirror; `scripts/publish-homebrew-tap-release.sh` reads `version` from `package.json`, pulls the DMG from [exifmod-electron releases](https://github.com/prettyoaktree/exifmod-electron/releases), bumps the cask PR on the tap repo, optionally prunes older **tap** releases |
 | `src/main/`          | IPC handlers, menus, ExifTool runner, Ollama `fetch`, `previewImage`, DB paths    |
 | `src/main/exifCore/` | Merge/sanitize/write, SQL catalog                                                 |
 | `src/renderer/`      | React UI (`App.tsx`, preset editor, panels)                                       |

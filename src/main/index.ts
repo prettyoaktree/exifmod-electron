@@ -39,11 +39,9 @@ import {
 } from './ollamaLifecycle.js'
 import { readImagePreviewDataUrl } from './previewImage.js'
 import type { CreatePresetInput, UpdatePresetInput } from '../shared/types.js'
+import { manualCheckForUpdates, registerMacAutoUpdates } from './autoUpdate.js'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
-
-/** Shown in the native About panel (macOS EXIFmod → About EXIFmod); increment when shipping releases. */
-const APP_RELEASE_VERSION = '1.0.1'
 
 const APP_COPYRIGHT = '© 2026 Alon Yaffe, All Rights Reserved.'
 
@@ -71,7 +69,7 @@ function applyAboutPanelOptions(): void {
   const iconPath = resolveAppIconPath()
   app.setAboutPanelOptions({
     applicationName: i18next.t('app.title'),
-    applicationVersion: APP_RELEASE_VERSION,
+    applicationVersion: app.getVersion(),
     copyright: APP_COPYRIGHT,
     ...(iconPath ? { iconPath } : {})
   })
@@ -81,6 +79,12 @@ let mainWindow: BrowserWindow | null = null
 
 /** When false, the main window `close` event is prevented until the renderer confirms (pending changes check). */
 let allowMainWindowClose = false
+
+function allowQuitForInstallForUpdate(): void {
+  allowMainWindowClose = true
+}
+
+const autoUpdateOpts = { allowQuitForInstall: allowQuitForInstallForUpdate }
 
 /** macOS: paths queued before BrowserWindow exists (e.g. open-file before ready). */
 const preReadyOpenPaths: string[] = []
@@ -335,7 +339,16 @@ function createWindow(): void {
         {
           label: i18next.t('menu.tutorial'),
           click: () => deliverTutorialStart({ firstRun: false })
-        }
+        },
+        ...(process.platform === 'darwin'
+          ? [
+              { type: 'separator' as const },
+              {
+                label: i18next.t('menu.checkForUpdates'),
+                click: () => void manualCheckForUpdates(autoUpdateOpts)
+              }
+            ]
+          : [])
       ]
     }
   ]
@@ -674,6 +687,9 @@ app.whenReady().then(async () => {
   }
   createWindow()
   processLaunchPathsFromArgvAndPreReady()
+  if (app.isPackaged && process.platform === 'darwin') {
+    registerMacAutoUpdates(autoUpdateOpts)
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

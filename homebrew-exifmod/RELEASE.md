@@ -1,35 +1,42 @@
-# Publishing EXIFmod DMGs from this repository
+# Publishing EXIFmod for Homebrew (cask bump)
 
-Release artifacts are **not** built in CI on the app repo. The publish script builds, signs, and notarizes **locally** (via your normal `npm run build` env), uploads the DMG **here**, then bumps the cask.
+Release **binaries** (DMG, ZIP, auto-update metadata) are built and published from the **[exifmod-electron](https://github.com/prettyoaktree/exifmod-electron)** app repository (GitHub Actions on version tags). The **homebrew-exifmod** tap hosts the **cask definition** only; the cask downloads the DMG from **exifmod-electron** releases.
 
 ## One command (recommended)
 
-From the **EXIFmod app** repository, with a local clone of **this** tap at `TAP_DIR`:
+From the **EXIFmod app** repository, with a local clone of the tap at `TAP_DIR`:
 
 ```bash
 TAP_DIR=/path/to/homebrew-exifmod ./scripts/publish-homebrew-tap-release.sh
 ```
 
-**No `VERSION=`** — the script reads **`version` from `package.json`** and builds `release/EXIFmod-<version>.dmg` accordingly.
+**No `VERSION=`** — the script reads **`version` from `package.json`**.
 
 The script:
 
-1. Runs **`npm run build`** in the app repo **unless** `release/EXIFmod-<version>.dmg` already exists (same version as `package.json`) — then the build/notarize step is skipped. Use **`FORCE_BUILD=1`** to rebuild anyway. **`SKIP_BUILD=1`** always skips the build (DMG must exist).
-2. Creates or updates GitHub Release **`v<version>`** on **prettyoaktree/homebrew-exifmod**
-3. Uploads the DMG as the release asset
-4. Sets the cask **`version`** / **`sha256`** and opens a PR to **`main`**
-5. **Deletes every other GitHub Release** on the tap repo (keeps only the release you just published). Set **`SKIP_HOUSEKEEPING=1`** to skip this step.
+1. Optionally runs **`npm run build`** in the app repo when `release/EXIFmod-<version>.dmg` is missing (unless **`SKIP_BUILD=1`**; use **`FORCE_BUILD=1`** to rebuild anyway).
+2. If the DMG is still missing, **downloads** `EXIFmod-<version>.dmg` from **`prettyoaktree/exifmod-electron`** release **`v<version>`** (the app release must already exist).
+3. Computes **sha256** of that DMG.
+4. Updates **`Casks/exifmod.rb`** in your tap clone (version + sha256 URL already points at the app repo release).
+5. Opens a **PR** to **`main`** on **`prettyoaktree/homebrew-exifmod`**.
 
-Requires **`gh`** authenticated (`gh auth login`) with permission to create/delete releases on the tap repo.
+### Optional env
 
-Optional: **`DMG_PATH`**, **`SKIP_BUILD`**, **`SKIP_HOUSEKEEPING`** — see the script header in `scripts/publish-homebrew-tap-release.sh`.
+| Variable | Meaning |
+| -------- | ------- |
+| `SKIP_BUILD=1` | Never run `npm run build`; require an existing local DMG or a published GitHub release to download from. |
+| `FORCE_BUILD=1` | Always run `npm run build` even if `release/EXIFmod-<version>.dmg` exists. |
+| `SKIP_HOUSEKEEPING=1` | Do **not** delete older GitHub Releases on the **tap** repo after success. |
+| `DMG_PATH` | Override path to the DMG (default `<app-repo>/release/EXIFmod-<version>.dmg`). |
+| `APP_REPO` | Override app org/repo (default `prettyoaktree/exifmod-electron`). |
+| `TAP_REPO` | Override tap org/repo (default `prettyoaktree/homebrew-exifmod`). |
 
-## Manual steps (alternative)
+Requires **`gh`** authenticated (`gh auth login`) with permission to open PRs on the tap repo.
 
-1. Bump **`version`** in the app repo’s `package.json`, then build (`npm run build`).
-2. On [github.com/prettyoaktree/homebrew-exifmod/releases](https://github.com/prettyoaktree/homebrew-exifmod/releases), create release **`v<version>`** and attach **`EXIFmod-<version>.dmg`**.
-3. Update `Casks/exifmod.rb` in a branch (version + sha256) and open a PR, or run the script with **`SKIP_BUILD=1`**.
+## Housekeeping on the tap repo
 
-## Old releases
+By default the script **deletes other releases** on **`prettyoaktree/homebrew-exifmod`** so only the current tap-related release tag remains. This does **not** affect **`exifmod-electron`** releases (those must be retained for auto-updates). Use **`SKIP_HOUSEKEEPING=1`** to keep historical tap releases.
 
-The script **removes older releases** on the tap repo by default so only the current DMG remains. Homebrew users only care about **`Casks/exifmod.rb`** on `main`; deleting old releases is safe for installs and keeps the release list small. Use **`SKIP_HOUSEKEEPING=1`** if you want to keep historical releases.
+## App releases (source of truth)
+
+Tag **`v<version>`** on **`main`** in **exifmod-electron** after bumping **`package.json`** so CI publishes matching artifacts. See **`maintainer.md.example`** in the app repo for signing secrets and operator checklists (copy to local `maintainer.md`).
