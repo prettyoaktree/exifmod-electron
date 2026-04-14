@@ -1,5 +1,6 @@
 import { execFileSync, spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
+import { exiftoolHasSettingsMeansAdobeCrsDevelop } from '../shared/adobeDevelop.js'
 import { EXIFTOOL_CANDIDATES } from './exifCore/constants.js'
 
 export function resolveExiftoolPath(): string | null {
@@ -57,6 +58,51 @@ export function readExifMetadata(exiftoolPath: string, filePath: string): Promis
         } else {
           resolve({})
         }
+      } catch (e) {
+        reject(e)
+      }
+    })
+  })
+}
+
+/**
+ * Single ExifTool invocation: whether each file has `HasSettings` (XMP-crs develop recipe) for LRC warning.
+ * Paths in the result map match ExifTool's `SourceFile` (same strings as passed in).
+ */
+export function probeHasSettingsBatch(
+  exiftoolPath: string,
+  filePaths: string[]
+): Promise<Record<string, boolean>> {
+  if (filePaths.length === 0) return Promise.resolve({})
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    const errChunks: Buffer[] = []
+    const args = ['-charset', 'EXIF=utf8', '-j', '-HasSettings', ...filePaths]
+    const child = spawn(exiftoolPath, args, { stdio: ['ignore', 'pipe', 'pipe'] })
+    child.stdout?.on('data', (d) => chunks.push(d))
+    child.stderr?.on('data', (d) => errChunks.push(d))
+    child.on('error', reject)
+    child.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(Buffer.concat(errChunks).toString('utf8') || `exiftool exited ${code}`))
+        return
+      }
+      try {
+        const text = Buffer.concat(chunks).toString('utf8')
+        const parsed = JSON.parse(text) as unknown
+        const out: Record<string, boolean> = {}
+        if (!Array.isArray(parsed)) {
+          resolve(out)
+          return
+        }
+        for (const row of parsed) {
+          if (typeof row !== 'object' || row === null) continue
+          const o = row as Record<string, unknown>
+          const sf = o['SourceFile']
+          if (typeof sf !== 'string') continue
+          out[sf] = exiftoolHasSettingsMeansAdobeCrsDevelop(o['HasSettings'])
+        }
+        resolve(out)
       } catch (e) {
         reject(e)
       }

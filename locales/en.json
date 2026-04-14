@@ -10,7 +10,8 @@
     "checkForUpdates": "Check for Updates…",
     "tutorial": "Tutorial…",
     "importPresetDatabase": "Import Preset Database…",
-    "exportPresetDatabase": "Export Preset Database…"
+    "exportPresetDatabase": "Export Preset Database…",
+    "installLrPlugin": "Install Lightroom Classic Plugin…"
   },
   "updater": {
     "updateAvailableTitle": "Update available",
@@ -56,7 +57,17 @@
     "buttonCancel": "Cancel",
     "ollamaButtonNotNow": "Not now",
     "ollamaSpawnFailed": "Could not start Ollama. Make sure it is installed.",
-    "ollamaStillUnreachable": "Ollama did not start in time."
+    "ollamaStillUnreachable": "Ollama did not start in time.",
+    "installLrPluginNotMacTitle": "Lightroom plug-in (macOS only)",
+    "installLrPluginNotMacDetail": "Installing the Lightroom Classic plug-in is only supported on macOS.",
+    "installLrPluginMissingTitle": "Plug-in bundle not found",
+    "installLrPluginMissingDetail": "EXIFmod could not find the bundled {{path}}. Try reinstalling EXIFmod, or install the plug-in manually from the application repository (extras/lightroom-classic-exifmod-open).",
+    "installLrPluginDevElectronAppMissing": "EXIFmod could not find the dev Electron.app bundle at:\n{{path}}\n\nRun npm install in your EXIFmod project root, then try Help → Install Lightroom Classic Plugin again.",
+    "installLrPluginSuccessTitle": "Lightroom plug-in installed",
+    "installLrPluginSuccessDetail": "The plug-in was copied to:\n{{path}}\n\nIn Lightroom Classic, use File → Plug-in Manager to enable “EXIFmod Open” if needed, then Library → Plug-in Extras → Open in EXIFmod.",
+    "installLrPluginSuccessDetailDev": "These plug-ins were copied:\n• EXIFmod Open → {{pathRelease}}\n• EXIFmod Open (Dev) → {{pathDev}}\n\nIn Lightroom Classic, use File → Plug-in Manager to enable “EXIFmod Open” and “EXIFmod Open (Dev)” if needed, then Library → Plug-in Extras → Open in EXIFmod (release-style default) or Open in EXIFmod Dev (current dev Electron).",
+    "installLrPluginFailedTitle": "Could not install plug-in",
+    "installLrPluginFailedDetail": "{{message}}"
   },
   "importExport": {
     "importFinished": "Preset import finished",
@@ -193,6 +204,8 @@
     "clearPendingChanges": "Clear Pending Changes",
     "writeConfirmLead": "Write pending metadata to {{count}} file(s)?",
     "writeConfirmDetail": "This will modify the original files.",
+    "writeConfirmLrcDetail": "At least one file has Lightroom / Camera Raw develop metadata embedded in the image (not a sidecar). In Lightroom Classic, use Metadata → Save Metadata to File before editing here if you need the catalog and disk in sync. After writing, avoid Metadata → Read Metadata from File unless you intend to replace catalog metadata from disk.",
+    "writeConfirmLrcSnapshot": "If you plan to use Read Metadata from File after writing here, consider creating a Develop Snapshot in Lightroom Classic first (Develop module → Snapshots → +), so you can restore your develop settings afterward. One recovery flow: snapshot → write in EXIFmod → Read Metadata from File → re-apply the snapshot.",
     "clearConfirmLead": "Discard all uncommitted metadata edits for files in this folder?",
     "clearConfirmDetail": "This cannot be undone.",
     "quitPendingLead": "Quit with uncommitted metadata changes?",

@@ -29,7 +29,7 @@ import {
   setSqlWasmPath,
   isSupportedImagePath
 } from './exifCore/index.js'
-import { spawnExiftool } from './exiftoolRunner.js'
+import { probeHasSettingsBatch, spawnExiftool } from './exiftoolRunner.js'
 import { ollamaDescribeImage } from './ollamaDescribe.js'
 import {
   checkOllamaAvailability,
@@ -38,12 +38,20 @@ import {
   runOllamaStartupFlow
 } from './ollamaLifecycle.js'
 import { readImagePreviewDataUrl } from './previewImage.js'
+import { installLightroomPlugin } from './installLightroomPlugin.js'
 import type { CreatePresetInput, UpdatePresetInput } from '../shared/types.js'
 import { manualCheckForUpdates, registerMacAutoUpdates } from './autoUpdate.js'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 const APP_COPYRIGHT = '© 2026 Alon Yaffe, All Rights Reserved.'
+
+/** Dev: wasm path must not use process.cwd() — `open` can start Electron with cwd `/`, yielding `/node_modules/...`. */
+function resolveDevSqlWasmPath(): string {
+  return join(__dirname, '../../node_modules/sql.js/dist/sql-wasm.wasm')
+}
+
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
 
 /** Window / taskbar icon: packaged copies `build/icon.png` to Resources; dev uses repo `build/icon.png`. */
 function resolveAppIconPath(): string | undefined {
@@ -100,9 +108,16 @@ let suppressOpenFileDuplicateUntil = 0
 
 function collectPositionalArgvPaths(): string[] {
   const slice = process.argv.slice(app.isPackaged ? 1 : 2)
+  return pathsFromArgvSlice(slice)
+}
+
+/** Shared with `second-instance` (same argv shape as `process.argv`). */
+function pathsFromArgvSlice(argvSlice: string[]): string[] {
   const out: string[] = []
-  for (const a of slice) {
+  for (const a of argvSlice) {
     if (!a || a.startsWith('-')) continue
+    // Electron is often invoked as `electron "." <files>`; "." is the app dir, not a document path.
+    if (a === '.' || a === '..') continue
     try {
       out.push(resolvePath(a))
     } catch {
@@ -110,6 +125,79 @@ function collectPositionalArgvPaths(): string[] {
     }
   }
   return out
+}
+
+/**
+ * Lightroom / `open --args <repo> <file>` can pass **two** positional paths (project dir + image).
+ * That must open as one document, not trigger the multi-file warning.
+ */
+function pickLaunchPathFromCandidates(candidates: string[]): string | null {
+  const unique = [...new Set(candidates.map((p) => resolvePath(p)))]
+  if (unique.length === 0) return null
+
+  const imagePaths: string[] = []
+  for (const p of unique) {
+    try {
+      if (existsSync(p) && statSync(p).isFile() && isSupportedImagePath(p)) {
+        imagePaths.push(p)
+      }
+    } catch {
+      /* */
+    }
+  }
+
+  if (imagePaths.length > 1) {
+    showFinderMultiPathDialog()
+    return null
+  }
+  if (imagePaths.length === 1) {
+    return imagePaths[0]!
+  }
+
+  if (unique.length === 1) {
+    return unique[0]!
+  }
+
+  showFinderMultiPathDialog()
+  return null
+}
+
+/**
+ * Second process argv shape differs from a normal `electron-vite dev` launch (extra flags, main script path).
+ * Collect every plausible path after the executable so repo + image are not lost when `slice(2)` is too aggressive.
+ */
+function pathsFromSecondInstanceArgv(commandLine: string[]): string[] {
+  const out: string[] = []
+  for (let i = 1; i < commandLine.length; i++) {
+    const a = commandLine[i]
+    if (!a || a.startsWith('-')) continue
+    if (a === '.' || a === '..') continue
+    // electron-vite / Electron CLI noise — not documents
+    if (/[/\\]out[/\\]main[/\\]index\.(js|mjs)$/i.test(a)) continue
+    if (/[/\\]electron[/\\]cli\.js$/i.test(a)) continue
+    if (/[/\\]node_modules[/\\]\.bin[/\\]electron$/i.test(a)) continue
+    try {
+      out.push(resolvePath(a))
+    } catch {
+      /* */
+    }
+  }
+  return out
+}
+
+function handleSecondInstanceCommandLine(commandLine: string[]): void {
+  const fromArgv = pathsFromSecondInstanceArgv(commandLine)
+  const picked = pickLaunchPathFromCandidates(fromArgv)
+
+  const w = mainWindow
+  if (w && !w.isDestroyed()) {
+    if (w.isMinimized()) w.restore()
+    w.show()
+    w.focus()
+  }
+  if (picked != null) {
+    deliverOpenPathToRenderer(picked)
+  }
 }
 
 function deliverOpenPathToRenderer(absolutePath: string): void {
@@ -166,16 +254,12 @@ function processLaunchPathsFromArgvAndPreReady(): void {
   preReadyOpenPaths.length = 0
 
   const combined = [...new Set([...fromArgv, ...fromPre])]
-  if (combined.length > 1) {
-    showFinderMultiPathDialog()
-    return
-  }
-  if (combined.length === 1) {
-    const p = combined[0]!
-    suppressOpenFileDuplicatePath = resolvePath(p)
-    suppressOpenFileDuplicateUntil = Date.now() + 2000
-    deliverOpenPathToRenderer(p)
-  }
+  const picked = pickLaunchPathFromCandidates(combined)
+  if (picked == null) return
+
+  suppressOpenFileDuplicatePath = resolvePath(picked)
+  suppressOpenFileDuplicateUntil = Date.now() + 2000
+  deliverOpenPathToRenderer(picked)
 }
 
 if (process.platform === 'darwin') {
@@ -342,6 +426,10 @@ function createWindow(): void {
         },
         ...(process.platform === 'darwin'
           ? [
+              {
+                label: i18next.t('menu.installLrPlugin'),
+                click: () => void installLightroomPlugin(mainWindow)
+              },
               { type: 'separator' as const },
               {
                 label: i18next.t('menu.checkForUpdates'),
@@ -512,6 +600,12 @@ function setupIpc(): void {
     return readExifMetadata(tool, filePath)
   })
 
+  ipcMain.handle('exif:probeHasSettings', async (_e, filePaths: string[]) => {
+    const tool = resolveExiftoolPath()
+    if (!tool) throw new Error(i18next.t('ipc.exiftoolNotFound'))
+    return probeHasSettingsBatch(tool, filePaths)
+  })
+
   ipcMain.handle(
     'exif:mergePayloads',
     async (
@@ -664,39 +758,47 @@ function setupIpc(): void {
   })
 }
 
-app.whenReady().then(async () => {
-  await initMainI18n()
-  applyAboutPanelOptions()
-  setSqlWasmPath(
-    app.isPackaged
-      ? join(process.resourcesPath, 'sql-wasm.wasm')
-      : join(process.cwd(), 'node_modules/sql.js/dist/sql-wasm.wasm')
-  )
-  const paths = getDataPaths()
-  mkdirSync(paths.dataDir, { recursive: true })
-  try {
-    await ensureDatabaseInitialized(paths)
-  } catch {
-    /* preflight surfaces issues */
-  }
-  setupIpc()
-  registerOllamaWillQuit()
-  const dockIcon = resolveAppIconPath()
-  if (process.platform === 'darwin' && dockIcon && app.dock) {
-    app.dock.setIcon(dockIcon)
-  }
-  createWindow()
-  processLaunchPathsFromArgvAndPreReady()
-  if (app.isPackaged && process.platform === 'darwin') {
-    registerMacAutoUpdates(autoUpdateOpts)
-  }
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
-    }
+if (!gotSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', (_event, commandLine) => {
+    handleSecondInstanceCommandLine(commandLine)
   })
-})
+
+  app.whenReady().then(async () => {
+    await initMainI18n()
+    applyAboutPanelOptions()
+    setSqlWasmPath(
+      app.isPackaged
+        ? join(process.resourcesPath, 'sql-wasm.wasm')
+        : resolveDevSqlWasmPath()
+    )
+    const paths = getDataPaths()
+    mkdirSync(paths.dataDir, { recursive: true })
+    try {
+      await ensureDatabaseInitialized(paths)
+    } catch {
+      /* preflight surfaces issues */
+    }
+    setupIpc()
+    registerOllamaWillQuit()
+    const dockIcon = resolveAppIconPath()
+    if (process.platform === 'darwin' && dockIcon && app.dock) {
+      app.dock.setIcon(dockIcon)
+    }
+    createWindow()
+    processLaunchPathsFromArgvAndPreReady()
+    if (app.isPackaged && process.platform === 'darwin') {
+      registerMacAutoUpdates(autoUpdateOpts)
+    }
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow()
+      }
+    })
+  })
+}
 
 app.on('window-all-closed', () => {
   // Quit when the main window closes on all platforms (including macOS; default Electron skips quit on darwin).

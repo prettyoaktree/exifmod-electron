@@ -25,6 +25,8 @@ const api = {
   loadCatalog: () =>
     ipcRenderer.invoke('catalog:load') as Promise<{ catalog: ConfigCatalog; loadIssues: string[] }>,
   readMetadata: (filePath: string) => ipcRenderer.invoke('exif:readMetadata', filePath) as Promise<Record<string, unknown>>,
+  probeHasSettings: (filePaths: string[]) =>
+    ipcRenderer.invoke('exif:probeHasSettings', filePaths) as Promise<Record<string, boolean>>,
   mergePayloads: (sel: {
     camera?: number | null
     lens?: number | null

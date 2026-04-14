@@ -94,6 +94,16 @@ On macOS, **Help → Check for Updates…** checks GitHub Releases for a newer *
 
 On macOS, **EXIFmod → About EXIFmod** opens the standard About window with the app icon, the same headline as the main window title bar area, the **version of the build you are running** (from the app bundle), and copyright **© 2026 Alon Yaffe, All Rights Reserved.**
 
+### Lightroom Classic (JPEG and TIFF)
+
+EXIFmod writes metadata **into** each image file; it does **not** create separate `.xmp` sidecars for JPEG or TIFF. Lightroom Classic usually stores **develop (editing) settings** in the same file as embedded XMP **Camera Raw** data, not next to the file.
+
+Before you write from EXIFmod, if you rely on Lightroom’s catalog matching what is on disk, use **Metadata → Save Metadata to File** in Lightroom Classic so the file contains the latest develop recipe and descriptive metadata. After EXIFmod has written tags, use **Metadata → Read Metadata from File** only when you intentionally want Lightroom to **reload metadata from the file** into the catalog—doing so can overwrite or clash with catalog-only state you expected.
+
+When your pending write includes at least one file that still has Camera Raw develop metadata (`HasSettings` in ExifTool terms), the write confirmation dialog adds a short reminder with this guidance, including a recommendation to create a **Develop Snapshot** in Lightroom Classic first if you expect to use **Read Metadata from File** afterward (so you can re-apply develop settings from a snapshot if needed).
+
+On macOS, **Help → Install Lightroom Classic Plugin…** copies the bundled **EXIFmod Open** Lightroom plug-in into Adobe’s **Modules** folder (replacing any previous copy so you can upgrade). From an **unpacked dev build** (`npm run dev`), the same command also installs a second plug-in, **EXIFmod Open (Dev)**, which uses Lightroom’s **`LrShell.openPathsViaCommandLine`** to run **`/usr/bin/open -n -a <node_modules/electron/dist/Electron.app> --args <absolute-repo-root> <file>`** (**`-n`** starts a short-lived second process so Electron can emit **`second-instance`** to the running app with full argv; without **`-n`**, macOS often only activates the app and the image path never reaches EXIFmod) (see the Lightroom Classic SDK’s `LrShell` reference). That matches how **`openFilesInApp`** expects a real **`.app`** bundle and avoids passing a raw binary or non-app path that can no-op or mis-handle startup. Use **Library → Plug-in Extras → Open in EXIFmod Dev** for that flow; **Open in EXIFmod** still defaults to **`/Applications/EXIFmod.app`** (or a path you set in the plug-in’s preferences). From a **packaged release app**, only **EXIFmod Open** is installed. Then in Lightroom Classic use **File → Plug-in Manager** if you need to enable the plug-in(s). Run the command from **Library → Plug-in Extras → Open in EXIFmod** (or **Open in EXIFmod Dev** when installed) to open the selected photo’s file in EXIFmod (same folder session and file selection as opening the file from the desktop).
+
 ---
 
 ## Manage Presets panel

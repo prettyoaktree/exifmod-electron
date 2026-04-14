@@ -1,6 +1,6 @@
 {
   "name": "exifmod-electron",
-  "version": "1.0.2",
+  "version": "1.2.0",
   "description": "EXIF metadata editor with presets (Electron)",
   "license": "MIT",
   "homepage": "https://github.com/prettyoaktree/exifmod-electron#readme",
@@ -68,6 +68,10 @@
       {
         "from": "node_modules/sql.js/dist/sql-wasm.wasm",
         "to": "sql-wasm.wasm"
+      },
+      {
+        "from": "extras/lightroom-classic-exifmod-open/EXIFmodOpen.lrplugin",
+        "to": "EXIFmodOpen.lrplugin"
       }
     ],
     "afterSign": "./scripts/afterSign.mjs",

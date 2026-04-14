@@ -331,6 +331,8 @@ export function App(): React.ReactElement {
   const [writeConfirmTodo, setWriteConfirmTodo] = useState<
     { path: string; payload: Record<string, unknown> }[] | null
   >(null)
+  /** At least one file in the write batch has XMP Camera Raw develop metadata (`HasSettings`). */
+  const [writeConfirmLrcDevelop, setWriteConfirmLrcDevelop] = useState(false)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
   const [quitConfirmOpen, setQuitConfirmOpen] = useState(false)
   const quitConfirmOpenRef = useRef(false)
@@ -1115,6 +1117,7 @@ export function App(): React.ReactElement {
   const runWritePending = useCallback(
     async (todo: { path: string; payload: Record<string, unknown> }[]) => {
       setWriteConfirmTodo(null)
+      setWriteConfirmLrcDevelop(false)
       const api = window.exifmod
       if (!api) {
         alert(t('ui.preloadUnavailable'))
@@ -1195,6 +1198,17 @@ export function App(): React.ReactElement {
       alert(t('ui.noStagedChanges'))
       return
     }
+    let lrcDevelop = false
+    if (todo.length > 0) {
+      try {
+        const paths = todo.map((x) => x.path)
+        const probe = await api.probeHasSettings(paths)
+        lrcDevelop = paths.some((p) => probe[p] === true)
+      } catch {
+        /* ignore probe failure; write confirm still proceeds */
+      }
+    }
+    setWriteConfirmLrcDevelop(lrcDevelop)
     setWriteConfirmTodo(todo)
   }, [files, pendingByPath, metadataByPath, buildMergedPayloadForState, t])
 
@@ -2283,7 +2297,10 @@ export function App(): React.ReactElement {
           className="modal-backdrop"
           role="presentation"
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setWriteConfirmTodo(null)
+            if (e.target === e.currentTarget) {
+              setWriteConfirmTodo(null)
+              setWriteConfirmLrcDevelop(false)
+            }
           }}
         >
           <div
@@ -2297,8 +2314,21 @@ export function App(): React.ReactElement {
               {t('ui.writeConfirmLead', { count: writeConfirmTodo.length })}
             </h3>
             <p className="modal-confirm-detail">{t('ui.writeConfirmDetail')}</p>
+            {writeConfirmLrcDevelop ? (
+              <>
+                <p className="modal-confirm-detail">{t('ui.writeConfirmLrcDetail')}</p>
+                <p className="modal-confirm-detail">{t('ui.writeConfirmLrcSnapshot')}</p>
+              </>
+            ) : null}
             <div className="modal-confirm-actions">
-              <button type="button" className="btn" onClick={() => setWriteConfirmTodo(null)}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setWriteConfirmTodo(null)
+                  setWriteConfirmLrcDevelop(false)
+                }}
+              >
                 {t('dialog.buttonCancel')}
               </button>
               <button type="button" className="btn btn-primary" onClick={() => void runWritePending(writeConfirmTodo)}>

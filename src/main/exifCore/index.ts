@@ -26,7 +26,12 @@ export {
   validateImageDescriptionForExif
 } from './pure.js'
 export { PresetStoreError } from './errors.js'
-export { resolveExiftoolPath, validateExiftool, readExifMetadata } from '../exiftoolRunner.js'
+export {
+  resolveExiftoolPath,
+  validateExiftool,
+  readExifMetadata,
+  probeHasSettingsBatch
+} from '../exiftoolRunner.js'
 export { setSqlWasmPath } from './sqlJs.js'
 export type { DataPaths } from '../../shared/types.js'
 export type {

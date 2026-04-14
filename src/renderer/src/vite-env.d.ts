@@ -12,6 +12,7 @@ export interface ExifmodApi {
   validateExiftool: (path?: string) => Promise<string | null>
   loadCatalog: () => Promise<{ catalog: ConfigCatalog; loadIssues: string[] }>
   readMetadata: (filePath: string) => Promise<Record<string, unknown>>
+  probeHasSettings: (filePaths: string[]) => Promise<Record<string, boolean>>
   mergePayloads: (sel: {
     camera?: number | null
     lens?: number | null
