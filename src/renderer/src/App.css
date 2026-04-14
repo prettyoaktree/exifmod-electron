@@ -409,12 +409,12 @@ button.btn-sm {
 }
 
 /**
- * Same column tracks as `table.mapping` (attribute | current | new | remove)
- * so the AI cluster lines up with the Remove column checkboxes.
+ * Same column tracks as `table.mapping` (attribute | current | copy | new | remove)
+ * so the AI cluster lines up with the New/Remove tracks.
  */
 .meta-subsection-head {
   display: grid;
-  grid-template-columns: 8.1rem minmax(0, 1fr) minmax(0, 1fr) 4.5rem;
+  grid-template-columns: 6.43rem minmax(0, 1fr) 2.6rem minmax(0, 1fr) 4.5rem;
   align-items: center;
   margin-bottom: 0.35rem;
   min-height: 2rem;
@@ -424,7 +424,7 @@ button.btn-sm {
 }
 
 .meta-subsection-title-cell {
-  grid-column: 1 / 3;
+  grid-column: 1 / 4;
   padding: 0.5rem 0.35rem 0.5rem 0;
   min-width: 0;
 }
@@ -434,7 +434,7 @@ button.btn-sm {
  * Inner grid: drawer | 4.5rem (spark aligned with Remove column).
  */
 .meta-subsection-ai-cell {
-  grid-column: 3 / 5;
+  grid-column: 4 / 6;
   padding: 0.5rem 0 0.5rem 0.35rem;
   box-sizing: border-box;
   min-width: 0;
@@ -801,7 +801,11 @@ table.mapping {
 }
 
 table.mapping col.mapping-col-attribute {
-  width: 8.1rem;
+  width: 6.43rem;
+}
+
+table.mapping col.mapping-col-copy {
+  width: 2.6rem;
 }
 
 table.mapping col.mapping-col-remove {
@@ -810,9 +814,16 @@ table.mapping col.mapping-col-remove {
 
 table.mapping col.mapping-col-current,
 table.mapping col.mapping-col-new {
-  width: calc((100% - 8.1rem - 4.5rem) / 2);
+  width: calc((100% - 6.43rem - 4.5rem) / 2);
 }
 
+table.mapping.mapping-desc-kw col.mapping-col-current,
+table.mapping.mapping-desc-kw col.mapping-col-new {
+  width: calc((100% - 6.43rem - 2.6rem - 4.5rem) / 2);
+}
+
+table.mapping th.mapping-col-copy-head,
+table.mapping td.mapping-col-copy-cell,
 table.mapping th.mapping-col-remove-head,
 table.mapping td.mapping-col-remove-cell {
   text-align: center;
@@ -851,6 +862,28 @@ table.mapping td:nth-child(2),
 table.mapping td:nth-child(3) {
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+table.mapping.mapping-desc-kw td:nth-child(4) {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.meta-copy-current-btn {
+  min-width: 2rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.meta-copy-current-glyph {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
 }
 
 table.mapping th:last-child,

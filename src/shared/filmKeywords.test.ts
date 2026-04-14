@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  extractFilmIdentityKeywords,
   filmStockHintFromExifKeywords,
   filmStockKeywordFromDisplayName,
   mergeKeywordsDeduped,
@@ -78,5 +79,19 @@ describe('stripFilmIdentityFromKeywords', () => {
 
   it('removes legacy stock hint after film', () => {
     expect(stripFilmIdentityFromKeywords(['film', 'Legacy Stock', 'x'])).toEqual(['x'])
+  })
+})
+
+describe('extractFilmIdentityKeywords', () => {
+  it('keeps only film marker and Film Stock tokens', () => {
+    expect(
+      extractFilmIdentityKeywords(['beach', 'film', 'Kodak Portra 400 Film Stock', 'portrait'])
+    ).toEqual(['film', 'Kodak Portra 400 Film Stock'])
+  })
+
+  it('dedupes case-insensitively while preserving first seen order', () => {
+    expect(
+      extractFilmIdentityKeywords(['Film', 'film', 'Acme Film Stock', 'acme film stock', 'other'])
+    ).toEqual(['Film', 'Acme Film Stock'])
   })
 })

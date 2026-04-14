@@ -79,6 +79,9 @@ function applyAboutPanelOptions(): void {
 
 let mainWindow: BrowserWindow | null = null
 
+/** When false, the main window `close` event is prevented until the renderer confirms (pending changes check). */
+let allowMainWindowClose = false
+
 /** macOS: paths queued before BrowserWindow exists (e.g. open-file before ready). */
 const preReadyOpenPaths: string[] = []
 
@@ -258,6 +261,7 @@ function rememberLastImageFolder(dirPath: string): void {
 }
 
 function createWindow(): void {
+  allowMainWindowClose = false
   const iconPath = resolveAppIconPath()
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -279,6 +283,15 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  mainWindow.on('close', (e) => {
+    if (allowMainWindowClose) return
+    e.preventDefault()
+    const w = mainWindow
+    if (w && !w.isDestroyed()) {
+      w.webContents.send('app:close-requested')
+    }
+  })
 
   mainWindow.on('closed', () => {
     mainWindow = null
@@ -624,6 +637,16 @@ function setupIpc(): void {
       return statSync(filePath).isFile()
     } catch {
       return false
+    }
+  })
+
+  ipcMain.on('app:confirm-close', () => {
+    allowMainWindowClose = true
+    const w = mainWindow
+    if (w && !w.isDestroyed()) {
+      w.close()
+    } else {
+      app.quit()
     }
   })
 }

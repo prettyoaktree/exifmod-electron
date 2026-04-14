@@ -105,6 +105,23 @@ export function stripFilmIdentityFromKeywords(tokens: string[]): string[] {
   })
 }
 
+/** Extract only film-identifying keyword tokens (`film`, `... Film Stock`) preserving first-seen casing/order. */
+export function extractFilmIdentityKeywords(tokens: string[]): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const raw of tokens) {
+    const t = raw.trim()
+    if (!t) continue
+    const tl = t.toLowerCase()
+    const isFilmIdentity = tl === 'film' || tl.endsWith(' film stock')
+    if (!isFilmIdentity) continue
+    if (seen.has(tl)) continue
+    seen.add(tl)
+    out.push(t)
+  }
+  return out
+}
+
 export function filmStockHintFromExifKeywords(keywordValues: string[]): string {
   const trimmed = keywordValues.map((k) => k.trim()).filter(Boolean)
   const hasFilm = trimmed.some((k) => k.toLowerCase() === 'film')

@@ -84,6 +84,14 @@ const api = {
     const fn = (): void => cb()
     ipcRenderer.on('ollama:launching', fn)
     return () => ipcRenderer.removeListener('ollama:launching', fn)
+  },
+  onAppCloseRequested: (cb: () => void) => {
+    const fn = (): void => cb()
+    ipcRenderer.on('app:close-requested', fn)
+    return () => ipcRenderer.removeListener('app:close-requested', fn)
+  },
+  confirmAppClose: () => {
+    ipcRenderer.send('app:confirm-close')
   }
 }
 
