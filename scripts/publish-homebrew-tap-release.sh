@@ -17,7 +17,8 @@
 #   TAP_REPO            — defaults to prettyoaktree/homebrew-exifmod (cask PR target)
 #   DMG_NAME            — defaults to EXIFmod-<version>.dmg
 #
-# Steps: read version → optional local build → ensure DMG (local or download from APP_REPO) → sha256 → cask PR → optional tap release housekeeping
+# Steps: read version → optional local build → ensure DMG (local or download from APP_REPO) → sha256 →
+#   rewrite cask version, sha256, url, homepage (url/homepage always point at APP_REPO releases) → cask PR → optional tap housekeeping
 
 set -euo pipefail
 
@@ -95,13 +96,23 @@ echo "Checksumming DMG: $DMG_PATH"
 SHA256="$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')"
 echo "sha256=$SHA256"
 
-ruby - "$CASK_FILE" "$VERSION" "$SHA256" <<'RUBY'
+# Update cask: version, sha256, and canonical url/homepage pointing at APP_REPO (not the tap repo’s releases).
+ruby - "$CASK_FILE" "$VERSION" "$SHA256" "$APP_REPO" <<'RUBY'
   cask_path = ARGV[0]
   version = ARGV[1]
   sha = ARGV[2]
+  app_repo = ARGV[3]
   body = File.read(cask_path)
   body.sub!(/^(\s*)version\s+.*$/, "\\1version \"#{version}\"")
   body.sub!(/^(\s*)sha256\s+.*$/, "\\1sha256 \"#{sha}\"")
+  # Cask must interpolate #{version} in the url string (Homebrew evaluates the cask Ruby).
+  url_line = '  url "https://github.com/' + app_repo + '/releases/download/v#{version}/EXIFmod-#{version}.dmg"'
+  unless body.match?(/^\s*url\s+"/)
+    abort "error: cask has no url line: #{cask_path}"
+  end
+  body.sub!(/^\s*url\s+".*"$/, url_line)
+  homepage_line = '  homepage "https://github.com/' + app_repo + '"'
+  body.sub!(/^\s*homepage\s+".*"$/, homepage_line) if body.match?(/^\s*homepage\s+"/)
   File.write(cask_path, body)
 RUBY
 
