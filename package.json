@@ -2,6 +2,15 @@
   "name": "exifmod-electron",
   "version": "1.0.0",
   "description": "EXIF metadata editor with presets (Electron)",
+  "license": "MIT",
+  "homepage": "https://github.com/prettyoaktree/exifmod-electron#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/prettyoaktree/exifmod-electron.git"
+  },
+  "bugs": {
+    "url": "https://github.com/prettyoaktree/exifmod-electron/issues"
+  },
   "main": "out/main/index.js",
   "type": "module",
   "scripts": {
@@ -57,8 +66,14 @@
     "afterSign": "./scripts/afterSign.mjs",
     "mac": {
       "category": "public.app-category.photography",
+      "artifactName": "${productName}-${version}.${ext}",
       "target": [
-        "dmg"
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
       ],
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",

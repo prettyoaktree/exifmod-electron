@@ -1,0 +1,43 @@
+# Upload macOS DMG(s) to GitHub Releases when a version tag is pushed (e.g. v1.0.0).
+# Tag name must match package.json version: v{{version}}.
+# For signed / notarized builds, configure repository secrets (see README).
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  macos-dmg:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build app and DMG
+        env:
+          # Unsigned/ad-hoc build in CI unless you add Apple signing secrets
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run build
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.dmg
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

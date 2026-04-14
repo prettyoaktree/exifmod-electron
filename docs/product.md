@@ -4,6 +4,17 @@ EXIFmod is a desktop application for photographers and editors who want to **app
 
 The app is built with Electron; metadata read and write use **ExifTool** on the user’s machine.
 
+### Install on macOS (Homebrew)
+
+You can install a release build with the **[homebrew-exifmod](https://github.com/prettyoaktree/homebrew-exifmod)** tap:
+
+```bash
+brew tap prettyoaktree/homebrew-exifmod
+brew install --cask exifmod
+```
+
+The cask installs Homebrew’s **`exiftool`** formula as well; EXIFmod still **requires** a working `exiftool` on your `PATH` for metadata I/O.
+
 ---
 
 ## Who it is for
