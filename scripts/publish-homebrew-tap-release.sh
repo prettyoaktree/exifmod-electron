@@ -9,13 +9,16 @@
 #   TAP_DIR=/path/to/homebrew-exifmod ./scripts/publish-homebrew-tap-release.sh
 #
 # Optional env:
-#   SKIP_BUILD=1        — skip `npm run build` (use existing release/EXIFmod-*.dmg matching package.json version)
+#   SKIP_BUILD=1        — always skip `npm run build` (DMG must already exist at DMG_PATH)
+#   FORCE_BUILD=1       — always run `npm run build` even if release/EXIFmod-<version>.dmg already exists
 #   SKIP_HOUSEKEEPING=1 — do not delete older GitHub Releases on the tap repo after success
 #   DMG_PATH            — defaults to <app-repo>/release/EXIFmod-<version>.dmg
 #   TAP_REPO            — defaults to prettyoaktree/homebrew-exifmod
 #   DMG_NAME            — defaults to EXIFmod-<version>.dmg
 #
-# Steps: read version from package.json → npm run build → gh release create|upload → sha256 → cask PR → delete other releases
+# If the DMG for the current package.json version already exists, the build step is skipped (notarize runs inside npm run build).
+#
+# Steps: read version from package.json → npm run build (if needed) → gh release create|upload → sha256 → cask PR → delete other releases
 
 set -euo pipefail
 
@@ -39,16 +42,21 @@ fi
 
 echo "Using version ${VERSION} from package.json"
 
-if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
+if [[ "${SKIP_BUILD:-0}" == "1" ]]; then
+  echo "SKIP_BUILD=1 — not running npm run build"
+elif [[ "${FORCE_BUILD:-0}" == "1" ]]; then
+  echo "FORCE_BUILD=1 — building DMG (npm run build in $ROOT)…"
+  (cd "$ROOT" && npm run build)
+elif [[ -f "$DMG_PATH" ]]; then
+  echo "Found existing ${DMG_PATH} — skipping npm run build (delete the file or set FORCE_BUILD=1 to rebuild)"
+else
   echo "Building DMG (npm run build in $ROOT)…"
   (cd "$ROOT" && npm run build)
-else
-  echo "SKIP_BUILD=1 — not running npm run build"
 fi
 
 if [[ ! -f "$DMG_PATH" ]]; then
   echo "error: DMG not found: $DMG_PATH" >&2
-  echo "  Run without SKIP_BUILD, or build manually, or set DMG_PATH" >&2
+  echo "  Run without SKIP_BUILD to build, or place EXIFmod-${VERSION}.dmg there, or set DMG_PATH" >&2
   exit 1
 fi
 

@@ -66,7 +66,7 @@ There is **no** release build in GitHub Actions on this repo. Bump **`version`**
 TAP_DIR=/path/to/homebrew-exifmod ./scripts/publish-homebrew-tap-release.sh
 ```
 
-That reads **`version` from `package.json`**, runs **`npm run build`** (unless `SKIP_BUILD=1`), creates or updates the **GitHub Release** on [`prettyoaktree/homebrew-exifmod`](https://github.com/prettyoaktree/homebrew-exifmod), uploads the DMG, updates the cask, opens a PR, and **deletes older releases** on the tap repo (unless `SKIP_HOUSEKEEPING=1`). Signing/notarization use your local env (see below). Requires [`gh`](https://cli.github.com/). Details: [`homebrew-exifmod/RELEASE.md`](homebrew-exifmod/RELEASE.md).
+That reads **`version` from `package.json`**, runs **`npm run build`** when `release/EXIFmod-<version>.dmg` is missing (skips build if that file already exists; use **`FORCE_BUILD=1`** to rebuild; **`SKIP_BUILD=1`** always skips), then creates or updates the **GitHub Release** on [`prettyoaktree/homebrew-exifmod`](https://github.com/prettyoaktree/homebrew-exifmod), uploads the DMG, updates the cask, opens a PR, and **deletes older releases** on the tap repo (unless `SKIP_HOUSEKEEPING=1`). Signing/notarization run inside `npm run build` when it executes. Requires [`gh`](https://cli.github.com/). Details: [`homebrew-exifmod/RELEASE.md`](homebrew-exifmod/RELEASE.md).
 
 ### macOS: release signing and notarization
 
