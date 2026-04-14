@@ -60,12 +60,13 @@ The cask pulls in **`exiftool`** (ExifTool) because EXIFmod requires it for meta
 
 ### Distributing releases & Homebrew
 
-There is **no** release build in GitHub Actions on this repo. Produce a **universal** macOS DMG **locally** with `npm run build` (see **macOS: release signing and notarization** below), then publish the artifact on the **public** [homebrew-exifmod](https://github.com/prettyoaktree/homebrew-exifmod) repository:
+There is **no** release build in GitHub Actions on this repo. Bump **`version`** in [`package.json`](package.json), then from this repo run:
 
-1. Create a **GitHub Release** on `prettyoaktree/homebrew-exifmod` with tag `vX.Y.Z` (same as [`package.json`](package.json) `version`) and attach `EXIFmod-X.Y.Z.dmg`.
-2. Sync [`homebrew-exifmod/`](homebrew-exifmod/) into that repo if needed, then bump the cask `version` / `sha256` via PR or run  
-   `VERSION=X.Y.Z TAP_DIR=/path/to/homebrew-exifmod ./scripts/publish-homebrew-tap-release.sh`  
-   (downloads the public DMG and opens a PR). Details: [`homebrew-exifmod/RELEASE.md`](homebrew-exifmod/RELEASE.md).
+```bash
+TAP_DIR=/path/to/homebrew-exifmod ./scripts/publish-homebrew-tap-release.sh
+```
+
+That reads **`version` from `package.json`**, runs **`npm run build`** (unless `SKIP_BUILD=1`), creates or updates the **GitHub Release** on [`prettyoaktree/homebrew-exifmod`](https://github.com/prettyoaktree/homebrew-exifmod), uploads the DMG, updates the cask, opens a PR, and **deletes older releases** on the tap repo (unless `SKIP_HOUSEKEEPING=1`). Signing/notarization use your local env (see below). Requires [`gh`](https://cli.github.com/). Details: [`homebrew-exifmod/RELEASE.md`](homebrew-exifmod/RELEASE.md).
 
 ### macOS: release signing and notarization
 

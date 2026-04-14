@@ -1,23 +1,61 @@
 #!/usr/bin/env bash
-# Bump homebrew-exifmod cask after a DMG is published on this tap repo’s GitHub Releases.
-# Usage: VERSION=1.2.3 ./scripts/publish-homebrew-tap-release.sh
-# Optional: APP_GITHUB_REPO=owner/other-repo TAP_DIR=/path/to/homebrew-exifmod
-# Default DMG URL: github.com/prettyoaktree/homebrew-exifmod/releases/download/vVERSION/
+# Publish EXIFmod DMG to prettyoaktree/homebrew-exifmod GitHub Releases, then bump the cask (PR).
 #
-# Creates branch bump/exifmod-VERSION, updates Casks/exifmod.rb, pushes, opens PR (gh).
-# Does not push to main (branch protection).
+# Version is always taken from package.json in the app repo (no VERSION= needed).
+#
+# Prerequisites: gh CLI authenticated (gh auth login). Run from the app repo (script path sets app root).
+#
+# Usage:
+#   TAP_DIR=/path/to/homebrew-exifmod ./scripts/publish-homebrew-tap-release.sh
+#
+# Optional env:
+#   SKIP_BUILD=1        — skip `npm run build` (use existing release/EXIFmod-*.dmg matching package.json version)
+#   SKIP_HOUSEKEEPING=1 — do not delete older GitHub Releases on the tap repo after success
+#   DMG_PATH            — defaults to <app-repo>/release/EXIFmod-<version>.dmg
+#   TAP_REPO            — defaults to prettyoaktree/homebrew-exifmod
+#   DMG_NAME            — defaults to EXIFmod-<version>.dmg
+#
+# Steps: read version from package.json → npm run build → gh release create|upload → sha256 → cask PR → delete other releases
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-VERSION="${VERSION:?Set VERSION (e.g. 1.2.3)}"
-APP_GITHUB_REPO="${APP_GITHUB_REPO:-prettyoaktree/homebrew-exifmod}"
+VERSION="$(cd "$ROOT" && node -p "require('./package.json').version")"
 TAP_DIR="${TAP_DIR:?Set TAP_DIR to a git clone of github.com/prettyoaktree/homebrew-exifmod}"
+TAP_REPO="${TAP_REPO:-prettyoaktree/homebrew-exifmod}"
 DMG_NAME="${DMG_NAME:-EXIFmod-${VERSION}.dmg}"
-DMG_URL="https://github.com/${APP_GITHUB_REPO}/releases/download/v${VERSION}/${DMG_NAME}"
+DMG_PATH="${DMG_PATH:-$ROOT/release/${DMG_NAME}}"
+TAG="v${VERSION}"
+DMG_URL="https://github.com/${TAP_REPO}/releases/download/${TAG}/${DMG_NAME}"
+
 CASK_REL="Casks/exifmod.rb"
 CASK_FILE="${TAP_DIR}/${CASK_REL}"
 BRANCH="bump/exifmod-${VERSION}"
+
+if ! command -v gh >/dev/null 2>&1; then
+  echo "error: install GitHub CLI (gh): https://cli.github.com/" >&2
+  exit 1
+fi
+
+echo "Using version ${VERSION} from package.json"
+
+if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
+  echo "Building DMG (npm run build in $ROOT)…"
+  (cd "$ROOT" && npm run build)
+else
+  echo "SKIP_BUILD=1 — not running npm run build"
+fi
+
+if [[ ! -f "$DMG_PATH" ]]; then
+  echo "error: DMG not found: $DMG_PATH" >&2
+  echo "  Run without SKIP_BUILD, or build manually, or set DMG_PATH" >&2
+  exit 1
+fi
+
+if [[ "$(basename "$DMG_PATH")" != "$DMG_NAME" ]]; then
+  echo "error: DMG file must be named ${DMG_NAME} (matches cask download URL); got $(basename "$DMG_PATH")" >&2
+  exit 1
+fi
 
 if [[ ! -d "$TAP_DIR/.git" ]]; then
   echo "error: TAP_DIR must be a git clone (missing .git under $TAP_DIR)" >&2
@@ -25,7 +63,7 @@ if [[ ! -d "$TAP_DIR/.git" ]]; then
 fi
 
 if [[ ! -f "$CASK_FILE" ]]; then
-  echo "error: cask not found at $CASK_FILE (set TAP_DIR to your homebrew-exifmod clone)" >&2
+  echo "error: cask not found at $CASK_FILE" >&2
   exit 1
 fi
 
@@ -34,11 +72,19 @@ if [[ -n "$(git -C "$TAP_DIR" status --porcelain 2>/dev/null)" ]]; then
   exit 1
 fi
 
-echo "Downloading DMG for checksum: $DMG_URL"
-TMP_DMG="$(mktemp -t exifmod-dmg.XXXXXX)"
-trap 'rm -f "$TMP_DMG"' EXIT
-curl -fL --retry 3 -o "$TMP_DMG" "$DMG_URL"
-SHA256="$(shasum -a 256 "$TMP_DMG" | awk '{print $1}')"
+echo "Publishing ${DMG_NAME} to ${TAP_REPO} release ${TAG}…"
+if gh release view "$TAG" --repo "$TAP_REPO" &>/dev/null; then
+  echo "Release ${TAG} exists; uploading asset (replace if present)…"
+  gh release upload "$TAG" "$DMG_PATH" --repo "$TAP_REPO" --clobber
+else
+  gh release create "$TAG" "$DMG_PATH" \
+    --repo "$TAP_REPO" \
+    --title "EXIFmod ${VERSION}" \
+    --notes "macOS universal DMG for Homebrew cask exifmod."
+fi
+
+echo "Checksumming local DMG: $DMG_PATH"
+SHA256="$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')"
 echo "sha256=$SHA256"
 
 ruby - "$CASK_FILE" "$VERSION" "$SHA256" <<'RUBY'
@@ -56,10 +102,20 @@ git -C "$TAP_DIR" add "$CASK_REL"
 git -C "$TAP_DIR" commit -m "bump exifmod to ${VERSION}"
 git -C "$TAP_DIR" push -u origin "$BRANCH"
 
-if command -v gh >/dev/null 2>&1; then
-  gh pr create --repo "prettyoaktree/homebrew-exifmod" --base main --head "$BRANCH" \
-    --title "bump exifmod to ${VERSION}" \
-    --body "Automated cask bump for [${DMG_NAME}](${DMG_URL})."
+gh pr create --repo "$TAP_REPO" --base main --head "$BRANCH" \
+  --title "bump exifmod to ${VERSION}" \
+  --body "Cask bump for [${DMG_NAME}](${DMG_URL}) (release ${TAG})."
+
+if [[ "${SKIP_HOUSEKEEPING:-0}" == "1" ]]; then
+  echo "SKIP_HOUSEKEEPING=1 — leaving other GitHub Releases as-is."
 else
-  echo "Install GitHub CLI (gh) or open a PR manually: branch $BRANCH"
+  echo "Housekeeping: removing other releases on ${TAP_REPO} (keeping ${TAG})…"
+  while IFS= read -r rel_tag; do
+    [[ -z "$rel_tag" ]] && continue
+    [[ "$rel_tag" == "$TAG" ]] && continue
+    echo "  Deleting release ${rel_tag} …"
+    gh release delete "$rel_tag" --repo "$TAP_REPO" --yes --cleanup-tag
+  done < <(gh release list --repo "$TAP_REPO" --limit 200 --json tagName -q '.[].tagName' 2>/dev/null || true)
 fi
+
+echo "Done. Approve and merge the PR per branch protection."
