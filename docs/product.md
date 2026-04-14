@@ -15,7 +15,13 @@ brew install --cask exifmod
 
 The cask installs Homebrew’s **`exiftool`** formula as well; EXIFmod still **requires** a working `exiftool` on your `PATH` for metadata I/O.
 
-The installer DMG is served from the **public** [homebrew-exifmod](https://github.com/prettyoaktree/homebrew-exifmod) tap repository’s GitHub Releases (not from a private app repository).
+The cask **downloads the installer DMG** from the public **[exifmod-electron](https://github.com/prettyoaktree/exifmod-electron)** app repository’s [GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases) (the tap repository still hosts the Homebrew formula and cask metadata).
+
+### Automatic updates (macOS, release app)
+
+In the **signed release** app, EXIFmod periodically checks **[GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases)** for a newer version. When an update is available, you are prompted before anything is downloaded. After the download finishes, you can **restart to install**. Development builds (`npm run dev`) do not perform automatic updates.
+
+You can also choose **Help → Check for Updates…** at any time.
 
 ---
 
@@ -84,7 +90,9 @@ Use the **Edit** menu (or standard shortcuts such as **⌘C** / **Ctrl+C**, **�
 
 **Help → Tutorial…** opens a short guided walkthrough of the main workflow. The first time you launch the app, that tutorial opens automatically; after you close or finish it, the app remembers not to show it again on startup. Developers can pass **`--simulate-first-run`** on the command line (for example with `npm run dev -- --simulate-first-run`) to open the same automatic tutorial without writing that “seen” flag—useful for testing the first-run experience repeatedly.
 
-On macOS, **EXIFmod → About EXIFmod** opens the standard About window with the app icon, the same headline as the main window title bar area, release version **1.0.1**, and copyright **© 2026 Alon Yaffe, All Rights Reserved.**
+On macOS, **Help → Check for Updates…** checks GitHub Releases for a newer **signed** release (see **Automatic updates** above).
+
+On macOS, **EXIFmod → About EXIFmod** opens the standard About window with the app icon, the same headline as the main window title bar area, the **version of the build you are running** (from the app bundle), and copyright **© 2026 Alon Yaffe, All Rights Reserved.**
 
 ---
 
@@ -117,7 +125,7 @@ The interface language follows the **operating system** locale when a matching t
 
 ## Installing a macOS build from source
 
-If you build **`EXIFmod.app`** from this repository, you can copy it to **`/Applications`** with the **`install-mac-app`** script at the repo root (it runs **`npm run build`** first). See **[README.md](../README.md)** (Getting started → **macOS: install a release build to `/Applications`**).
+If you build **`EXIFmod.app`** from this repository, you can copy it to **`/Applications`** with the **`install-mac-app`** script at the repo root (it runs **`npm run build`** first). See **[README.md](../README.md)**.
 
 ---
 

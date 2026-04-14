@@ -7,9 +7,24 @@
     "edit": "Edit",
     "file": "File",
     "help": "Help",
+    "checkForUpdates": "Check for Updates…",
     "tutorial": "Tutorial…",
     "importPresetDatabase": "Import Preset Database…",
     "exportPresetDatabase": "Export Preset Database…"
+  },
+  "updater": {
+    "updateAvailableTitle": "Update available",
+    "updateAvailableDetail": "EXIFmod {{version}} is available. Download the update now?",
+    "downloadButton": "Download",
+    "laterButton": "Not now",
+    "downloadedTitle": "Update ready",
+    "downloadedDetail": "The update has been downloaded. Restart EXIFmod to install it.",
+    "restartButton": "Restart and install",
+    "upToDateTitle": "EXIFmod is up to date",
+    "upToDateDetail": "You are already running EXIFmod {{version}}.",
+    "checkFailedTitle": "Update check failed",
+    "devOnlyTitle": "Updates",
+    "devOnlyDetail": "Automatic updates are available only in the signed release app."
   },
   "tutorial": {
     "firstRunLead": "Here is a quick tour of the basics.",
