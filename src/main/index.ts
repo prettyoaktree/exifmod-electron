@@ -43,7 +43,7 @@ import type { CreatePresetInput, UpdatePresetInput } from '../shared/types.js'
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 /** Shown in the native About panel (macOS EXIFmod → About EXIFmod); increment when shipping releases. */
-const APP_RELEASE_VERSION = '1.0.0'
+const APP_RELEASE_VERSION = '1.0.1'
 
 const APP_COPYRIGHT = '© 2026 Alon Yaffe, All Rights Reserved.'
 
