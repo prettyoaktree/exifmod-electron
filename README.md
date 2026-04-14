@@ -60,7 +60,7 @@ The cask pulls in **`exiftool`** (ExifTool) because EXIFmod requires it for meta
 
 ### GitHub Releases
 
-Publishing a **version tag** `vX.Y.Z` (matching [`package.json`](package.json) `version`) triggers [`.github/workflows/release.yml`](.github/workflows/release.yml), which builds a **universal** macOS DMG and attaches it to a GitHub Release. Attach signing/notarization secrets in the repo if you need a Developer ID build in CI.
+Publishing a **version tag** `vX.Y.Z` (matching [`package.json`](package.json) `version`) triggers [`.github/workflows/release.yml`](.github/workflows/release.yml), which builds a **universal** macOS DMG and attaches it to a GitHub Release. **electron-builder** is configured with **`publish`: `null`**, so it never uploads by itself (no `GH_TOKEN` needed during `npm run build`); the workflow uploads `release/*.dmg` in a separate step. Attach signing/notarization secrets in the repo if you need a Developer ID build in CI.
 
 After the release asset is on GitHub, update the Homebrew tap checksum: copy [`homebrew-exifmod/`](homebrew-exifmod/) into [prettyoaktree/homebrew-exifmod](https://github.com/prettyoaktree/homebrew-exifmod) or run `scripts/publish-homebrew-tap-release.sh` from a clone of that repo (`VERSION=X.Y.Z TAP_DIR=…`). The DMG `sha256` in the cask must match the uploaded file.
 
