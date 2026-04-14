@@ -44,6 +44,7 @@
     "vitest": "^2.1.8"
   },
   "build": {
+    "publish": null,
     "appId": "dev.ay.exifmod",
     "productName": "EXIFmod",
     "directories": {
