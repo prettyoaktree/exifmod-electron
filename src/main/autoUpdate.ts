@@ -1,6 +1,9 @@
 import { app, dialog } from 'electron'
-import { autoUpdater } from 'electron-updater'
+// electron-updater is CJS; named ESM import breaks at runtime in Electron (see package interop).
+import electronUpdater from 'electron-updater'
 import { i18next } from './i18n.js'
+
+const { autoUpdater } = electronUpdater
 
 const STARTUP_CHECK_DELAY_MS = 8_000
 

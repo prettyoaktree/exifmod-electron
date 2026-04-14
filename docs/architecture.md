@@ -40,7 +40,7 @@ Path aliases: `@shared` → `src/shared`, `@renderer` → `src/renderer/src` (se
 - **Releases** for the signed app are published on **[GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases)** (DMG + ZIP + `latest-mac.yml` for auto-updates). CI workflow: [`.github/workflows/release-macos.yml`](../.github/workflows/release-macos.yml).
 - **Homebrew cask** metadata lives in the separate tap repo; [`scripts/publish-homebrew-tap-release.sh`](../scripts/publish-homebrew-tap-release.sh) bumps the cask to point at the app repo DMG URL.
 
-Operator-only signing, notarization, and GitHub Actions secrets are documented locally in **`maintainer.md`** (gitignored; see [`maintainer.md.example`](../maintainer.md.example)).
+Operator-only signing, notarization, and GitHub Actions setup are documented in [`maintainer.md`](../maintainer.md) (secret names and procedures only—never commit real credentials).
 
 ## macOS behavior notes
 

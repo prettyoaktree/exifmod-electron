@@ -39,4 +39,4 @@ By default the script **deletes other releases** on **`prettyoaktree/homebrew-ex
 
 ## App releases (source of truth)
 
-Tag **`v<version>`** on **`main`** in **exifmod-electron** after bumping **`package.json`** so CI publishes matching artifacts. See **`maintainer.md.example`** in the app repo for signing secrets and operator checklists (copy to local `maintainer.md`).
+Tag **`v<version>`** on **`main`** in **exifmod-electron** after bumping **`package.json`** so CI publishes matching artifacts. See **`maintainer.md`** in the app repo for signing secrets and operator checklists.

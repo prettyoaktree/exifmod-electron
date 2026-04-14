@@ -1,5 +1,5 @@
 # Build, sign, notarize, and publish macOS artifacts to GitHub Releases when a version tag is pushed.
-# Required repo secrets (see maintainer.md.example): CSC_LINK, CSC_KEY_PASSWORD,
+# Required repo secrets (see maintainer.md): CSC_LINK, CSC_KEY_PASSWORD,
 # APPLE_API_KEY_P8_BASE64, APPLE_API_KEY_ID, APPLE_API_ISSUER
 
 name: Release (macOS)

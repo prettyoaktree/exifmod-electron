@@ -18,7 +18,7 @@ Optional **Ollama** integration calls a **local** HTTP server (`ollamaDescribeIm
 | `[docs/product.md](docs/product.md)`                                       | User-visible behavior and workflows                                        |
 | `[docs/exif-preset-mapping.md](docs/exif-preset-mapping.md)`               | EXIF tags, preset merge order, Film/Keywords, AI behavior                  |
 
-**Maintainer-only (local, not committed):** create `maintainer.md` at the repo root (see `maintainer.md.example`) for Apple signing, notarization, and GitHub Actions secrets — it is listed in `.gitignore` and must never contain committed secrets.
+**Maintainer-only:** see [`maintainer.md`](maintainer.md) for Apple signing, notarization, and GitHub Actions setup (checklists and secret *names* only—never commit real credentials in git).
 
 
 **Rule:** If you change something users see or EXIF/preset semantics, update `**docs/product.md`** and/or `**docs/exif-preset-mapping.md`** in the same change when appropriate.

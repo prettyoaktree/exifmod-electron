@@ -1,6 +1,6 @@
-# Maintainer notes (local only)
+# Maintainer notes
 
-Copy this file to **`maintainer.md`** in the repository root. That file is **gitignored** — keep Apple credentials and secret values **out of git**.
+Operational checklist for **exifmod-electron** releases: signing, GitHub Actions secrets, and Homebrew cask bumps. **Do not commit real credentials**—use GitHub **Actions secrets** and a password manager or keychain for values; this file should only list secret *names* and procedures.
 
 ## GitHub Actions secrets (`exifmod-electron` repo)
 
