@@ -14,7 +14,7 @@ TAP_DIR=/path/to/homebrew-exifmod ./scripts/publish-homebrew-tap-release.sh
 
 The script:
 
-1. Runs **`npm run build`** in the app repo (set **`SKIP_BUILD=1`** if you already have a matching `release/EXIFmod-*.dmg`)
+1. Runs **`npm run build`** in the app repo **unless** `release/EXIFmod-<version>.dmg` already exists (same version as `package.json`) — then the build/notarize step is skipped. Use **`FORCE_BUILD=1`** to rebuild anyway. **`SKIP_BUILD=1`** always skips the build (DMG must exist).
 2. Creates or updates GitHub Release **`v<version>`** on **prettyoaktree/homebrew-exifmod**
 3. Uploads the DMG as the release asset
 4. Sets the cask **`version`** / **`sha256`** and opens a PR to **`main`**
