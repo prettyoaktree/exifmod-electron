@@ -15,6 +15,8 @@ brew install --cask exifmod
 
 The cask installs Homebrew’s **`exiftool`** formula as well; EXIFmod still **requires** a working `exiftool` on your `PATH` for metadata I/O.
 
+The installer DMG is served from the **public** [homebrew-exifmod](https://github.com/prettyoaktree/homebrew-exifmod) tap repository’s GitHub Releases (not from a private app repository).
+
 ---
 
 ## Who it is for

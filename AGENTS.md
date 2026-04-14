@@ -26,7 +26,7 @@ Optional **Ollama** integration calls a **local** HTTP server (`ollamaDescribeIm
 | Area                 | Role                                                                              |
 | -------------------- | --------------------------------------------------------------------------------- |
 | `install-mac-app`    | macOS: run `npm run build`, copy `release/EXIFmod.app` → `/Applications`          |
-| `homebrew-exifmod/`  | Files to sync into [prettyoaktree/homebrew-exifmod](https://github.com/prettyoaktree/homebrew-exifmod); bump via `scripts/publish-homebrew-tap-release.sh` |
+| `homebrew-exifmod/`  | Tap mirror; DMGs are released on [that repo’s GitHub Releases](https://github.com/prettyoaktree/homebrew-exifmod/releases); bump cask via `scripts/publish-homebrew-tap-release.sh` |
 | `src/main/`          | IPC handlers, menus, ExifTool runner, Ollama `fetch`, `previewImage`, DB paths    |
 | `src/main/exifCore/` | Merge/sanitize/write, SQL catalog                                                 |
 | `src/renderer/`      | React UI (`App.tsx`, preset editor, panels)                                       |

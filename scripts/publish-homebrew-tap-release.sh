@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Bump homebrew-exifmod cask after a DMG is published on GitHub Releases.
+# Bump homebrew-exifmod cask after a DMG is published on this tap repo’s GitHub Releases.
 # Usage: VERSION=1.2.3 ./scripts/publish-homebrew-tap-release.sh
-# Optional: APP_GITHUB_REPO=prettyoaktree/exifmod-electron TAP_DIR=/path/to/homebrew-exifmod
+# Optional: APP_GITHUB_REPO=owner/other-repo TAP_DIR=/path/to/homebrew-exifmod
+# Default DMG URL: github.com/prettyoaktree/homebrew-exifmod/releases/download/vVERSION/
 #
 # Creates branch bump/exifmod-VERSION, updates Casks/exifmod.rb, pushes, opens PR (gh).
 # Does not push to main (branch protection).
@@ -10,7 +11,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="${VERSION:?Set VERSION (e.g. 1.2.3)}"
-APP_GITHUB_REPO="${APP_GITHUB_REPO:-prettyoaktree/exifmod-electron}"
+APP_GITHUB_REPO="${APP_GITHUB_REPO:-prettyoaktree/homebrew-exifmod}"
 TAP_DIR="${TAP_DIR:?Set TAP_DIR to a git clone of github.com/prettyoaktree/homebrew-exifmod}"
 DMG_NAME="${DMG_NAME:-EXIFmod-${VERSION}.dmg}"
 DMG_URL="https://github.com/${APP_GITHUB_REPO}/releases/download/v${VERSION}/${DMG_NAME}"

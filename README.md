@@ -58,11 +58,14 @@ brew install --cask exifmod
 
 The cask pulls in **`exiftool`** (ExifTool) because EXIFmod requires it for metadata read/write.
 
-### GitHub Releases
+### Distributing releases & Homebrew
 
-Publishing a **version tag** `vX.Y.Z` (matching [`package.json`](package.json) `version`) triggers [`.github/workflows/release.yml`](.github/workflows/release.yml), which builds a **universal** macOS DMG and attaches it to a GitHub Release. **electron-builder** is configured with **`publish`: `null`**, so it never uploads by itself (no `GH_TOKEN` needed during `npm run build`); the workflow uploads `release/*.dmg` in a separate step. Attach signing/notarization secrets in the repo if you need a Developer ID build in CI.
+There is **no** release build in GitHub Actions on this repo. Produce a **universal** macOS DMG **locally** with `npm run build` (see **macOS: release signing and notarization** below), then publish the artifact on the **public** [homebrew-exifmod](https://github.com/prettyoaktree/homebrew-exifmod) repository:
 
-After the release asset is on GitHub, update the Homebrew tap checksum: copy [`homebrew-exifmod/`](homebrew-exifmod/) into [prettyoaktree/homebrew-exifmod](https://github.com/prettyoaktree/homebrew-exifmod) or run `scripts/publish-homebrew-tap-release.sh` from a clone of that repo (`VERSION=X.Y.Z TAP_DIR=…`). The DMG `sha256` in the cask must match the uploaded file.
+1. Create a **GitHub Release** on `prettyoaktree/homebrew-exifmod` with tag `vX.Y.Z` (same as [`package.json`](package.json) `version`) and attach `EXIFmod-X.Y.Z.dmg`.
+2. Sync [`homebrew-exifmod/`](homebrew-exifmod/) into that repo if needed, then bump the cask `version` / `sha256` via PR or run  
+   `VERSION=X.Y.Z TAP_DIR=/path/to/homebrew-exifmod ./scripts/publish-homebrew-tap-release.sh`  
+   (downloads the public DMG and opens a PR). Details: [`homebrew-exifmod/RELEASE.md`](homebrew-exifmod/RELEASE.md).
 
 ### macOS: release signing and notarization
 
@@ -88,6 +91,7 @@ Preset merge order, which tags are written or stripped, Film/Keywords, Author/Co
 | Path                 | Role                                                                                             |
 | -------------------- | ------------------------------------------------------------------------------------------------ |
 | `install-mac-app`    | macOS helper: build release (`npm run build`) and copy `EXIFmod.app` to `/Applications`          |
+| `homebrew-exifmod/` | Tap files to sync into [prettyoaktree/homebrew-exifmod](https://github.com/prettyoaktree/homebrew-exifmod); DMGs are published there, not via CI on this repo |
 | `src/main/`          | Main process: IPC, ExifTool runner, preset DB, filesystem, menus                                 |
 | `src/main/exifCore/` | EXIF merge/sanitize/write, SQL catalog (`constants.ts`, `store.ts`, `pure.ts`, …)                |
 | `src/renderer/`      | React UI; `@renderer` → `src/renderer/src`, `@shared` → `src/shared` (`electron.vite.config.ts`) |

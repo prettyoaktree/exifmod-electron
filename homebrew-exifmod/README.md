@@ -1,6 +1,8 @@
 # homebrew-exifmod
 
-A [Homebrew tap](https://docs.brew.sh/Taps) that distributes **[EXIFmod](https://github.com/prettyoaktree/exifmod-electron)** for macOS.
+A [Homebrew tap](https://docs.brew.sh/Taps) that distributes **EXIFmod** for macOS. **Release DMGs** are attached to [GitHub Releases in this repository](https://github.com/prettyoaktree/homebrew-exifmod/releases) (public URLs for `brew`).
+
+Source code for the app may live in a private repository; builds are produced locally, signed, and notarized there, then the DMG is published **here**.
 
 ## Install
 
@@ -23,15 +25,10 @@ This cask declares `depends_on formula: "exiftool"`, so Homebrew should install 
 
 ## Repository layout
 
-- `Casks/exifmod.rb` — cask definition (version, checksum, download URL).
-
-Release DMGs are published on the [exifmod-electron releases](https://github.com/prettyoaktree/exifmod-electron/releases) page; this tap only points Homebrew at those assets.
+- `Casks/exifmod.rb` — cask definition (version, checksum, download URL to this repo’s Releases).
 
 ## Maintainer notes
 
-- **Sync from app repo:** The canonical tap files also live under `[exifmod-electron/homebrew-exifmod/](https://github.com/prettyoaktree/exifmod-electron/tree/main/homebrew-exifmod)` in the EXIFmod source tree. Copy or merge that directory into this repository when publishing.
-- **Branch protection:** Configure `main` per `[BRANCH_PROTECTION.md](./BRANCH_PROTECTION.md)` (PRs only, code owner approval, `CODEOWNERS`).
-- **Bumping the cask** after a new GitHub Release DMG exists: clone this repo, run from **exifmod-electron**  
-`VERSION=x.y.z TAP_DIR=/path/to/homebrew-exifmod ./scripts/publish-homebrew-tap-release.sh`  
-or edit `Casks/exifmod.rb` in a branch and open a PR.
-
+- **Sync from app repo:** Canonical tap files are maintained in the EXIFmod app repo under `homebrew-exifmod/`. Copy or merge that directory into this repository when publishing.
+- **Publishing a version:** See [`RELEASE.md`](./RELEASE.md).
+- **Branch protection:** Configure `main` per [`BRANCH_PROTECTION.md`](./BRANCH_PROTECTION.md) (PRs only, code owner approval, `CODEOWNERS`).
