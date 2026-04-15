@@ -194,7 +194,8 @@ export type StatusFooterProps = {
   updaterSupported: boolean
   updaterState: UpdaterUiState
   onOllamaStart: () => void
-  onOllamaNotNow: () => void
+  /** Called when the Ollama footer panel closes (toggle, Escape, click outside). Replaces a separate “Not now” control. */
+  onOllamaPanelDismiss: () => void
   onUpdaterDownload: () => void
   onUpdaterRestart: () => void
   onUpdaterLater: () => void
@@ -211,7 +212,7 @@ export function StatusFooter({
   updaterSupported,
   updaterState,
   onOllamaStart,
-  onOllamaNotNow,
+  onOllamaPanelDismiss,
   onUpdaterDownload,
   onUpdaterRestart,
   onUpdaterLater,
@@ -221,6 +222,7 @@ export function StatusFooter({
   const [openSegment, setOpenSegment] = useState<SegmentId | null>(null)
   const applicationPanelRef = useRef<HTMLDivElement>(null)
   const prevPhaseRef = useRef<ApplicationPhase>(applicationPhase)
+  const prevOpenSegmentRef = useRef<SegmentId | null>(null)
 
   const applicationDismissDisabled = applicationPhase === 'error'
   const applicationLight: StatusLightKind =
@@ -266,6 +268,13 @@ export function StatusFooter({
     if (applicationPhase === 'error') return
     setOpenSegment('updates')
   }, [updaterSupported, updaterState.kind, applicationPhase])
+
+  useEffect(() => {
+    if (prevOpenSegmentRef.current === 'ollama' && openSegment !== 'ollama') {
+      onOllamaPanelDismiss()
+    }
+    prevOpenSegmentRef.current = openSegment
+  }, [openSegment, onOllamaPanelDismiss])
 
   const setSegmentOpen = useCallback(
     (id: SegmentId, open: boolean): void => {
@@ -333,9 +342,6 @@ export function StatusFooter({
           <div className="status-footer-panel-actions">
             <button type="button" className="btn btn-primary" onClick={() => onOllamaStart()}>
               {t('ui.ollamaInlineStart')}
-            </button>
-            <button type="button" className="btn" onClick={() => onOllamaNotNow()}>
-              {t('dialog.ollamaButtonNotNow')}
             </button>
           </div>
         </>

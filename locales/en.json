@@ -55,7 +55,6 @@
     "replaceSqliteDetail": "A file named presets.sqlite3 already exists in:\n{{dir}}",
     "buttonReplace": "Replace",
     "buttonCancel": "Cancel",
-    "ollamaButtonNotNow": "Not now",
     "ollamaSpawnFailed": "Could not start Ollama. Make sure it is installed.",
     "ollamaStillUnreachable": "Ollama did not start in time.",
     "installLrPluginNotMacTitle": "Lightroom plug-in (macOS only)",
