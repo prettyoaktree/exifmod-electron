@@ -1,6 +1,7 @@
 --[[
   Opens the original file for the targeted photo in EXIFmod.
-  LrShell.openFilesInApp( files, appPath ) — files first, application second (SDK order).
+  Uses LrShell.openPathsViaCommandLine with /usr/bin/open so we can pass --exifmod-from-lrc
+  to Electron (official plug-ins only); Finder / Open With does not add this marker.
 ]]
 
 local LrDialogs = import 'LrDialogs'
@@ -10,6 +11,19 @@ local LrPrefs = import 'LrPrefs'
 local LrFileUtils = import 'LrFileUtils'
 local LrTasks = import 'LrTasks'
 local DEFAULT_EXIFMOD_APP = '/Applications/EXIFmod.app'
+
+local OPEN_CMD = '/usr/bin/open'
+
+local function escapeForDoubleQuotedShell(s)
+	return (s:gsub('\\', '\\\\'):gsub('"', '\\"'))
+end
+
+-- `-n` starts a new process so Electron’s `second-instance` runs and forwards argv to the already-running app.
+local function buildOpenExtraArgs(exifmodAppBundlePath)
+	return '-n -a "'
+		.. escapeForDoubleQuotedShell(exifmodAppBundlePath)
+		.. '" --args "--exifmod-from-lrc"'
+end
 
 local function main()
 	-- SDK: use prefsForPlugin(), not importForPlugin (invalid API).
@@ -38,6 +52,11 @@ local function main()
 		return
 	end
 
+	if not LrFileUtils.exists(OPEN_CMD) then
+		LrDialogs.message('EXIFmod', 'Missing ' .. OPEN_CMD)
+		return
+	end
+
 	local appPath = prefs.exifmodAppPath
 	if not appPath or appPath == '' then
 		appPath = DEFAULT_EXIFMOD_APP
@@ -53,8 +72,7 @@ local function main()
 		return
 	end
 
-	-- SDK: LrShell.openFilesInApp( files, appPath ) — not ( appPath, files ).
-	LrShell.openFilesInApp({ path }, appPath)
+	LrShell.openPathsViaCommandLine({ path }, OPEN_CMD, buildOpenExtraArgs(appPath))
 end
 
 LrTasks.startAsyncTask(function()

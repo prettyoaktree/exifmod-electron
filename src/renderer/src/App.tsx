@@ -350,10 +350,42 @@ export function App(): React.ReactElement {
   }>(null)
   const [tutorialOpen, setTutorialOpen] = useState(false)
   const [tutorialFirstRun, setTutorialFirstRun] = useState(false)
+  /** True when argv included `--exifmod-from-lrc` (official Lightroom plug-ins only). */
+  const [sessionFromLrcPlugin, setSessionFromLrcPlugin] = useState(false)
+  const [lrcSnapshotPrefsLoaded, setLrcSnapshotPrefsLoaded] = useState(false)
+  const [lrcSnapshotModalSuppressedPersisted, setLrcSnapshotModalSuppressedPersisted] = useState(false)
+  const [lrcSnapshotModalDismissedSession, setLrcSnapshotModalDismissedSession] = useState(false)
+  const [lrcSnapshotDontShowAgain, setLrcSnapshotDontShowAgain] = useState(false)
   /** Horizontal split: files pane width as % of main content area (default 30%). */
   const [filesPaneWidthPct, setFilesPaneWidthPct] = useState(30)
   /** Vertical split within files pane: file list + actions region height % (default 60%). */
   const [fileListAreaPct, setFileListAreaPct] = useState(60)
+
+  const showLrcDevelopSnapshotModal = useMemo(
+    () =>
+      lrcSnapshotPrefsLoaded &&
+      sessionFromLrcPlugin &&
+      !lrcSnapshotModalSuppressedPersisted &&
+      !lrcSnapshotModalDismissedSession &&
+      openedFolderPath != null &&
+      !tutorialOpen,
+    [
+      lrcSnapshotPrefsLoaded,
+      sessionFromLrcPlugin,
+      lrcSnapshotModalSuppressedPersisted,
+      lrcSnapshotModalDismissedSession,
+      openedFolderPath,
+      tutorialOpen
+    ]
+  )
+
+  const prevLrcSnapshotModalRef = useRef(false)
+  useEffect(() => {
+    if (showLrcDevelopSnapshotModal && !prevLrcSnapshotModalRef.current) {
+      setLrcSnapshotDontShowAgain(false)
+    }
+    prevLrcSnapshotModalRef.current = showLrcDevelopSnapshotModal
+  }, [showLrcDevelopSnapshotModal])
 
   const appBodyRef = useRef<HTMLDivElement>(null)
   const filesPaneStackRef = useRef<HTMLDivElement>(null)
@@ -527,12 +559,41 @@ export function App(): React.ReactElement {
     void window.exifmod?.markTutorialOnboardingSeen?.()
   }, [])
 
+  const onLrcSnapshotModalContinue = useCallback(async () => {
+    if (lrcSnapshotDontShowAgain) {
+      const api = window.exifmod
+      if (api?.setLrcSnapshotModalSuppressed) {
+        await api.setLrcSnapshotModalSuppressed()
+        setLrcSnapshotModalSuppressedPersisted(true)
+      }
+    }
+    setLrcSnapshotModalDismissedSession(true)
+  }, [lrcSnapshotDontShowAgain])
+
   useEffect(() => {
     const api = window.exifmod
     if (!api?.onTutorialStart) return
     return api.onTutorialStart((payload) => {
       setTutorialFirstRun(Boolean(payload?.firstRun))
       setTutorialOpen(true)
+    })
+  }, [])
+
+  useEffect(() => {
+    const api = window.exifmod
+    if (!api?.getLaunchFromLrc || !api.getLrcSnapshotModalSuppressed) return
+    void Promise.all([api.getLaunchFromLrc(), api.getLrcSnapshotModalSuppressed()]).then(([fromLrc, suppressed]) => {
+      setSessionFromLrcPlugin(fromLrc)
+      setLrcSnapshotModalSuppressedPersisted(suppressed)
+      setLrcSnapshotPrefsLoaded(true)
+    })
+  }, [])
+
+  useEffect(() => {
+    const api = window.exifmod
+    if (!api?.onLaunchFromLrc) return
+    return api.onLaunchFromLrc((v) => {
+      if (v) setSessionFromLrcPlugin(true)
     })
   }, [])
 
@@ -1199,7 +1260,7 @@ export function App(): React.ReactElement {
       return
     }
     let lrcDevelop = false
-    if (todo.length > 0) {
+    if (!sessionFromLrcPlugin && todo.length > 0) {
       try {
         const paths = todo.map((x) => x.path)
         const probe = await api.probeHasSettings(paths)
@@ -1210,7 +1271,7 @@ export function App(): React.ReactElement {
     }
     setWriteConfirmLrcDevelop(lrcDevelop)
     setWriteConfirmTodo(todo)
-  }, [files, pendingByPath, metadataByPath, buildMergedPayloadForState, t])
+  }, [files, pendingByPath, metadataByPath, buildMergedPayloadForState, sessionFromLrcPlugin, t])
 
   const onClearPending = useCallback(() => {
     setPendingByPath((prev) => {
@@ -2292,6 +2353,45 @@ export function App(): React.ReactElement {
           </div>
         </div>
       </div>
+      {showLrcDevelopSnapshotModal ? (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) void onLrcSnapshotModalContinue()
+          }}
+        >
+          <div
+            className="modal modal-dialog-confirm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="lrc-snapshot-modal-title"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <h3 id="lrc-snapshot-modal-title" className="modal-confirm-heading">
+              {t('ui.lrcSnapshotModalTitle')}
+            </h3>
+            <p className="modal-confirm-detail">{t('ui.lrcSnapshotModalBody')}</p>
+            <p className="modal-confirm-detail">{t('ui.lrcSnapshotModalMetadataHint')}</p>
+            <div className="lrc-snapshot-modal-options">
+              <label className="lrc-snapshot-dont-show-label" htmlFor="lrc-snapshot-dont-show-again">
+                <input
+                  id="lrc-snapshot-dont-show-again"
+                  type="checkbox"
+                  checked={lrcSnapshotDontShowAgain}
+                  onChange={(e) => setLrcSnapshotDontShowAgain(e.target.checked)}
+                />
+                <span>{t('ui.lrcSnapshotModalDontShowAgain')}</span>
+              </label>
+            </div>
+            <div className="modal-confirm-actions">
+              <button type="button" className="btn btn-primary" onClick={() => void onLrcSnapshotModalContinue()}>
+                {t('ui.lrcSnapshotModalContinue')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {writeConfirmTodo ? (
         <div
           className="modal-backdrop"
@@ -2314,7 +2414,7 @@ export function App(): React.ReactElement {
               {t('ui.writeConfirmLead', { count: writeConfirmTodo.length })}
             </h3>
             <p className="modal-confirm-detail">{t('ui.writeConfirmDetail')}</p>
-            {writeConfirmLrcDevelop ? (
+            {writeConfirmLrcDevelop && !sessionFromLrcPlugin ? (
               <>
                 <p className="modal-confirm-detail">{t('ui.writeConfirmLrcDetail')}</p>
                 <p className="modal-confirm-detail">{t('ui.writeConfirmLrcSnapshot')}</p>

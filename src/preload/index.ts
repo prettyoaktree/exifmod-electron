@@ -74,6 +74,16 @@ const api = {
     return () => ipcRenderer.removeListener('tutorial:start', fn)
   },
   markTutorialOnboardingSeen: () => ipcRenderer.invoke('app:markTutorialOnboardingSeen') as Promise<void>,
+  getLaunchFromLrc: () => ipcRenderer.invoke('app:getLaunchFromLrc') as Promise<boolean>,
+  getLrcSnapshotModalSuppressed: () =>
+    ipcRenderer.invoke('app:getLrcSnapshotModalSuppressed') as Promise<boolean>,
+  setLrcSnapshotModalSuppressed: () =>
+    ipcRenderer.invoke('app:setLrcSnapshotModalSuppressed') as Promise<void>,
+  onLaunchFromLrc: (cb: (fromLrc: boolean) => void) => {
+    const fn = (_e: unknown, v: boolean): void => cb(v)
+    ipcRenderer.on('session:launchFromLrc', fn)
+    return () => ipcRenderer.removeListener('session:launchFromLrc', fn)
+  },
   onStartupPath: (cb: (p: string) => void) => {
     startupPathSubscribers.add(cb)
     const queued = pendingStartupPaths.splice(0, pendingStartupPaths.length)

@@ -1,7 +1,8 @@
 --[[
   Opens the original file in EXIFmod (dev): LrShell.openPathsViaCommandLine (SDK 3.0+) runs
-  /usr/bin/open -n -a <Electron.app> --args <repoRoot> <file>
+  /usr/bin/open -n -a <Electron.app> --args --exifmod-from-lrc <repoRoot> <file>
   Repo root must be absolute — `open` does not guarantee cwd is the project when using `.`.
+  `--exifmod-from-lrc` is added only by official plug-ins (this dev plug-in counts as such).
 ]]
 
 local LrDialogs = import 'LrDialogs'
@@ -25,7 +26,7 @@ end
 local function buildOpenExtraArgs(electronAppPath, repoRoot)
 	return '-n -a "'
 		.. escapeForDoubleQuotedShell(electronAppPath)
-		.. '" --args "'
+		.. '" --args "--exifmod-from-lrc" "'
 		.. escapeForDoubleQuotedShell(repoRoot)
 		.. '"'
 end

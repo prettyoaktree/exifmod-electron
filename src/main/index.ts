@@ -53,6 +53,10 @@ function resolveDevSqlWasmPath(): string {
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock()
 
+/** Set only by official Lightroom plug-ins via `open … --exifmod-from-lrc`. */
+const EXIFMOD_ARG_FROM_LRC = '--exifmod-from-lrc'
+let launchFromLrcPlugin = process.argv.includes(EXIFMOD_ARG_FROM_LRC)
+
 /** Window / taskbar icon: packaged copies `build/icon.png` to Resources; dev uses repo `build/icon.png`. */
 function resolveAppIconPath(): string | undefined {
   if (app.isPackaged) {
@@ -185,7 +189,18 @@ function pathsFromSecondInstanceArgv(commandLine: string[]): string[] {
   return out
 }
 
+function notifyRendererLaunchFromLrcIfNeeded(): void {
+  const w = mainWindow
+  if (w && !w.isDestroyed()) {
+    w.webContents.send('session:launchFromLrc', true)
+  }
+}
+
 function handleSecondInstanceCommandLine(commandLine: string[]): void {
+  if (commandLine.includes(EXIFMOD_ARG_FROM_LRC)) {
+    launchFromLrcPlugin = true
+    notifyRendererLaunchFromLrcIfNeeded()
+  }
   const fromArgv = pathsFromSecondInstanceArgv(commandLine)
   const picked = pickLaunchPathFromCandidates(fromArgv)
 
@@ -283,6 +298,26 @@ const LAST_IMAGE_FOLDER_FILE = 'last-image-folder.txt'
 
 /** Written when the user finishes or dismisses the onboarding tutorial (not written when using `--simulate-first-run`). */
 const TUTORIAL_ONBOARDING_SEEN_FILE = 'tutorial-onboarding-seen.txt'
+
+/** Written when the user dismisses the LRC Develop Snapshot tip with “Do not show this again”. */
+const LRC_SNAPSHOT_MODAL_SUPPRESSED_FILE = 'lrc-snapshot-modal-suppressed.txt'
+
+function isLrcSnapshotModalSuppressed(): boolean {
+  try {
+    return existsSync(join(app.getPath('userData'), LRC_SNAPSHOT_MODAL_SUPPRESSED_FILE))
+  } catch {
+    return false
+  }
+}
+
+function setLrcSnapshotModalSuppressed(): void {
+  try {
+    mkdirSync(app.getPath('userData'), { recursive: true })
+    writeFileSync(join(app.getPath('userData'), LRC_SNAPSHOT_MODAL_SUPPRESSED_FILE), '1\n', 'utf8')
+  } catch {
+    /* ignore */
+  }
+}
 
 /**
  * Development / QA: show the first-run tutorial on launch without persisting completion.
@@ -542,6 +577,14 @@ function setupIpc(): void {
   ipcMain.handle('app:getPaths', () => getDataPaths())
 
   ipcMain.handle('app:getLocale', () => resolveLocaleTag(app.getLocale()))
+
+  ipcMain.handle('app:getLaunchFromLrc', () => launchFromLrcPlugin)
+
+  ipcMain.handle('app:getLrcSnapshotModalSuppressed', () => isLrcSnapshotModalSuppressed())
+
+  ipcMain.handle('app:setLrcSnapshotModalSuppressed', () => {
+    setLrcSnapshotModalSuppressed()
+  })
 
   ipcMain.handle('app:markTutorialOnboardingSeen', () => {
     if (!SIMULATE_FIRST_RUN) markTutorialOnboardingSeenFile()

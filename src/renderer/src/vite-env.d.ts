@@ -46,6 +46,10 @@ export interface ExifmodApi {
   onPresetsImported: (cb: () => void) => () => void
   onTutorialStart: (cb: (payload?: { firstRun?: boolean }) => void) => () => void
   markTutorialOnboardingSeen: () => Promise<void>
+  getLaunchFromLrc: () => Promise<boolean>
+  getLrcSnapshotModalSuppressed: () => Promise<boolean>
+  setLrcSnapshotModalSuppressed: () => Promise<void>
+  onLaunchFromLrc: (cb: (fromLrc: boolean) => void) => () => void
   onStartupPath: (cb: (p: string) => void) => () => void
   onOllamaLaunching: (cb: () => void) => () => void
   onAppCloseRequested: (cb: () => void) => () => void
