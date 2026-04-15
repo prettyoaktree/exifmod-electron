@@ -17,7 +17,8 @@
 #   TAP_REPO            — defaults to prettyoaktree/homebrew-exifmod (cask PR target)
 #   DMG_NAME            — defaults to EXIFmod-<version>.dmg
 #
-# Steps: read version → optional local build → ensure DMG (local or download from APP_REPO) → sha256 →
+# Steps: read version → optional local build → obtain sha256 (local DMG shasum, or small
+#   EXIFmod-<version>.dmg.sha256 from the GitHub release, or download full DMG and shasum) →
 #   rewrite cask version, sha256, url, homepage (url/homepage always point at APP_REPO releases) → cask PR → optional tap housekeeping
 
 set -euo pipefail
@@ -31,6 +32,9 @@ DMG_NAME="${DMG_NAME:-EXIFmod-${VERSION}.dmg}"
 DMG_PATH="${DMG_PATH:-$ROOT/release/${DMG_NAME}}"
 TAG="v${VERSION}"
 DMG_URL="https://github.com/${APP_REPO}/releases/download/${TAG}/${DMG_NAME}"
+RELEASE_DIR="$(dirname "$DMG_PATH")"
+DMG_SHA256_NAME="${DMG_NAME}.sha256"
+DMG_SHA256_PATH="${RELEASE_DIR}/${DMG_SHA256_NAME}"
 
 CASK_REL="Casks/exifmod.rb"
 CASK_FILE="${TAP_DIR}/${CASK_REL}"
@@ -57,25 +61,48 @@ else
   (cd "$ROOT" && npm run build)
 fi
 
-if [[ ! -f "$DMG_PATH" ]]; then
-  echo "DMG not found locally; downloading ${DMG_NAME} from ${APP_REPO} release ${TAG}…"
+SHA256=""
+if [[ -f "$DMG_PATH" ]]; then
+  if [[ "$(basename "$DMG_PATH")" != "$DMG_NAME" ]]; then
+    echo "error: DMG file must be named ${DMG_NAME} (matches cask download URL); got $(basename "$DMG_PATH")" >&2
+    exit 1
+  fi
+  echo "Checksumming local DMG: $DMG_PATH"
+  SHA256="$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')"
+else
+  echo "DMG not found locally; fetching checksum or ${DMG_NAME} from ${APP_REPO} release ${TAG}…"
   if ! gh release view "$TAG" --repo "$APP_REPO" &>/dev/null; then
     echo "error: release ${TAG} not found on ${APP_REPO}. Publish the app release first (e.g. push tag to trigger CI), or build locally." >&2
     exit 1
   fi
-  mkdir -p "$(dirname "$DMG_PATH")"
-  gh release download "$TAG" --repo "$APP_REPO" --pattern "$DMG_NAME" --dir "$(dirname "$DMG_PATH")"
+  mkdir -p "$RELEASE_DIR"
+  if gh release download "$TAG" --repo "$APP_REPO" --pattern "$DMG_SHA256_NAME" --dir "$RELEASE_DIR" 2>/dev/null && [[ -f "$DMG_SHA256_PATH" ]]; then
+    echo "Using published ${DMG_SHA256_NAME} (skipping full DMG download)."
+    SHA256="$(awk 'NR == 1 { print $1 }' "$DMG_SHA256_PATH")"
+  else
+    echo "No ${DMG_SHA256_NAME} on release (older publish); downloading ${DMG_NAME}…"
+    gh release download "$TAG" --repo "$APP_REPO" --pattern "$DMG_NAME" --dir "$RELEASE_DIR"
+  fi
+  if [[ -z "$SHA256" ]]; then
+    if [[ ! -f "$DMG_PATH" ]]; then
+      echo "error: DMG not found after download: $DMG_PATH" >&2
+      exit 1
+    fi
+    if [[ "$(basename "$DMG_PATH")" != "$DMG_NAME" ]]; then
+      echo "error: DMG file must be named ${DMG_NAME} (matches cask download URL); got $(basename "$DMG_PATH")" >&2
+      exit 1
+    fi
+    echo "Checksumming DMG: $DMG_PATH"
+    SHA256="$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')"
+  fi
 fi
 
-if [[ ! -f "$DMG_PATH" ]]; then
-  echo "error: DMG not found: $DMG_PATH" >&2
+if ! [[ "$SHA256" =~ ^[0-9a-fA-F]{64}$ ]]; then
+  echo "error: invalid sha256 (expected 64 hex chars): ${SHA256:-<empty>}" >&2
   exit 1
 fi
-
-if [[ "$(basename "$DMG_PATH")" != "$DMG_NAME" ]]; then
-  echo "error: DMG file must be named ${DMG_NAME} (matches cask download URL); got $(basename "$DMG_PATH")" >&2
-  exit 1
-fi
+SHA256="$(printf '%s' "$SHA256" | tr '[:upper:]' '[:lower:]')"
+echo "sha256=$SHA256"
 
 if [[ ! -d "$TAP_DIR/.git" ]]; then
   echo "error: TAP_DIR must be a git clone (missing .git under $TAP_DIR)" >&2
@@ -91,10 +118,6 @@ if [[ -n "$(git -C "$TAP_DIR" status --porcelain 2>/dev/null)" ]]; then
   echo "error: tap repo has uncommitted changes: $TAP_DIR" >&2
   exit 1
 fi
-
-echo "Checksumming DMG: $DMG_PATH"
-SHA256="$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')"
-echo "sha256=$SHA256"
 
 # Update cask: version, sha256, and canonical url/homepage pointing at APP_REPO (not the tap repo’s releases).
 ruby - "$CASK_FILE" "$VERSION" "$SHA256" "$APP_REPO" <<'RUBY'

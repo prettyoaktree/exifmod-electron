@@ -53,3 +53,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run release:github
+
+      - name: Upload DMG SHA256 for Homebrew cask bump
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG="v${VERSION}"
+          DMG="release/EXIFmod-${VERSION}.dmg"
+          OUT="release/EXIFmod-${VERSION}.dmg.sha256"
+          test -f "$DMG"
+          shasum -a 256 "$DMG" | tee "$OUT"
+          gh release upload "$TAG" "$OUT" --clobber --repo "${GITHUB_REPOSITORY}"

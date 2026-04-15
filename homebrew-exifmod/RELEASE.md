@@ -15,8 +15,8 @@ TAP_DIR=/path/to/homebrew-exifmod ./scripts/publish-homebrew-tap-release.sh
 The script:
 
 1. Optionally runs **`npm run build`** in the app repo when `release/EXIFmod-<version>.dmg` is missing (unless **`SKIP_BUILD=1`**; use **`FORCE_BUILD=1`** to rebuild anyway).
-2. If the DMG is still missing, **downloads** `EXIFmod-<version>.dmg` from **`prettyoaktree/exifmod-electron`** release **`v<version>`** (the app release must already exist).
-3. Computes **sha256** of that DMG.
+2. If the DMG is still missing, it prefers the small **`EXIFmod-<version>.dmg.sha256`** asset published next to the DMG on the app release (uploaded by CI after each build). If that file is missing (older releases), it **downloads** the full DMG and hashes it locally.
+3. Uses that **sha256** for the cask (no redundant DMG download when the checksum asset exists).
 4. Updates **`Casks/exifmod.rb`** in your tap clone (version + sha256 URL already points at the app repo release).
 5. Opens a **PR** to **`main`** on **`prettyoaktree/homebrew-exifmod`**.
 
