@@ -40,6 +40,7 @@ describe('buildApplyCommand', () => {
     const cmd = buildApplyCommand('/bin/exiftool', '/tmp/a.jpg', { Make: 'M', Keywords: ['a', 'b'] })
     expect(cmd[0]).toBe('/bin/exiftool')
     expect(cmd).toContain('-overwrite_original')
+    expect(cmd).toContain('-P')
     expect(cmd).toContain('-Make=M')
     expect(cmd).toContain('-Keywords=a')
     expect(cmd).toContain('-Keywords=b')
