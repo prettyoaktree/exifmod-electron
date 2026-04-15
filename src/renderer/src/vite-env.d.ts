@@ -12,6 +12,7 @@ export interface ExifmodApi {
   validateExiftool: (path?: string) => Promise<string | null>
   loadCatalog: () => Promise<{ catalog: ConfigCatalog; loadIssues: string[] }>
   readMetadata: (filePath: string) => Promise<Record<string, unknown>>
+  probeHasSettings: (filePaths: string[]) => Promise<Record<string, boolean>>
   mergePayloads: (sel: {
     camera?: number | null
     lens?: number | null
@@ -45,6 +46,10 @@ export interface ExifmodApi {
   onPresetsImported: (cb: () => void) => () => void
   onTutorialStart: (cb: (payload?: { firstRun?: boolean }) => void) => () => void
   markTutorialOnboardingSeen: () => Promise<void>
+  getLaunchFromLrc: () => Promise<boolean>
+  getLrcSnapshotModalSuppressed: () => Promise<boolean>
+  setLrcSnapshotModalSuppressed: () => Promise<void>
+  onLaunchFromLrc: (cb: (fromLrc: boolean) => void) => () => void
   onStartupPath: (cb: (p: string) => void) => () => void
   onOllamaLaunching: (cb: () => void) => () => void
   onAppCloseRequested: (cb: () => void) => () => void

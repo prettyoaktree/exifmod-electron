@@ -4,7 +4,13 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApplyCommand, sanitizeWritePayload } from './exifCore/pure.js'
-import { readExifMetadata, resolveExiftoolPath, spawnExiftool, validateExiftool } from './exiftoolRunner.js'
+import {
+  probeHasSettingsBatch,
+  readExifMetadata,
+  resolveExiftoolPath,
+  spawnExiftool,
+  validateExiftool
+} from './exiftoolRunner.js'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const FIXTURE_JPG = join(repoRoot, 'test', 'test_image.jpg')
@@ -120,6 +126,7 @@ describe('exiftool integration (fixture: test/test_image.jpg)', () => {
       copyFileSync(FIXTURE_JPG, copyPath)
 
       const cmd = buildApplyCommand(tool, copyPath, RAW_MERGED_LIKE_CATALOG)
+      expect(cmd).toContain('-P')
       const { code, stderr } = await spawnExiftool(cmd, { timeoutMs: 60_000 })
       expect(code, stderr || 'exiftool failed').toBe(0)
 
@@ -131,4 +138,14 @@ describe('exiftool integration (fixture: test/test_image.jpg)', () => {
       expect((after as Record<string, unknown>)['Film Maker']).toBeUndefined()
     }
   )
+})
+
+describe('exiftool probeHasSettingsBatch (baseline JPEG)', () => {
+  const skipReason = exiftoolSkipReason()
+
+  it.skipIf(skipReason !== null)('probeHasSettingsBatch is false for baseline JPEG', async () => {
+    const tool = resolveExiftoolPath()!
+    const r = await probeHasSettingsBatch(tool, [FIXTURE_JPG])
+    expect(r[FIXTURE_JPG]).toBe(false)
+  })
 })
