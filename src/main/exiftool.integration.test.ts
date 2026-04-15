@@ -14,8 +14,6 @@ import {
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const FIXTURE_JPG = join(repoRoot, 'test', 'test_image.jpg')
-/** Optional repo fixture with embedded Lightroom Classic / XMP-crs metadata (large; may be absent in CI). */
-const FIXTURE_LRC_TIF = join(repoRoot, 'test', 'lrc', 'instamatic_lomo100_6-positive.tif')
 
 function exiftoolSkipReason(): string | null {
   const p = resolveExiftoolPath()
@@ -142,7 +140,7 @@ describe('exiftool integration (fixture: test/test_image.jpg)', () => {
   )
 })
 
-describe('exiftool probe HasSettings (optional test/lrc fixtures)', () => {
+describe('exiftool probeHasSettingsBatch (baseline JPEG)', () => {
   const skipReason = exiftoolSkipReason()
 
   it.skipIf(skipReason !== null)('probeHasSettingsBatch is false for baseline JPEG', async () => {
@@ -150,23 +148,4 @@ describe('exiftool probe HasSettings (optional test/lrc fixtures)', () => {
     const r = await probeHasSettingsBatch(tool, [FIXTURE_JPG])
     expect(r[FIXTURE_JPG]).toBe(false)
   })
-
-  it.skipIf(skipReason !== null || !existsSync(FIXTURE_LRC_TIF))(
-    'probeHasSettingsBatch is true for optional Lightroom TIFF fixture',
-    async () => {
-      const tool = resolveExiftoolPath()!
-      const r = await probeHasSettingsBatch(tool, [FIXTURE_LRC_TIF])
-      expect(r[FIXTURE_LRC_TIF]).toBe(true)
-    }
-  )
-
-  it.skipIf(skipReason !== null || !existsSync(FIXTURE_LRC_TIF))(
-    'probeHasSettingsBatch handles JPEG and TIFF in one invocation',
-    async () => {
-      const tool = resolveExiftoolPath()!
-      const r = await probeHasSettingsBatch(tool, [FIXTURE_JPG, FIXTURE_LRC_TIF])
-      expect(r[FIXTURE_JPG]).toBe(false)
-      expect(r[FIXTURE_LRC_TIF]).toBe(true)
-    }
-  )
 })

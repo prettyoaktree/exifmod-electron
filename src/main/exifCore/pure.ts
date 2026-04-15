@@ -46,7 +46,7 @@ export function validateImageDescriptionForExif(text: string): string | null {
 
 export function buildApplyCommand(exiftoolPath: string, filePath: string, exifData: Record<string, unknown>): string[] {
   const data = sanitizeWritePayload(exifData)
-  /** `-P`: preserve filesystem modification time (helps external tools / catalogs). With `-overwrite_original`, validated on `test/lrc/*.tif`: XMP-crs develop block count unchanged after typical EXIFmod writes. */
+  /** `-P`: preserve filesystem modification time (helps external tools / catalogs). */
   const cmd = [exiftoolPath, '-overwrite_original', '-P', '-charset', 'EXIF=utf8']
   for (const [key, value] of Object.entries(data)) {
     if (Array.isArray(value)) {
