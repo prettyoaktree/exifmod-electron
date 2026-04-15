@@ -2349,7 +2349,6 @@ export function App(): React.ReactElement {
               {t('ui.lrcSnapshotModalTitle')}
             </h3>
             <p className="modal-confirm-detail">{t('ui.lrcSnapshotModalBody')}</p>
-            <p className="modal-confirm-detail">{t('ui.lrcSnapshotModalMetadataHint')}</p>
             <div className="lrc-snapshot-modal-options">
               <label className="lrc-snapshot-dont-show-label" htmlFor="lrc-snapshot-dont-show-again">
                 <input
@@ -2392,10 +2391,7 @@ export function App(): React.ReactElement {
             </h3>
             <p className="modal-confirm-detail">{t('ui.writeConfirmDetail')}</p>
             {writeConfirmLrcDevelop && !sessionFromLrcPlugin ? (
-              <>
-                <p className="modal-confirm-detail">{t('ui.writeConfirmLrcDetail')}</p>
-                <p className="modal-confirm-detail">{t('ui.writeConfirmLrcSnapshot')}</p>
-              </>
+              <p className="modal-confirm-detail">{t('ui.writeConfirmLrcDetail')}</p>
             ) : null}
             <div className="modal-confirm-actions">
               <button
