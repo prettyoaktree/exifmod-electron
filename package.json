@@ -19,8 +19,9 @@
     "release:github": "tsc -p tsconfig.node.json --noEmit && electron-vite build && electron-builder --publish always",
     "build:vite": "electron-vite build",
     "preview": "electron-vite preview",
-    "test": "vitest run",
+    "test": "vitest run && node scripts/check-locale-keys.mjs",
     "test:watch": "vitest",
+    "check:locales": "node scripts/check-locale-keys.mjs",
     "postinstall": "echo ok"
   },
   "dependencies": {

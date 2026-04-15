@@ -88,9 +88,9 @@ Keep this table synchronized with the actual `async` / IPC sequence in the rende
 
 | Phase | Title / summary (examples; use i18n keys) | Body |
 | ----- | ------------------------------------------ | ---- |
-| `verifying` | “Checking application…” | Short explanation + optional spinner; no red styling. |
-| `ok` | “Application ready” (or similar) | Optional one-line “ExifTool and catalog OK”; list resolved ExifTool path only if product wants power-user detail. |
-| `error` | “Application cannot run” / “Fix required” | Bulleted localized messages: preload, ExifTool, DB/catalog as applicable. |
+| `verifying` | “Checking Application…” | Short explanation + optional spinner; no red styling. |
+| `ok` | “Application Ready” (or similar) | Optional one-line “ExifTool and catalog OK”; list resolved ExifTool path only if product wants power-user detail. |
+| `error` | “Application cannot run” / “Fix Required” | Bulleted localized messages: preload, ExifTool, DB/catalog as applicable. |
 
 ### 3.4 Actions by phase
 
