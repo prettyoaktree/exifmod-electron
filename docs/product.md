@@ -63,7 +63,7 @@ You can **create** and **edit** presets from the **Manage Presets** panel. Prese
 
 ## Metadata mapping UI
 
-For the current selection, the app shows two metadata tables. The first table uses four columns: **Attribute**, **Current Value**, **New Value**, and **Remove** (Camera, Lens, Film, Author, Shutter Speed, Aperture). A titled subsection **Description and keywords** contains the AI control and optional Start Ollama drawer, followed by a second table with five columns for Description/Keywords rows: **Attribute**, **Current Value**, **Copy**, **New Value**, and **Remove**.
+For the current selection, the app shows two metadata tables. The first table uses four columns: **Attribute**, **Current Value**, **New Value**, and **Remove** (Camera, Lens, Film, Author, Shutter Speed, Aperture). A titled subsection **Description and keywords** contains the AI control, followed by a second table with five columns for Description/Keywords rows: **Attribute**, **Current Value**, **Copy**, **New Value**, and **Remove**. **Start Ollama** and related hints live in the **Ollama** area of the bottom status bar (see **Status bar** below).
 
 - **Current** — Values inferred from the file’s existing EXIF (where applicable). When there is no value, the cell shows an em dash (—).
 - **New** — Pending edits. Preset pickers (or “None” / **Do Not Modify**) are **searchable**: type to filter the list, or open it with the chevron; **Tab** and **Arrow** keys still move between metadata fields when the list is closed.
@@ -76,7 +76,7 @@ When multiple files are selected, the UI can show **Multiple** where values diff
 
 ### Optional local AI (Ollama)
 
-On startup, EXIFmod **asynchronously** checks whether Ollama is reachable by sending a **minimal text chat** to the configured model (same host and model as real AI work). While that check runs, the **AI** control stays disabled and shows an **animated green border** (activity). If Ollama responds, the control switches to the steady green “available” styling (it may still be disabled until you select files or until there is room in Description). If the **`ollama`** command is **not** on your PATH (and the warmup failed), the **AI** control stays **off for the session** with a hint to install Ollama. Otherwise, if Ollama does not respond but the CLI is available, a **collapsible drawer** next to the AI button offers **Start Ollama** (`ollama serve`) without a modal; **Not now** collapses the drawer so you can reopen it later. Until you choose **Start Ollama**, the AI button stays **without** that animation; after you do, the **animated green border** returns until the server answers or a timeout is reached.
+On startup, EXIFmod **asynchronously** checks whether Ollama is reachable by sending a **minimal text chat** to the configured model (same host and model as real AI work). While that check runs, the **AI** control stays disabled and shows an **animated green border** (activity). If Ollama responds, the control switches to the steady green “available” styling (it may still be disabled until you select files or until there is room in Description). If the **`ollama`** command is **not** on your PATH (and the warmup failed), the **AI** control stays **off for the session** with a hint to install Ollama. Otherwise, if Ollama does not respond but the CLI is available, open the **Ollama** segment in the **status bar** to use **Start Ollama** (`ollama serve`) or **Not now**. Until you choose **Start Ollama**, the AI button stays **without** that animation; after you do, the **animated green border** returns until the server answers or a timeout is reached.
 
 The **Description and keywords** subsection header offers the **AI** control when Ollama is available for the session and at least one staged file still has room for more pending ImageDescription text. It calls a local Ollama server over HTTP (`/api/chat`) with a downscaled JPEG preview per file. For one selected file, AI runs immediately. For several files, the app asks for confirmation, then processes files one after another, showing **Generating (n/total)…** on the button. Per-file failures do not stop the batch; when the run finishes, if anything failed, a dialog lists each error and you can retry only the failed files or dismiss. AI output appends to each file’s pending **New** Description and appends suggested keywords to pending **New** Keywords (with dedupe). For keywords, film-identifying tokens already on file (`film`, `… Film Stock`) are preserved even if not present in AI output. Only loopback hosts are allowed (e.g. `127.0.0.1`). Configure the base URL and model with **`EXIFMOD_OLLAMA_HOST`** and **`EXIFMOD_OLLAMA_MODEL`** if needed. If a describe request fails with a transport error (for example `fetch failed` because Ollama stopped), the app re-checks availability and can show the Start Ollama drawer again when the CLI is on your PATH, without changing the initial startup check.
 
@@ -90,7 +90,7 @@ Use the **Edit** menu (or standard shortcuts such as **⌘C** / **Ctrl+C**, **�
 
 **Help → Tutorial…** opens a short guided walkthrough of the main workflow. The first time you launch the app, that tutorial opens automatically; after you close or finish it, the app remembers not to show it again on startup. Developers can pass **`--simulate-first-run`** on the command line (for example with `npm run dev -- --simulate-first-run`) to open the same automatic tutorial without writing that “seen” flag—useful for testing the first-run experience repeatedly.
 
-On macOS, **Help → Check for Updates…** checks GitHub Releases for a newer **signed** release (see **Automatic updates** above).
+On macOS, **Help → Check for Updates…** runs the same update check as the **Updates** area in the status bar (progress and results appear there). It queries GitHub Releases for a newer **signed** release (see **Automatic updates** above).
 
 On macOS, **EXIFmod → About EXIFmod** opens the standard About window with the app icon, the same headline as the main window title bar area, the **version of the build you are running** (from the app bundle), and copyright **© 2026 Alon Yaffe, All Rights Reserved.**
 
@@ -123,7 +123,17 @@ From the **File** menu:
 
 ## Startup checks (preflight)
 
-On launch, the app verifies that the preset database is usable and that **ExifTool** can be found and executed. If something is wrong, the user sees a clear message (missing DB, no presets, ExifTool not on PATH, etc.).
+On launch, the app verifies that the preset database is usable and that **ExifTool** can be found and executed. Results appear under **Application** in the **status bar** (see **Status bar** below): a neutral indicator while checks run, then green when ready or red with details if something blocks metadata work.
+
+---
+
+## Status bar (system health)
+
+The main window includes a **status bar** along the bottom for **Application** readiness (preload bridge, **ExifTool**, preset catalog), **Ollama** (optional local AI), and—on the **signed macOS release** build—**Updates**. Each area uses the same pattern: a **status indicator** (color reflects health or progress), a short label, and a **detail panel** you can open for explanations and actions (for example, starting Ollama or downloading an update).
+
+While startup checks are still running, the **Application** indicator stays **neutral** until verification finishes, so you are not interrupted on a healthy machine. If a **blocking** problem is detected after those checks complete (for example ExifTool missing), the Application detail opens automatically and stays open until the situation is resolved or no longer applies.
+
+Contributors: the full **conditions → lights → copy → actions** matrix lives in [`status-footer.md`](status-footer.md); update it whenever this surface changes.
 
 ---
 

@@ -296,118 +296,6 @@ button.btn-sm {
   box-shadow: 0 0 0 1px var(--pending-control-ring);
 }
 
-/** Collapsible strip to the left of the AI button when Ollama is down but the CLI exists. */
-.meta-notes-ollama-drawer {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  max-width: 100%;
-  overflow: hidden;
-  transition:
-    max-width 0.24s ease,
-    opacity 0.2s ease;
-}
-
-.meta-notes-ollama-drawer--collapsed {
-  max-width: 2rem;
-  flex-shrink: 0;
-  opacity: 0.92;
-}
-
-.meta-notes-ollama-drawer-line {
-  margin: 0;
-  padding: 0;
-  max-width: 100%;
-  font-size: 0.7rem;
-  line-height: 1.35;
-  color: var(--muted);
-  white-space: nowrap;
-  text-align: right;
-}
-
-.meta-notes-ollama-drawer-msg {
-  white-space: nowrap;
-}
-
-.meta-notes-ollama-drawer-link {
-  display: inline;
-  margin: 0;
-  padding: 0;
-  font: inherit;
-  font-size: inherit;
-  line-height: inherit;
-  vertical-align: baseline;
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.meta-notes-ollama-drawer-link--start {
-  color: var(--accent);
-}
-
-.meta-notes-ollama-drawer-link--start:hover {
-  color: var(--accent-hover);
-}
-
-.meta-notes-ollama-drawer-link--dismiss {
-  color: var(--danger);
-}
-
-.meta-notes-ollama-drawer-link--dismiss:hover {
-  color: #991b1b;
-}
-
-.meta-notes-ollama-drawer-link:focus {
-  outline: none;
-}
-
-.meta-notes-ollama-drawer-link:focus-visible {
-  border-radius: 3px;
-  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.35);
-}
-
-.meta-notes-ollama-drawer-inline-error {
-  color: var(--danger);
-  font-size: 0.65rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: bottom;
-  max-width: 9rem;
-  display: inline-block;
-}
-
-.meta-notes-ollama-drawer-expand {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  min-height: 2rem;
-  padding: 0;
-  border: 1px solid #d4d4d8;
-  border-radius: 6px;
-  background: #fafafa;
-  color: var(--muted);
-  cursor: pointer;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
-}
-
-.meta-notes-ollama-drawer-expand:hover {
-  color: var(--accent);
-  border-color: rgba(var(--accent-rgb), 0.45);
-  background: rgba(var(--accent-rgb), 0.06);
-}
-
-.meta-notes-ollama-drawer-expand-icon {
-  display: block;
-}
-
 /**
  * Same column tracks as `table.mapping` (attribute | current | copy | new | remove)
  * so the AI cluster lines up with the New/Remove tracks.
@@ -430,8 +318,7 @@ button.btn-sm {
 }
 
 /**
- * Spans the “New Value” + “Remove” tracks so the Ollama drawer can use the flexible width.
- * Inner grid: drawer | 4.5rem (spark aligned with Remove column).
+ * Aligns the AI spark with the Remove column (same grid tracks as subsection head).
  */
 .meta-subsection-ai-cell {
   grid-column: 4 / 6;
@@ -444,26 +331,14 @@ button.btn-sm {
 }
 
 .meta-subsection-ai-anchor {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 4.5rem;
-  column-gap: 0.35rem;
+  display: flex;
+  justify-content: flex-end;
   align-items: center;
   width: 100%;
   min-width: 0;
 }
 
-.meta-subsection-ai-drawer-slot {
-  grid-column: 1;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  min-width: 0;
-}
-
 .meta-subsection-ai-anchor > .btn-ai-spark {
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: center;
   position: relative;
   z-index: 3;
 }
@@ -1987,4 +1862,186 @@ table.mapping.preset-modal-mapping .preset-modal-stack {
   padding: 0.55rem 1rem;
   font-size: 0.8125rem;
   border-bottom: 1px solid #fcd34d;
+}
+
+/* —— Status footer (system health) —— */
+.status-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  min-height: 2.5rem;
+  padding: 0 0.5rem;
+  background: linear-gradient(180deg, #f4f4f5 0%, #e4e4e7 100%);
+  border-top: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.status-footer-segment {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.status-footer-segment-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  min-height: 2.5rem;
+  padding: 0 0.65rem;
+  margin: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.status-footer-segment-trigger:hover {
+  background: rgba(24, 24, 27, 0.06);
+}
+
+.status-footer-segment-trigger:focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), 0.55);
+  outline-offset: 2px;
+}
+
+.status-footer-segment-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-footer-chevron {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  color: #52525b;
+}
+
+.status-footer-segment-trigger:hover .status-footer-chevron {
+  color: var(--text);
+}
+
+.status-footer-chevron-svg {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  transition: transform 0.15s ease;
+}
+
+/** Closed = points right; open = points down (same path, rotated 90°). */
+.status-footer-chevron--open .status-footer-chevron-svg {
+  transform: rotate(90deg);
+}
+
+.status-footer-light {
+  flex-shrink: 0;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.12);
+}
+
+.status-footer-light--pending {
+  background: #a1a1aa;
+}
+
+.status-footer-light--ok {
+  background: var(--accent);
+}
+
+.status-footer-light--warn {
+  background: #d97706;
+}
+
+.status-footer-light--error {
+  background: var(--danger);
+}
+
+.status-footer-light--progress {
+  background: #2563eb;
+  animation: status-footer-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes status-footer-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.status-footer-panel {
+  padding: 0.75rem 1rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--chrome-radius);
+  box-shadow: 0 8px 24px rgba(24, 24, 27, 0.12);
+  max-height: min(70vh, 22rem);
+  overflow: auto;
+}
+
+.status-footer-panel-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: var(--text);
+}
+
+.status-footer-panel-body {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.status-footer-panel-message {
+  margin: 0 0 0.65rem;
+}
+
+.status-footer-panel-message--error {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.status-footer-issue-list {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.status-footer-issue-list li {
+  margin-bottom: 0.35rem;
+}
+
+.status-footer-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.status-footer-progress-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+
+.status-footer-progress-fill {
+  height: 100%;
+  background: #2563eb;
+  border-radius: 3px;
+  transition: width 0.15s ease-out;
 }

@@ -46,6 +46,8 @@ import { ManagePresetsPanel } from './ManagePresetsPanel.js'
 import { TutorialModal } from './TutorialModal.js'
 import type { Cat } from './categories.js'
 import { truncateMiddle } from './format/truncateMiddle.js'
+import { StatusFooter, type ApplicationPhase } from './StatusFooter.js'
+import type { UpdaterUiPayload } from '@shared/updaterUi.js'
 
 const CATS: Cat[] = ['Camera', 'Lens', 'Film', 'Author']
 
@@ -301,9 +303,10 @@ export function App(): React.ReactElement {
   const displayToInternal = (text: string): string => (text === noneDisplay ? 'None' : text)
   const catLabel = (cat: Cat): string => t(CAT_I18N[cat])
 
-  const [preflight, setPreflight] = useState<string[]>([])
+  const [applicationPhase, setApplicationPhase] = useState<ApplicationPhase>('verifying')
+  const [applicationMessages, setApplicationMessages] = useState<string[]>([])
+  const [preloadMissing, setPreloadMissing] = useState(false)
   const [catalog, setCatalog] = useState<ConfigCatalog | null>(null)
-  const [catalogIssues, setCatalogIssues] = useState<string[]>([])
   const [files, setFiles] = useState<string[]>([])
   /** `null` = user has not chosen a folder yet; non-null = folder session (list may be empty). */
   const [openedFolderPath, setOpenedFolderPath] = useState<string | null>(null)
@@ -340,9 +343,8 @@ export function App(): React.ReactElement {
   const [ollamaSession, setOllamaSession] = useState<OllamaSession>('checking')
   /** Shown next to the inline Start control when `ollamaTryStartServer` fails (user can retry). */
   const [ollamaStartError, setOllamaStartError] = useState<string | null>(null)
-  /** When `server_down`, drawer next to AI: expanded vs collapsed strip (Not now collapses; user can expand again). */
-  const [ollamaCtaCollapsed, setOllamaCtaCollapsed] = useState(false)
-  const prevOllamaSessionForDrawerRef = useRef<OllamaSession | null>(null)
+  const [updaterSupported, setUpdaterSupported] = useState(false)
+  const [updaterState, setUpdaterState] = useState<UpdaterUiPayload>({ kind: 'idle' })
   const [aiBatchConfirmPaths, setAiBatchConfirmPaths] = useState<string[] | null>(null)
   const [aiBatchErrorsDialog, setAiBatchErrorsDialog] = useState<null | {
     failures: { path: string; message: string }[]
@@ -499,23 +501,46 @@ export function App(): React.ReactElement {
     document.addEventListener('mouseup', up)
   }, [])
 
-  const reloadCatalog = useCallback(async () => {
+  /**
+   * Application health (see docs/status-footer.md §3.2):
+   * A) preload `window.exifmod`
+   * B) `preflight()` (DB on disk + ExifTool)
+   * C) `loadCatalog()` (sql.js + preset rows)
+   */
+  const runApplicationHealthCheck = useCallback(async () => {
+    setApplicationPhase('verifying')
+    if (!window.exifmod) {
+      setPreloadMissing(true)
+      setApplicationMessages([t('ui.errorPreload')])
+      setCatalog(null)
+      setApplicationPhase('error')
+      return
+    }
+    setPreloadMissing(false)
     const api = window.exifmod
-    if (!api) return
-    const { catalog: c, loadIssues } = await api.loadCatalog()
-    setCatalog(c)
-    setCatalogIssues(loadIssues)
-  }, [])
+    try {
+      const preflightIssues = await api.preflight()
+      const { catalog: c, loadIssues } = await api.loadCatalog()
+      setCatalog(c)
+      const merged: string[] = [...preflightIssues]
+      for (const x of loadIssues) {
+        if (!merged.includes(x)) merged.push(x)
+      }
+      setApplicationMessages(merged)
+      setApplicationPhase(merged.length > 0 ? 'error' : 'ok')
+    } catch (e) {
+      setApplicationMessages([e instanceof Error ? e.message : String(e)])
+      setApplicationPhase('error')
+    }
+  }, [t])
+
+  const reloadCatalog = useCallback(async () => {
+    await runApplicationHealthCheck()
+  }, [runApplicationHealthCheck])
 
   useEffect(() => {
-    const api = window.exifmod
-    if (!api) return
-    void (async () => {
-      const issues = await api.preflight()
-      setPreflight(issues)
-      await reloadCatalog()
-    })()
-  }, [reloadCatalog])
+    void runApplicationHealthCheck()
+  }, [runApplicationHealthCheck])
 
   useEffect(() => {
     const api = window.exifmod
@@ -541,18 +566,17 @@ export function App(): React.ReactElement {
   }, [])
 
   useEffect(() => {
-    const prev = prevOllamaSessionForDrawerRef.current
-    prevOllamaSessionForDrawerRef.current = ollamaSession
-    if (ollamaSession === 'server_down' && prev !== 'server_down') {
-      setOllamaCtaCollapsed(false)
-    }
-  }, [ollamaSession])
-
-  useEffect(() => {
     const api = window.exifmod
     if (!api) return
     return api.onPresetsImported(() => void reloadCatalog())
   }, [reloadCatalog])
+
+  useEffect(() => {
+    const api = window.exifmod
+    if (!api?.getUpdaterSupport || !api.onUpdaterState) return
+    void api.getUpdaterSupport().then((r) => setUpdaterSupported(r.supported))
+    return api.onUpdaterState((p) => setUpdaterState(p))
+  }, [])
 
   const closeTutorial = useCallback(() => {
     setTutorialOpen(false)
@@ -1294,7 +1318,6 @@ export function App(): React.ReactElement {
     const ar = await api.ollamaCheckAvailability()
     if (ar.status === 'server_down') {
       setOllamaSession('server_down')
-      setOllamaCtaCollapsed(false)
       setOllamaStartError(null)
       return true
     }
@@ -1442,7 +1465,30 @@ export function App(): React.ReactElement {
 
   const onOllamaInlineDismiss = useCallback(() => {
     setOllamaStartError(null)
-    setOllamaCtaCollapsed(true)
+  }, [])
+
+  const onUpdaterDownload = useCallback(async () => {
+    const api = window.exifmod
+    if (!api?.updaterDownload) return
+    try {
+      await api.updaterDownload()
+    } catch (e) {
+      setUpdaterState({ kind: 'error', message: e instanceof Error ? e.message : String(e) })
+    }
+  }, [])
+
+  const onUpdaterRestart = useCallback(() => {
+    void window.exifmod?.updaterQuitAndInstall?.()
+  }, [])
+
+  const onUpdaterLater = useCallback(() => {
+    void window.exifmod?.updaterDismiss?.()
+  }, [])
+
+  const onUpdaterCheck = useCallback(async () => {
+    const api = window.exifmod
+    if (!api?.updaterCheck) return
+    await api.updaterCheck()
   }, [])
 
   const staging = stagingPaths
@@ -1596,17 +1642,6 @@ export function App(): React.ReactElement {
 
   return (
     <div className="app">
-      {!window.exifmod && (
-        <div className="preflight-warn">
-          <strong>{t('ui.errorPreload')}</strong>{' '}
-          <span dangerouslySetInnerHTML={{ __html: t('ui.errorPreloadBody') }} />
-        </div>
-      )}
-      {preflight.length > 0 && (
-        <div className="preflight-warn">
-          <strong>{t('ui.warningPrefix')}</strong> {preflight.join(' · ')}
-        </div>
-      )}
       <div className="app-body" ref={appBodyRef}>
         <div
           className="file-panel"
@@ -1769,9 +1804,6 @@ export function App(): React.ReactElement {
                 </svg>
               </button>
             </div>
-            {catalogIssues.length > 0 && (
-              <p style={{ fontSize: '0.75rem', color: '#b45309' }}>{catalogIssues.join(' ')}</p>
-            )}
             <div
               ref={metaRovingBlockRef}
               className="meta-roving-block"
@@ -1977,72 +2009,6 @@ export function App(): React.ReactElement {
                   </div>
                   <div className="meta-subsection-ai-cell">
                     <div className="meta-subsection-ai-anchor">
-                      <div className="meta-subsection-ai-drawer-slot">
-                        {ollamaSession === 'server_down' && (
-                          <div
-                            className={[
-                              'meta-notes-ollama-drawer',
-                              ollamaCtaCollapsed ? 'meta-notes-ollama-drawer--collapsed' : ''
-                            ]
-                              .filter(Boolean)
-                              .join(' ')}
-                            role="region"
-                            aria-label={t('ui.ollamaDrawerRegionLabel')}
-                          >
-                            {!ollamaCtaCollapsed ? (
-                              <p className="meta-notes-ollama-drawer-line">
-                                <span className="meta-notes-ollama-drawer-msg">{t('ui.ollamaInlineHint')}</span>{' '}
-                                <button
-                                  type="button"
-                                  tabIndex={-1}
-                                  className="meta-notes-ollama-drawer-link meta-notes-ollama-drawer-link--start"
-                                  onClick={() => void onOllamaInlineStart()}
-                                >
-                                  {t('ui.ollamaInlineStart')}
-                                </button>{' '}
-                                <button
-                                  type="button"
-                                  tabIndex={-1}
-                                  className="meta-notes-ollama-drawer-link meta-notes-ollama-drawer-link--dismiss"
-                                  onClick={onOllamaInlineDismiss}
-                                >
-                                  {t('dialog.ollamaButtonNotNow')}
-                                </button>
-                                {ollamaStartError ? (
-                                  <span className="meta-notes-ollama-drawer-inline-error" title={ollamaStartError}>
-                                    {' '}
-                                    · {ollamaStartError}
-                                  </span>
-                                ) : null}
-                              </p>
-                            ) : (
-                              <button
-                                type="button"
-                                tabIndex={-1}
-                                className="meta-notes-ollama-drawer-expand"
-                                onClick={() => setOllamaCtaCollapsed(false)}
-                                title={t('ui.ollamaDrawerExpand')}
-                                aria-label={t('ui.ollamaDrawerExpand')}
-                                aria-expanded="false"
-                              >
-                                <svg
-                                  className="meta-notes-ollama-drawer-expand-icon"
-                                  viewBox="0 0 24 24"
-                                  width="18"
-                                  height="18"
-                                  aria-hidden
-                                  focusable="false"
-                                >
-                                  <path
-                                    fill="currentColor"
-                                    d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
-                                  />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
                       <button
                         type="button"
                         tabIndex={-1}
@@ -2353,6 +2319,21 @@ export function App(): React.ReactElement {
           </div>
         </div>
       </div>
+      <StatusFooter
+        applicationPhase={applicationPhase}
+        applicationMessages={applicationMessages}
+        preloadMissing={preloadMissing}
+        ollamaSession={ollamaSession}
+        ollamaStartError={ollamaStartError}
+        updaterSupported={updaterSupported}
+        updaterState={updaterState}
+        onOllamaStart={() => void onOllamaInlineStart()}
+        onOllamaNotNow={onOllamaInlineDismiss}
+        onUpdaterDownload={() => void onUpdaterDownload()}
+        onUpdaterRestart={onUpdaterRestart}
+        onUpdaterLater={onUpdaterLater}
+        onUpdaterCheck={updaterSupported ? () => void onUpdaterCheck() : undefined}
+      />
       {showLrcDevelopSnapshotModal ? (
         <div
           className="modal-backdrop"

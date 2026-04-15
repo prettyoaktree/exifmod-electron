@@ -224,7 +224,23 @@
     "noStagedChanges": "Aucune modification à valider.",
     "applyError": "{{path}} : {{message}}",
     "resizeFilesMetadata": "Redimensionner les volets fichiers et métadonnées",
-    "resizeListPreview": "Redimensionner la liste et l’aperçu"
+    "resizeListPreview": "Redimensionner la liste et l’aperçu",
+    "statusFooter": {
+      "applicationLabel": "Application",
+      "applicationCheckingTitle": "Vérification de l’application…",
+      "applicationCheckingBody": "Vérification d’ExifTool, du catalogue de préréglages et de la connexion au bureau.",
+      "applicationOkTitle": "Application prête",
+      "applicationOkBody": "ExifTool et le catalogue de préréglages sont disponibles pour cette session.",
+      "applicationErrorTitle": "Action requise",
+      "ollamaLabel": "Ollama",
+      "ollamaPanelTitle": "IA locale (Ollama)",
+      "ollamaReadyBody": "Ollama est joignable. Utilisez le bouton IA dans Description et mots-clés lorsque des fichiers sont sélectionnés.",
+      "updatesLabel": "Mises à jour",
+      "updatesPanelTitle": "Mises à jour de l’application",
+      "updaterIdleBody": "Aucune activité de mise à jour. Utilisez Aide → Rechercher des mises à jour pour chercher une nouvelle version.",
+      "updaterCheckingBody": "Recherche de mises à jour…",
+      "updaterDownloading": "Téléchargement… {{percent}} %"
+    }
   },
   "category": {
     "camera": "Appareil",

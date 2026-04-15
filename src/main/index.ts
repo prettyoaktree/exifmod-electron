@@ -40,7 +40,15 @@ import {
 import { readImagePreviewDataUrl } from './previewImage.js'
 import { installLightroomPlugin } from './installLightroomPlugin.js'
 import type { CreatePresetInput, UpdatePresetInput } from '../shared/types.js'
-import { manualCheckForUpdates, registerMacAutoUpdates } from './autoUpdate.js'
+import {
+  dismissUpdaterToIdle,
+  downloadPendingUpdate,
+  manualCheckForUpdates,
+  quitAndInstallUpdate,
+  registerMacAutoUpdates,
+  isAutoUpdateSupported
+} from './autoUpdate.js'
+import type { UpdaterUiPayload } from './autoUpdate.js'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
@@ -96,7 +104,16 @@ function allowQuitForInstallForUpdate(): void {
   allowMainWindowClose = true
 }
 
-const autoUpdateOpts = { allowQuitForInstall: allowQuitForInstallForUpdate }
+function sendUpdaterStateToRenderer(payload: UpdaterUiPayload): void {
+  const w = mainWindow ?? BrowserWindow.getFocusedWindow()
+  if (!w || w.isDestroyed()) return
+  w.webContents.send('updater:state', payload)
+}
+
+const autoUpdateOpts = {
+  allowQuitForInstall: allowQuitForInstallForUpdate,
+  sendToRenderer: sendUpdaterStateToRenderer
+}
 
 /** macOS: paths queued before BrowserWindow exists (e.g. open-file before ready). */
 const preReadyOpenPaths: string[] = []
@@ -588,6 +605,24 @@ function setupIpc(): void {
 
   ipcMain.handle('app:markTutorialOnboardingSeen', () => {
     if (!SIMULATE_FIRST_RUN) markTutorialOnboardingSeenFile()
+  })
+
+  ipcMain.handle('app:getUpdaterSupport', () => ({ supported: isAutoUpdateSupported() }))
+
+  ipcMain.handle('updater:download', async () => {
+    await downloadPendingUpdate()
+  })
+
+  ipcMain.handle('updater:quitAndInstall', () => {
+    quitAndInstallUpdate(autoUpdateOpts)
+  })
+
+  ipcMain.handle('updater:dismiss', () => {
+    dismissUpdaterToIdle(autoUpdateOpts)
+  })
+
+  ipcMain.handle('updater:check', async () => {
+    await manualCheckForUpdates(autoUpdateOpts)
   })
 
   ipcMain.handle('app:preflight', async () => {

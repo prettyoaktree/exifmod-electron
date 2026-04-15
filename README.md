@@ -50,6 +50,7 @@ Runs `npm run build`, then copies `EXIFmod.app` from `release/` to `/Application
 | [docs/product.md](docs/product.md) | Product behavior and workflows |
 | [docs/architecture.md](docs/architecture.md) | Technical layout, IPC, packaging, contributor notes |
 | [docs/exif-preset-mapping.md](docs/exif-preset-mapping.md) | EXIF tags, merge rules, implementation pointers |
+| [docs/status-footer.md](docs/status-footer.md) | Status bar: conditions, lights, messages, actions (keep in sync when extending) |
 | [AGENTS.md](AGENTS.md) | Guidance for AI coding agents working in this repo |
 
 ## Localization

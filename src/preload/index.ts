@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { ConfigCatalog, CreatePresetInput, PresetRecord, UpdatePresetInput } from '../shared/types.js'
+import type { UpdaterUiPayload } from '../shared/updaterUi.js'
 
 /** Paths sent before React subscribes (cold Open With: main emits on did-finish-load, listener was not ready yet). */
 const pendingStartupPaths: string[] = []
@@ -104,7 +105,19 @@ const api = {
   },
   confirmAppClose: () => {
     ipcRenderer.send('app:confirm-close')
-  }
+  },
+  getUpdaterSupport: () =>
+    ipcRenderer.invoke('app:getUpdaterSupport') as Promise<{ supported: boolean }>,
+  onUpdaterState: (cb: (payload: UpdaterUiPayload) => void) => {
+    const fn = (_e: unknown, payload: UpdaterUiPayload): void => cb(payload)
+    ipcRenderer.on('updater:state', fn)
+    return () => ipcRenderer.removeListener('updater:state', fn)
+  },
+  updaterDownload: () => ipcRenderer.invoke('updater:download') as Promise<void>,
+  updaterQuitAndInstall: () => ipcRenderer.invoke('updater:quitAndInstall') as Promise<void>,
+  updaterDismiss: () => ipcRenderer.invoke('updater:dismiss') as Promise<void>,
+  /** Same as Help → Check for Updates (sends `checking` then runs electron-updater). */
+  updaterCheck: () => ipcRenderer.invoke('updater:check') as Promise<void>
 }
 
 export type PreloadApi = typeof api

@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 import type { ConfigCatalog, CreatePresetInput, PresetRecord, UpdatePresetInput } from '../../shared/types'
+import type { UpdaterUiPayload } from '../../shared/updaterUi'
 
 export interface ExifmodApi {
   getPaths: () => Promise<{ dataDir: string; dbPath: string; configDir: string }>
@@ -54,6 +55,12 @@ export interface ExifmodApi {
   onOllamaLaunching: (cb: () => void) => () => void
   onAppCloseRequested: (cb: () => void) => () => void
   confirmAppClose: () => void
+  getUpdaterSupport: () => Promise<{ supported: boolean }>
+  onUpdaterState: (cb: (payload: UpdaterUiPayload) => void) => () => void
+  updaterDownload: () => Promise<void>
+  updaterQuitAndInstall: () => Promise<void>
+  updaterDismiss: () => Promise<void>
+  updaterCheck: () => Promise<void>
 }
 
 declare global {

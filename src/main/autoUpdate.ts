@@ -2,46 +2,26 @@ import { app, dialog } from 'electron'
 // electron-updater is CJS; named ESM import breaks at runtime in Electron (see package interop).
 import electronUpdater from 'electron-updater'
 import { i18next } from './i18n.js'
+import type { UpdaterUiPayload } from '../shared/updaterUi.js'
 
 const { autoUpdater } = electronUpdater
 
 const STARTUP_CHECK_DELAY_MS = 8_000
 
+export type { UpdaterUiPayload } from '../shared/updaterUi.js'
+
 let wired = false
 let vocalManualCheck = false
-let busy = false
 
 export type AutoUpdateOptions = {
   /** Called before `quitAndInstall` so the main window close guard does not block shutdown. */
   allowQuitForInstall: () => void
+  /** Push UI state to the renderer (macOS packaged app only). */
+  sendToRenderer: (payload: UpdaterUiPayload) => void
 }
 
-function t(key: string, opts?: Record<string, string | number>): string {
-  return opts ? i18next.t(key, opts) : i18next.t(key)
-}
-
-async function promptDownload(version: string): Promise<boolean> {
-  const r = await dialog.showMessageBox({
-    type: 'info',
-    buttons: [t('updater.downloadButton'), t('updater.laterButton')],
-    defaultId: 0,
-    cancelId: 1,
-    message: t('updater.updateAvailableTitle'),
-    detail: t('updater.updateAvailableDetail', { version })
-  })
-  return r.response === 0
-}
-
-async function promptRestart(): Promise<boolean> {
-  const r = await dialog.showMessageBox({
-    type: 'info',
-    buttons: [t('updater.restartButton'), t('updater.laterButton')],
-    defaultId: 0,
-    cancelId: 1,
-    message: t('updater.downloadedTitle'),
-    detail: t('updater.downloadedDetail')
-  })
-  return r.response === 0
+function send(opts: AutoUpdateOptions, payload: UpdaterUiPayload): void {
+  opts.sendToRenderer(payload)
 }
 
 function wireOnce(opts: AutoUpdateOptions): void {
@@ -51,64 +31,49 @@ function wireOnce(opts: AutoUpdateOptions): void {
   autoUpdater.autoDownload = false
   autoUpdater.autoInstallOnAppQuit = true
 
-  autoUpdater.on('update-available', async (info) => {
-    if (busy) return
-    busy = true
-    const wasManual = vocalManualCheck
-    try {
-      const version = info.version ?? ''
-      const ok = await promptDownload(version)
-      if (ok) {
-        await autoUpdater.downloadUpdate()
-      }
-    } catch (e) {
-      console.error('[autoUpdate] download failed', e)
-      if (wasManual) {
-        await dialog.showMessageBox({
-          type: 'error',
-          message: t('updater.checkFailedTitle'),
-          detail: e instanceof Error ? e.message : String(e)
-        })
-      }
-    } finally {
-      busy = false
-      if (wasManual) vocalManualCheck = false
-    }
+  autoUpdater.on('update-available', (info) => {
+    const version = info.version ?? ''
+    send(opts, { kind: 'available', version })
+    if (vocalManualCheck) vocalManualCheck = false
   })
 
-  autoUpdater.on('update-not-available', async () => {
+  autoUpdater.on('update-not-available', () => {
     if (vocalManualCheck) {
       vocalManualCheck = false
-      await dialog.showMessageBox({
-        type: 'info',
-        message: t('updater.upToDateTitle'),
-        detail: t('updater.upToDateDetail', { version: app.getVersion() })
-      })
+      send(opts, { kind: 'upToDate', version: app.getVersion() })
     }
   })
 
-  autoUpdater.on('update-downloaded', async () => {
-    const ok = await promptRestart()
-    if (!ok) return
-    opts.allowQuitForInstall()
-    autoUpdater.quitAndInstall(false, true)
+  autoUpdater.on('download-progress', (prog) => {
+    const pct = typeof prog.percent === 'number' && !Number.isNaN(prog.percent) ? prog.percent : 0
+    send(opts, {
+      kind: 'downloading',
+      percent: pct,
+      transferred: prog.transferred ?? 0,
+      total: prog.total ?? 0
+    })
+  })
+
+  autoUpdater.on('update-downloaded', () => {
+    send(opts, { kind: 'downloaded' })
   })
 
   autoUpdater.on('error', (err) => {
     console.error('[autoUpdate]', err)
+    const msg = err instanceof Error ? err.message : String(err)
     if (vocalManualCheck) {
       vocalManualCheck = false
-      void dialog.showMessageBox({
-        type: 'error',
-        message: t('updater.checkFailedTitle'),
-        detail: err instanceof Error ? err.message : String(err)
-      })
+      send(opts, { kind: 'error', message: msg })
     }
   })
 }
 
+export function isAutoUpdateSupported(): boolean {
+  return app.isPackaged && process.platform === 'darwin'
+}
+
 export function registerMacAutoUpdates(opts: AutoUpdateOptions): void {
-  if (!app.isPackaged || process.platform !== 'darwin') return
+  if (!isAutoUpdateSupported()) return
   wireOnce(opts)
   setTimeout(() => {
     void autoUpdater.checkForUpdates().catch((e) => {
@@ -118,24 +83,38 @@ export function registerMacAutoUpdates(opts: AutoUpdateOptions): void {
 }
 
 export async function manualCheckForUpdates(opts: AutoUpdateOptions): Promise<void> {
-  if (!app.isPackaged || process.platform !== 'darwin') {
+  if (!isAutoUpdateSupported()) {
     await dialog.showMessageBox({
       type: 'info',
-      message: t('updater.devOnlyTitle'),
-      detail: t('updater.devOnlyDetail')
+      message: i18next.t('updater.devOnlyTitle'),
+      detail: i18next.t('updater.devOnlyDetail')
     })
     return
   }
   wireOnce(opts)
   vocalManualCheck = true
+  send(opts, { kind: 'checking' })
   try {
     await autoUpdater.checkForUpdates()
   } catch (e) {
     vocalManualCheck = false
-    await dialog.showMessageBox({
-      type: 'error',
-      message: t('updater.checkFailedTitle'),
-      detail: e instanceof Error ? e.message : String(e)
+    send(opts, {
+      kind: 'error',
+      message: e instanceof Error ? e.message : String(e)
     })
   }
+}
+
+export async function downloadPendingUpdate(): Promise<void> {
+  if (!isAutoUpdateSupported()) return
+  await autoUpdater.downloadUpdate()
+}
+
+export function quitAndInstallUpdate(opts: AutoUpdateOptions): void {
+  opts.allowQuitForInstall()
+  autoUpdater.quitAndInstall(false, true)
+}
+
+export function dismissUpdaterToIdle(opts: AutoUpdateOptions): void {
+  send(opts, { kind: 'idle' })
 }

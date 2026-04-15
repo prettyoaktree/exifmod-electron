@@ -224,7 +224,23 @@
     "noStagedChanges": "No staged changes to commit.",
     "applyError": "{{path}}: {{message}}",
     "resizeFilesMetadata": "Resize files and metadata panels",
-    "resizeListPreview": "Resize file list and image preview"
+    "resizeListPreview": "Resize file list and image preview",
+    "statusFooter": {
+      "applicationLabel": "Application",
+      "applicationCheckingTitle": "Checking application…",
+      "applicationCheckingBody": "Verifying ExifTool, the preset catalog, and the desktop connection.",
+      "applicationOkTitle": "Application ready",
+      "applicationOkBody": "ExifTool and the preset catalog are available for this session.",
+      "applicationErrorTitle": "Fix required",
+      "ollamaLabel": "Ollama",
+      "ollamaPanelTitle": "Local AI (Ollama)",
+      "ollamaReadyBody": "Ollama is reachable. Use the AI button in Description and keywords when files are selected.",
+      "updatesLabel": "Updates",
+      "updatesPanelTitle": "App updates",
+      "updaterIdleBody": "No update activity. Choose Help → Check for Updates to look for a new release.",
+      "updaterCheckingBody": "Checking for updates…",
+      "updaterDownloading": "Downloading… {{percent}}%"
+    }
   },
   "category": {
     "camera": "Camera",

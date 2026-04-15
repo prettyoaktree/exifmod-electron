@@ -17,11 +17,12 @@ Optional **Ollama** integration calls a **local** HTTP server (`ollamaDescribeIm
 | `[docs/architecture.md](docs/architecture.md)`                             | Technical layout, IPC/preload boundaries, packaging/releases pointers      |
 | `[docs/product.md](docs/product.md)`                                       | User-visible behavior and workflows                                        |
 | `[docs/exif-preset-mapping.md](docs/exif-preset-mapping.md)`               | EXIF tags, preset merge order, Film/Keywords, AI behavior                  |
+| `[docs/status-footer.md](docs/status-footer.md)`                           | Bottom status bar: conditions → lights → messages → actions; **update when** changing startup health, Ollama surfacing, auto-update UX, or adding new footer segments |
 
 **Maintainer-only:** see [`maintainer.md`](maintainer.md) for Apple signing, notarization, and GitHub Actions setup (checklists and secret *names* only—never commit real credentials in git).
 
 
-**Rule:** If you change something users see or EXIF/preset semantics, update `**docs/product.md`** and/or `**docs/exif-preset-mapping.md`** in the same change when appropriate.
+**Rule:** If you change something users see or EXIF/preset semantics, update `**docs/product.md`** and/or `**docs/exif-preset-mapping.md`** in the same change when appropriate. If you change **status footer** behavior or add environment checks that belong in the footer, update `**docs/status-footer.md**` in the same change.
 
 ## Repository layout
 
