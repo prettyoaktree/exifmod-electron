@@ -73,6 +73,10 @@
       {
         "from": "extras/lightroom-classic-exifmod-open/EXIFmodOpen.lrplugin",
         "to": "EXIFmodOpen.lrplugin"
+      },
+      {
+        "from": "resources/default-presets",
+        "to": "default-presets"
       }
     ],
     "afterSign": "./scripts/afterSign.mjs",

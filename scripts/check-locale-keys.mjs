@@ -37,10 +37,20 @@ function walkSrcFiles(dir, acc = []) {
 /** Keys looked up via variables (t(titleKey), t(CAT_I18N[cat]), Trans i18nKey={bodyKey}). */
 const IMPLICIT_REFERENCES = new Set([
   ...['camera', 'lens', 'film', 'author'].map((c) => `category.${c}`),
+  ...['camera', 'lens', 'film', 'author'].map((c) => `ui.managePresetsCategory.${c}`),
   ...Array.from({ length: 5 }, (_, i) => {
     const n = i + 1
     return [`tutorial.step${n}Title`, `tutorial.step${n}Body`]
-  }).flat()
+  }).flat(),
+  // PresetEditor: t(validationKey) from validatePresetEditorInput()
+  'presetEditor.validationPresetNameRequired',
+  'presetEditor.validationCameraMakeRequired',
+  'presetEditor.validationCameraModelRequired',
+  'presetEditor.validationCameraLensMountRequired',
+  'presetEditor.validationLensMakeRequired',
+  'presetEditor.validationLensModelRequired',
+  'presetEditor.validationFilmStockRequired',
+  'presetEditor.validationAuthorIdentityRequired'
 ])
 
 const T_CALL = /(?:^|[^\w.])(?:i18next\.)?t\(\s*['"]([^'"]+)['"]/g

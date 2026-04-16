@@ -1,4 +1,10 @@
-export const CONTROL_FIELDS = new Set(['LensSystem', 'LensMount', 'LensAdaptable'])
+export const CONTROL_FIELDS = new Set([
+  'LensSystem',
+  'LensMount',
+  'LensAdaptable',
+  'FixedShutter',
+  'FixedAperture'
+])
 export const WRITE_EXCLUDED_FIELDS = new Set(['Film', 'Film Maker'])
 
 export {
@@ -17,6 +23,8 @@ export const EXIFTOOL_CANDIDATES = [
 
 export const DB_FILENAME = 'presets.sqlite3'
 export const DB_BACKUP_FILENAME = 'presets.sqlite3.good'
+/** Written once the preset catalog has ever been non-empty; prevents re-importing bundled defaults after the user deletes all presets. */
+export const PRESET_CATALOG_INITIALIZED_FLAG = 'preset-catalog-initialized.txt'
 export const LENS_MOUNT_DEFAULTS_FILENAME = 'lens_mount_defaults.json'
 
 export const FALLBACK_LENS_MOUNT_NAMES: readonly string[] = [

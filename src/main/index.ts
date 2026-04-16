@@ -1,4 +1,5 @@
 import './setAppName.js'
+import './setDevUserDataPath.js'
 import './cliPath.js'
 import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron'
 import { i18next, initMainI18n } from './i18n.js'
@@ -10,6 +11,7 @@ import { dirname, join, resolve as resolvePath } from 'node:path'
 import type { MergeImportResult } from '../shared/types.js'
 import { fileURLToPath } from 'node:url'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { resetUserDataIfRequestedFromArgv } from './resetUserDataFromArgv.js'
 import {
   getPaths,
   mergePresetsFromSqliteFile,
@@ -24,6 +26,7 @@ import {
   mergeSelectedPayloads,
   createPreset,
   updatePreset,
+  deletePreset,
   getPresetRecord,
   suggestedLensMountCodes,
   setSqlWasmPath,
@@ -544,7 +547,10 @@ async function handleImportDatabasePickFile(): Promise<void> {
     title: i18next.t('dialog.importPresetTitle'),
     defaultPath: app.getPath('documents'),
     properties: ['openFile'],
-    filters: [{ name: i18next.t('dialog.sqliteDatabase'), extensions: ['sqlite3', 'sqlite', 'db'] }]
+    filters: [
+      { name: i18next.t('dialog.sqliteDatabase'), extensions: ['sqlite3', 'sqlite', 'db'] },
+      { name: i18next.t('dialog.allFiles'), extensions: ['*'] }
+    ]
   })
   if (r.canceled || !r.filePaths[0]) return
   await runMergeImport(r.filePaths[0], win)
@@ -552,23 +558,27 @@ async function handleImportDatabasePickFile(): Promise<void> {
 
 async function handleExportPresetDatabase(): Promise<void> {
   const win = mainWindow ?? BrowserWindow.getFocusedWindow()
-  const r = await dialog.showOpenDialog(win ?? undefined, {
+  const defaultPath = join(app.getPath('documents'), 'presets.sqlite3')
+  const r = await dialog.showSaveDialog(win ?? undefined, {
     title: i18next.t('dialog.exportPresetTitle'),
-    defaultPath: app.getPath('documents'),
-    properties: ['openDirectory', 'createDirectory'],
-    message: i18next.t('dialog.exportChooseFolder')
+    message: i18next.t('dialog.exportChooseFolder'),
+    defaultPath,
+    filters: [
+      { name: i18next.t('dialog.sqliteDatabase'), extensions: ['sqlite3', 'sqlite', 'db'] },
+      { name: i18next.t('dialog.allFiles'), extensions: ['*'] }
+    ],
+    ...(process.platform === 'darwin' ? { showOverwriteConfirmation: true } : {})
   })
-  if (r.canceled || !r.filePaths[0]) return
-  const dir = r.filePaths[0]
-  const destPath = join(dir, 'presets.sqlite3')
-  if (existsSync(destPath)) {
+  if (r.canceled || r.filePath == null || r.filePath === '') return
+  const destPath = r.filePath
+  if (existsSync(destPath) && process.platform !== 'darwin') {
     const confirm = await dialog.showMessageBox(win ?? undefined, {
       type: 'question',
       buttons: [i18next.t('dialog.buttonReplace'), i18next.t('dialog.buttonCancel')],
       defaultId: 1,
       cancelId: 1,
       message: i18next.t('dialog.replaceSqliteMessage'),
-      detail: i18next.t('dialog.replaceSqliteDetail', { dir })
+      detail: i18next.t('dialog.replaceSqliteDetail', { path: destPath })
     })
     if (confirm.response !== 0) return
   }
@@ -745,6 +755,15 @@ function setupIpc(): void {
     }
   })
 
+  ipcMain.handle('presets:delete', async (_e, id: number) => {
+    const paths = getDataPaths()
+    try {
+      await deletePreset(paths, id)
+    } catch (e) {
+      throw localizeThrownPresetError(e)
+    }
+  })
+
   ipcMain.handle('presets:get', async (_e, id: number) => {
     const paths = getDataPaths()
     await ensureDatabaseInitialized(paths)
@@ -843,6 +862,7 @@ if (!gotSingleInstanceLock) {
   })
 
   app.whenReady().then(async () => {
+    resetUserDataIfRequestedFromArgv()
     await initMainI18n()
     applyAboutPanelOptions()
     setSqlWasmPath(

@@ -1,7 +1,14 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, copyFileSync, renameSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, copyFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { ConfigCatalog, DataPaths, MergeImportResult, MergeImportSkip } from '../../shared/types.js'
-import { CONTROL_FIELDS, FALLBACK_LENS_MOUNT_NAMES, IMAGE_EXTENSIONS, LENS_MOUNT_DEFAULTS_FILENAME } from './constants.js'
+import {
+  CONTROL_FIELDS,
+  FALLBACK_LENS_MOUNT_NAMES,
+  IMAGE_EXTENSIONS,
+  LENS_MOUNT_DEFAULTS_FILENAME,
+  PRESET_CATALOG_INITIALIZED_FLAG
+} from './constants.js'
+import { resolveBundledDefaultPresetsDir } from '../bundledPresetsPath.js'
 import { migrateLensMountDisplayNames, openDb } from './database.js'
 import { PresetStoreError } from './errors.js'
 import { formatExposureTimeForUi, formatFnumberForUi } from '../../shared/exifDisplayFormat.js'
@@ -219,6 +226,23 @@ export function loadDefaultLensMountCodes(paths: DataPaths): string[] {
   }
 }
 
+function presetCatalogInitializedFlagPath(paths: DataPaths): string {
+  return join(paths.dataDir, PRESET_CATALOG_INITIALIZED_FLAG)
+}
+
+function isPresetCatalogEverInitialized(paths: DataPaths): boolean {
+  return existsSync(presetCatalogInitializedFlagPath(paths))
+}
+
+function markPresetCatalogInitialized(paths: DataPaths): void {
+  try {
+    mkdirSync(paths.dataDir, { recursive: true })
+    writeFileSync(presetCatalogInitializedFlagPath(paths), '1\n', 'utf8')
+  } catch {
+    /* ignore */
+  }
+}
+
 function fetchDistinctLensMounts(db: PersistedDatabase): string[] {
   const rows = db.all(
     `SELECT DISTINCT lens_mount FROM presets
@@ -228,10 +252,40 @@ function fetchDistinctLensMounts(db: PersistedDatabase): string[] {
   return rows.map((r) => String(r['lens_mount']).trim()).filter(Boolean)
 }
 
-export async function importJsonPresets(paths: DataPaths): Promise<{ imported: number; skipped_duplicates: number; errors: string[] }> {
+/** JSON root control keys for camera fixed exposure (stripped from payload like LensSystem). */
+function fixedShutter01FromImportJson(raw: Record<string, unknown>, category: string): number | null {
+  if (category !== 'camera') return null
+  const v = raw['FixedShutter']
+  if (v == null || v === '') return 0
+  if (typeof v === 'boolean') return v ? 1 : 0
+  if (typeof v === 'number') return v !== 0 ? 1 : 0
+  const s = String(v).trim().toLowerCase()
+  if (s === '1' || s === 'true' || s === 'yes') return 1
+  return 0
+}
+
+function fixedAperture01FromImportJson(raw: Record<string, unknown>, category: string): number | null {
+  if (category !== 'camera') return null
+  const v = raw['FixedAperture']
+  if (v == null || v === '') return 0
+  if (typeof v === 'boolean') return v ? 1 : 0
+  if (typeof v === 'number') return v !== 0 ? 1 : 0
+  const s = String(v).trim().toLowerCase()
+  if (s === '1' || s === 'true' || s === 'yes') return 1
+  return 0
+}
+
+/**
+ * Import preset JSON files from one or more directories (e.g. bundled defaults then user `configDir`).
+ * Order matters: later directories cannot duplicate fingerprinted presets already inserted.
+ */
+export async function importJsonPresetsFromDirectories(
+  paths: DataPaths,
+  directories: string[]
+): Promise<{ imported: number; skipped_duplicates: number; errors: string[] }> {
   const stats = { imported: 0, skipped_duplicates: 0, errors: [] as string[] }
-  const root = paths.configDir
-  if (!existsSync(root)) return stats
+  const roots = directories.filter((d) => existsSync(d))
+  if (roots.length === 0) return stats
   mkdirSync(paths.dataDir, { recursive: true })
   const db = await openDb(paths)
   try {
@@ -258,74 +312,82 @@ export async function importJsonPresets(paths: DataPaths): Promise<{ imported: n
       )
     }
 
-    const files = readdirSync(root).filter((f) => f.endsWith('.json') && f !== LENS_MOUNT_DEFAULTS_FILENAME)
-    for (const filename of files.sort()) {
-      const category = getConfigCategory(filename)
-      if (!['camera', 'lens', 'author', 'film'].includes(category)) continue
-      let rawData: Record<string, unknown>
-      try {
-        rawData = JSON.parse(readFileSync(join(root, filename), 'utf8')) as Record<string, unknown>
-        if (typeof rawData !== 'object' || rawData === null) throw new Error('root must be a JSON object')
-      } catch (e) {
-        stats.errors.push(`${filename}: ${e}`)
-        continue
-      }
-      const fallbackName = filename
-        .replace(`${category}_`, '')
-        .replace('.json', '')
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, (c) => c.toUpperCase())
-      const displayName = displayNameForRecord(category, rawData, fallbackName)
-      const lens_system = rawData['LensSystem'] as string | undefined
-      const lens_mount = rawData['LensMount'] as string | undefined
-      const lens_adaptable_raw = rawData['LensAdaptable']
-      const lens_adaptable = lens_adaptable_raw == null ? null : lens_adaptable_raw ? 1 : 0
-      const payload: Record<string, unknown> = {}
-      for (const [k, v] of Object.entries(rawData)) {
-        if (!CONTROL_FIELDS.has(k)) payload[k] = v
-      }
-      const fp = payloadFingerprintCombined(
-        payload,
-        lens_system ?? null,
-        lens_mount ?? null,
-        lens_adaptable,
-        category === 'camera' ? 0 : null,
-        category === 'camera' ? 0 : null
-      )
-      if (existingFingerprints[category]!.has(fp)) {
-        stats.skipped_duplicates++
-        continue
-      }
-      try {
-        db.runOnly(
-          `INSERT OR IGNORE INTO presets
+    for (const root of roots) {
+      const files = readdirSync(root).filter((f) => f.endsWith('.json') && f !== LENS_MOUNT_DEFAULTS_FILENAME)
+      for (const filename of files.sort()) {
+        const category = getConfigCategory(filename)
+        if (!['camera', 'lens', 'author', 'film'].includes(category)) continue
+        let rawData: Record<string, unknown>
+        try {
+          rawData = JSON.parse(readFileSync(join(root, filename), 'utf8')) as Record<string, unknown>
+          if (typeof rawData !== 'object' || rawData === null) throw new Error('root must be a JSON object')
+        } catch (e) {
+          stats.errors.push(`${filename}: ${e}`)
+          continue
+        }
+        const fallbackName = filename
+          .replace(`${category}_`, '')
+          .replace('.json', '')
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (c) => c.toUpperCase())
+        const displayName = displayNameForRecord(category, rawData, fallbackName)
+        const lens_system = rawData['LensSystem'] as string | undefined
+        const lens_mount = rawData['LensMount'] as string | undefined
+        const lens_adaptable_raw = rawData['LensAdaptable']
+        const lens_adaptable = lens_adaptable_raw == null ? null : lens_adaptable_raw ? 1 : 0
+        const fixed_shutter = fixedShutter01FromImportJson(rawData, category)
+        const fixed_aperture = fixedAperture01FromImportJson(rawData, category)
+        const payload: Record<string, unknown> = {}
+        for (const [k, v] of Object.entries(rawData)) {
+          if (!CONTROL_FIELDS.has(k)) payload[k] = v
+        }
+        const fp = payloadFingerprintCombined(
+          payload,
+          lens_system ?? null,
+          lens_mount ?? null,
+          lens_adaptable,
+          category === 'camera' ? fixed_shutter : null,
+          category === 'camera' ? fixed_aperture : null
+        )
+        if (existingFingerprints[category]!.has(fp)) {
+          stats.skipped_duplicates++
+          continue
+        }
+        try {
+          db.runOnly(
+            `INSERT OR IGNORE INTO presets
           (category, name, payload_json, lens_system, lens_mount, lens_adaptable, fixed_shutter, fixed_aperture)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            category,
-            displayName,
-            JSON.stringify(payload, Object.keys(payload).sort()),
-            lens_system ?? null,
-            lens_mount ?? null,
-            lens_adaptable,
-            category === 'camera' ? 0 : null,
-            category === 'camera' ? 0 : null
-          ]
-        )
-        db.persist()
-        const ch = db.get('SELECT changes() AS c')!
-        if (Number(ch['c']) === 1) {
-          stats.imported++
-          existingFingerprints[category]!.add(fp)
+            [
+              category,
+              displayName,
+              JSON.stringify(payload, Object.keys(payload).sort()),
+              lens_system ?? null,
+              lens_mount ?? null,
+              lens_adaptable,
+              fixed_shutter,
+              fixed_aperture
+            ]
+          )
+          db.persist()
+          const ch = db.get('SELECT changes() AS c')!
+          if (Number(ch['c']) === 1) {
+            stats.imported++
+            existingFingerprints[category]!.add(fp)
+          }
+        } catch (e) {
+          stats.errors.push(`${filename}: ${e}`)
         }
-      } catch (e) {
-        stats.errors.push(`${filename}: ${e}`)
       }
     }
   } finally {
     db.close()
   }
   return stats
+}
+
+export async function importJsonPresets(paths: DataPaths): Promise<{ imported: number; skipped_duplicates: number; errors: string[] }> {
+  return importJsonPresetsFromDirectories(paths, [paths.configDir])
 }
 
 export async function ensureDatabaseInitialized(paths: DataPaths): Promise<void> {
@@ -340,11 +402,27 @@ export async function ensureDatabaseInitialized(paths: DataPaths): Promise<void>
   } finally {
     db.close()
   }
-  if (count === 0) {
+  if (count > 0) {
+    markPresetCatalogInitialized(paths)
+  } else if (!isPresetCatalogEverInitialized(paths)) {
+    const bundled = resolveBundledDefaultPresetsDir()
+    const dirs = bundled ? [bundled, paths.configDir] : [paths.configDir]
+    await importJsonPresetsFromDirectories(paths, dirs)
+  } else {
     await importJsonPresets(paths)
   }
   const verifyIssues = await verifyPresetDatabase(paths)
   maybeBackupAfterVerifiedGood(verifyIssues, paths)
+
+  const dbAfter = await openDb(paths)
+  try {
+    const row = dbAfter.get('SELECT COUNT(*) AS cnt FROM presets')
+    if (Number(row?.cnt ?? 0) > 0) {
+      markPresetCatalogInitialized(paths)
+    }
+  } finally {
+    dbAfter.close()
+  }
 }
 
 function normalizePresetRef(presetRef: number | string | null | undefined): number | null {
@@ -622,6 +700,21 @@ export async function updatePreset(
       }
       throw e
     }
+  } finally {
+    db.close()
+  }
+}
+
+export async function deletePreset(paths: DataPaths, presetId: number): Promise<void> {
+  await ensureDatabaseInitialized(paths)
+  const db = await openDb(paths)
+  try {
+    db.runOnly('DELETE FROM presets WHERE id = ?', [presetId])
+    const ch = db.get('SELECT changes() AS c')!
+    if (Number(ch['c']) !== 1) {
+      throw new PresetStoreError(`Preset id=${presetId} was not found.`)
+    }
+    db.persist()
   } finally {
     db.close()
   }
