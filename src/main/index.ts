@@ -48,7 +48,7 @@ import {
   downloadPendingUpdate,
   manualCheckForUpdates,
   quitAndInstallUpdate,
-  registerMacAutoUpdates,
+  registerAutoUpdates,
   isAutoUpdateSupported
 } from './autoUpdate.js'
 import type { UpdaterUiPayload } from './autoUpdate.js'
@@ -440,6 +440,26 @@ function createWindow(): void {
     mainWindow = null
   })
 
+  const helpMenuExtras: Electron.MenuItemConstructorOptions[] = []
+  if (process.platform === 'darwin') {
+    helpMenuExtras.push({
+      label: i18next.t('menu.installLrPlugin'),
+      click: () => void installLightroomPlugin(mainWindow)
+    })
+    if (isAutoUpdateSupported()) {
+      helpMenuExtras.push({ type: 'separator' })
+      helpMenuExtras.push({
+        label: i18next.t('menu.checkForUpdates'),
+        click: () => void manualCheckForUpdates(autoUpdateOpts)
+      })
+    }
+  } else if (isAutoUpdateSupported()) {
+    helpMenuExtras.push({
+      label: i18next.t('menu.checkForUpdates'),
+      click: () => void manualCheckForUpdates(autoUpdateOpts)
+    })
+  }
+
   const template: Electron.MenuItemConstructorOptions[] = [
     ...(process.platform === 'darwin' ? [{ role: 'appMenu' as const }] : []),
     {
@@ -479,19 +499,7 @@ function createWindow(): void {
           label: i18next.t('menu.tutorial'),
           click: () => deliverTutorialStart({ firstRun: false })
         },
-        ...(process.platform === 'darwin'
-          ? [
-              {
-                label: i18next.t('menu.installLrPlugin'),
-                click: () => void installLightroomPlugin(mainWindow)
-              },
-              { type: 'separator' as const },
-              {
-                label: i18next.t('menu.checkForUpdates'),
-                click: () => void manualCheckForUpdates(autoUpdateOpts)
-              }
-            ]
-          : [])
+        ...helpMenuExtras
       ]
     }
   ]
@@ -885,8 +893,8 @@ if (!gotSingleInstanceLock) {
     }
     createWindow()
     processLaunchPathsFromArgvAndPreReady()
-    if (app.isPackaged && process.platform === 'darwin') {
-      registerMacAutoUpdates(autoUpdateOpts)
+    if (app.isPackaged && isAutoUpdateSupported()) {
+      registerAutoUpdates(autoUpdateOpts)
     }
 
     app.on('activate', () => {

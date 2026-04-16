@@ -85,7 +85,7 @@
     "invalidPayloadJson": "Preset id={{id}}: invalid payload JSON: {{detail}}",
     "couldNotReadDb": "Could not read database: {{detail}}",
     "missingPresetsTable": "Missing or invalid presets table.",
-    "exiftoolNotFound": "exiftool not found.\nInstall exiftool and ensure it is available in PATH or one of the common install locations.",
+    "exiftoolNotFound": "ExifTool was not found.\nExifTool must be installed for EXIFmod to read and write metadata. Install it, ensure it is on your PATH, then restart EXIFmod.",
     "exiftoolExecFailed": "exiftool cannot be executed from '{{path}}': {{detail}}"
   },
   "mergeImport": {
@@ -98,7 +98,7 @@
     "unsupportedCategory": "Unsupported preset category: {{category}}"
   },
   "ipc": {
-    "exiftoolNotFound": "exiftool not found",
+    "exiftoolNotFound": "ExifTool was not found (required for EXIFmod)",
     "exiftoolExit": "exiftool exited with {{code}}",
     "finderMultiPathTitle": "EXIFmod",
     "finderMultiPathDetail": "Open only one file or folder at a time."

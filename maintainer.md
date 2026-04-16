@@ -16,13 +16,15 @@ In **Settings → Secrets and variables → Actions**, configure:
 
 The workflow [`.github/workflows/release-macos.yml`](.github/workflows/release-macos.yml) writes the `.p8` to a temp path and exports `APPLE_API_KEY`, `APPLE_API_KEY_ID`, and `APPLE_API_ISSUER` for [`scripts/afterSign.mjs`](scripts/afterSign.mjs).
 
+**Windows (optional):** To **code-sign** the NSIS installer (fewer SmartScreen warnings), configure `CSC_LINK` / `CSC_KEY_PASSWORD` for a **PFX** in the same way many Electron projects use `electron-builder` on Windows (see [electron-builder code signing](https://www.electron.build/code-signing)). If unset, CI still produces an **unsigned** Windows build that users can run with an extra SmartScreen step.
+
 ## Release checklist
 
 1. Land changes on `main` via PR (protected branch).
 2. Bump `version` in `package.json` to match the release you intend to ship.
 3. Push git tag `v<version>` (must match `package.json`, e.g. `v1.0.2` for `1.0.2`).
 4. **Invariant check before tagging:** `package.json.version` numeric part must equal the tag numeric part (standard: `version=1.3.2`, `tag=v1.3.2`).
-5. Confirm the **Release (macOS)** workflow uploaded `EXIFmod-<version>.dmg`, `EXIFmod-<version>.dmg.sha256` (for the Homebrew bump script), `EXIFmod-<version>.zip`, and `latest-mac.yml` to GitHub Releases under `releases/download/v<version>/...` (not an `untagged-...` draft URL).
+5. Confirm **Release (macOS)** uploaded `EXIFmod-<version>.dmg`, `EXIFmod-<version>.dmg.sha256` (for the Homebrew bump script), `EXIFmod-<version>.zip`, and `latest-mac.yml`, and **Release (Windows)** uploaded the NSIS installer, `latest.yml`, and updater blockmap files, all under `releases/download/v<version>/...` (not an `untagged-...` draft URL).
 
 ## Homebrew cask bump
 

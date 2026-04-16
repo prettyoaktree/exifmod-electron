@@ -102,6 +102,26 @@
       "entitlementsInherit": "build/entitlements.mac.inherit.plist",
       "notarize": false
     },
+    "win": {
+      "artifactName": "${productName}-${version}.${ext}",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "perMachine": false,
+      "artifactName": "${productName}-${version}-setup.${ext}",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true
+    },
     "fileAssociations": [
       {
         "ext": [

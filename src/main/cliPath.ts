@@ -12,7 +12,13 @@ function augmentPathForGuiLaunchedApp(): void {
     process.platform === 'darwin'
       ? ['/opt/homebrew/bin', '/usr/local/bin', join(homedir(), '.local/bin')]
       : process.platform === 'win32'
-        ? []
+        ? [
+            ...(process.env.ProgramFiles ? [join(process.env.ProgramFiles, 'exiftool')] : []),
+            ...(process.env.ProgramFiles ? [join(process.env.ProgramFiles, 'ExifTool')] : []),
+            ...(process.env['ProgramFiles(x86)'] ? [join(process.env['ProgramFiles(x86)'], 'exiftool')] : []),
+            join(homedir(), 'scoop', 'shims'),
+            'C:\\ProgramData\\chocolatey\\bin'
+          ]
         : ['/usr/local/bin', join(homedir(), '.local/bin')]
 
   const existing = (process.env.PATH ?? '').split(sep).filter(Boolean)
