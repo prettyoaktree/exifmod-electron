@@ -16,7 +16,7 @@ let vocalManualCheck = false
 export type AutoUpdateOptions = {
   /** Called before `quitAndInstall` so the main window close guard does not block shutdown. */
   allowQuitForInstall: () => void
-  /** Push UI state to the renderer (macOS packaged app only). */
+  /** Push UI state to the renderer (packaged macOS or Windows app only). */
   sendToRenderer: (payload: UpdaterUiPayload) => void
 }
 
@@ -69,10 +69,10 @@ function wireOnce(opts: AutoUpdateOptions): void {
 }
 
 export function isAutoUpdateSupported(): boolean {
-  return app.isPackaged && process.platform === 'darwin'
+  return app.isPackaged && (process.platform === 'darwin' || process.platform === 'win32')
 }
 
-export function registerMacAutoUpdates(opts: AutoUpdateOptions): void {
+export function registerAutoUpdates(opts: AutoUpdateOptions): void {
   if (!isAutoUpdateSupported()) return
   wireOnce(opts)
   setTimeout(() => {

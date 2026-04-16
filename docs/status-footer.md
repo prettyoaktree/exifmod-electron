@@ -127,7 +127,7 @@ Implementation today uses `OllamaSession` in [`App.tsx`](../src/renderer/src/App
 
 ## 5. Updates segment
 
-**Scope:** **Packaged macOS** app only; electron-updater flow. If unsupported (dev build or non-mac), **omit segment** entirely — do not use gray “N/A” stub.
+**Scope:** **Packaged macOS or Windows** app only; electron-updater flow. If unsupported (dev build, Linux, or unpackaged), **omit segment** entirely — do not use gray “N/A” stub.
 
 | Condition / phase | Light | Panel default | Dismissible | Description | Actions |
 | ------------------- | ----- | ------------- | ----------- | ----------- | ------- |

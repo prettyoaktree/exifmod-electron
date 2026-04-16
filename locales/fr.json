@@ -85,7 +85,7 @@
     "invalidPayloadJson": "Préréglage id={{id}} : JSON de charge utile invalide : {{detail}}",
     "couldNotReadDb": "Impossible de lire la base : {{detail}}",
     "missingPresetsTable": "Table des préréglages manquante ou invalide.",
-    "exiftoolNotFound": "exiftool introuvable.\nInstallez exiftool et vérifiez qu’il est dans le PATH ou un emplacement courant.",
+    "exiftoolNotFound": "ExifTool est introuvable.\nExifTool doit être installé pour qu’EXIFmod puisse lire et écrire les métadonnées. Installez-le, assurez-vous qu’il est dans le PATH, puis redémarrez EXIFmod.",
     "exiftoolExecFailed": "Impossible d’exécuter exiftool depuis « {{path}} » : {{detail}}"
   },
   "mergeImport": {
@@ -98,7 +98,7 @@
     "unsupportedCategory": "Catégorie de préréglage non prise en charge : {{category}}"
   },
   "ipc": {
-    "exiftoolNotFound": "exiftool introuvable",
+    "exiftoolNotFound": "ExifTool introuvable (requis pour EXIFmod)",
     "exiftoolExit": "exiftool s’est terminé avec le code {{code}}",
     "finderMultiPathTitle": "EXIFmod",
     "finderMultiPathDetail": "N’ouvrez qu’un seul fichier ou dossier à la fois."

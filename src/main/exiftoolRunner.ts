@@ -1,7 +1,7 @@
 import { execFileSync, spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { exiftoolHasSettingsMeansAdobeCrsDevelop } from '../shared/adobeDevelop.js'
-import { EXIFTOOL_CANDIDATES } from './exifCore/constants.js'
+import { getExiftoolPathCandidates } from './exifCore/constants.js'
 
 export function resolveExiftoolPath(): string | null {
   try {
@@ -12,7 +12,7 @@ export function resolveExiftoolPath(): string | null {
   } catch {
     /* */
   }
-  for (const c of EXIFTOOL_CANDIDATES) {
+  for (const c of getExiftoolPathCandidates()) {
     if (existsSync(c)) return c
   }
   return null
