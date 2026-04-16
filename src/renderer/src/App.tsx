@@ -751,14 +751,13 @@ export function App(): React.ReactElement {
           const md = meta[path]!
           const desc = imageDescriptionFromMetadata(md)
           const kw = keywordsFieldFromMetadata(md)
-          const descriptiveOnly = formatDescriptiveKeywordsLine(kw)
           const shouldReseedKeywords =
             row.keywordsText.trim() === '' || descriptiveSlicesEqual(row.keywordsText, row.keywordsBaseline)
           next[k] = {
             ...row,
             notesBaseline: desc,
             keywordsBaseline: kw,
-            keywordsText: shouldReseedKeywords ? descriptiveOnly : row.keywordsText
+            keywordsText: shouldReseedKeywords ? '' : row.keywordsText
           }
         }
         return next
@@ -1252,7 +1251,7 @@ export function App(): React.ReactElement {
               ...emptyPending(),
               notesBaseline: desc,
               keywordsBaseline: kw,
-              keywordsText: formatDescriptiveKeywordsLine(kw)
+              keywordsText: ''
             }
           }
           return next
@@ -1353,7 +1352,7 @@ export function App(): React.ReactElement {
         return {
           ...s,
           notesText,
-          keywordsText: formatKeywordsField(mergedKw),
+          keywordsText: formatDescriptiveKeywordsLine(formatKeywordsField(mergedKw)),
           clearNotes: false,
           clearKeywords: false,
           clearFilm: false
@@ -1524,17 +1523,25 @@ export function App(): React.ReactElement {
 
   const notesPlaceholderUi = useMemo(() => {
     if (stagingPaths.length < 2) return t('ui.notesPlaceholder')
-    return classifyStagedTextField(stagingPaths, pendingByPath, 'notesText') === 'mixed'
-      ? t('ui.notesPlaceholderMixed')
-      : t('ui.notesPlaceholder')
-  }, [stagingPaths, pendingByPath, t])
+    const pendingClass = classifyStagedTextField(stagingPaths, pendingByPath, 'notesText')
+    const currentVals = stagingPaths.map((p) => imageDescriptionFromMetadata(metadataByPath[pathKey(p)] ?? {}).trim())
+    const currentClass =
+      currentVals.every((v) => v === '') ? 'empty' : new Set(currentVals).size === 1 ? 'uniform' : 'mixed'
+    const useMixedPlaceholder = pendingClass === 'mixed' || currentClass === 'mixed'
+    return useMixedPlaceholder ? t('ui.notesPlaceholderMixed') : t('ui.notesPlaceholder')
+  }, [stagingPaths, pendingByPath, metadataByPath, t])
 
   const keywordsPlaceholderUi = useMemo(() => {
     if (stagingPaths.length < 2) return t('ui.keywordsPlaceholder')
-    return classifyStagedTextField(stagingPaths, pendingByPath, 'keywordsText') === 'mixed'
-      ? t('ui.keywordsPlaceholderMixed')
-      : t('ui.keywordsPlaceholder')
-  }, [stagingPaths, pendingByPath, t])
+    const pendingClass = classifyStagedTextField(stagingPaths, pendingByPath, 'keywordsText')
+    const currentVals = stagingPaths.map((p) =>
+      formatDescriptiveKeywordsLine(keywordsFieldFromMetadata(metadataByPath[pathKey(p)] ?? {})).trim()
+    )
+    const currentClass =
+      currentVals.every((v) => v === '') ? 'empty' : new Set(currentVals).size === 1 ? 'uniform' : 'mixed'
+    const useMixedPlaceholder = pendingClass === 'mixed' || currentClass === 'mixed'
+    return useMixedPlaceholder ? t('ui.keywordsPlaceholderMixed') : t('ui.keywordsPlaceholder')
+  }, [stagingPaths, pendingByPath, metadataByPath, t])
 
   const aiDescribeBusyLabel = useMemo(() => {
     if (!aiDescribeBusy) return ''
@@ -1589,7 +1596,7 @@ export function App(): React.ReactElement {
 
   const keywordsCurrentLine = useMemo(() => {
     if (!stagingPaths.length) return ''
-    const vals = stagingPaths.map((p) => keywordsFieldFromMetadata(metadataByPath[p] ?? {}))
+    const vals = stagingPaths.map((p) => formatDescriptiveKeywordsLine(keywordsFieldFromMetadata(metadataByPath[p] ?? {})))
     if (new Set(vals).size > 1) return t('ui.multiple')
     return vals[0] ?? ''
   }, [stagingPaths, metadataByPath, t])
@@ -2170,12 +2177,9 @@ export function App(): React.ReactElement {
                           title={t('ui.copyCurrentToNew', { row: t('ui.keywordsLabel') })}
                           aria-label={t('ui.copyCurrentToNew', { row: t('ui.keywordsLabel') })}
                           onClick={() => {
-                            const currentKeywords = parseKeywordsField(keywordsCurrentLine)
-                            const filmKeywords = extractFilmIdentityKeywords(currentKeywords)
-                            const merged = fitKeywordsForExif(mergeKeywordsDeduped(filmKeywords, currentKeywords))
                             updatePendingForPaths(staging, (s) => ({
                               ...s,
-                              keywordsText: formatKeywordsField(merged),
+                              keywordsText: formatDescriptiveKeywordsLine(keywordsCurrentLine),
                               clearKeywords: false,
                               clearFilm: false
                             }))

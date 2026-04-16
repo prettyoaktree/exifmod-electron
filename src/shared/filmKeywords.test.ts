@@ -6,6 +6,7 @@ import {
   filmStockHintFromExifKeywords,
   filmStockKeywordFromDisplayName,
   formatDescriptiveKeywordsLine,
+  formatKeywordsField,
   mergeKeywordsDeduped,
   normalizeFilmPresetPayloadForMerge,
   parseKeywordsField,
@@ -117,6 +118,15 @@ describe('descriptiveSlicesEqual', () => {
 describe('formatDescriptiveKeywordsLine', () => {
   it('drops film identity tokens', () => {
     expect(formatDescriptiveKeywordsLine('beach, film, Kodak Portra 400 Film Stock')).toBe('beach')
+  })
+
+  it('drops legacy stock hint after film marker', () => {
+    expect(formatDescriptiveKeywordsLine('beach, film, Legacy Stock, portrait')).toBe('beach, portrait')
+  })
+
+  it('matches AI/UI path: strip film from merged full keyword line', () => {
+    const merged = mergeKeywordsDeduped(['film', 'Kodak Portra 400 Film Stock'], ['Sunset', 'portrait'])
+    expect(formatDescriptiveKeywordsLine(formatKeywordsField(merged))).toBe('Sunset, portrait')
   })
 })
 
