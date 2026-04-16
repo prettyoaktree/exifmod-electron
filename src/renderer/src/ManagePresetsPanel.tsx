@@ -6,11 +6,17 @@ import { filterOptionsByDisplayQuery } from './metadataPresetFilter.js'
 
 const CATS: Cat[] = ['Camera', 'Lens', 'Film', 'Author']
 
-const CAT_I18N: Record<Cat, 'category.camera' | 'category.lens' | 'category.film' | 'category.author'> = {
-  Camera: 'category.camera',
-  Lens: 'category.lens',
-  Film: 'category.film',
-  Author: 'category.author'
+const CAT_I18N: Record<
+  Cat,
+  | 'ui.managePresetsCategory.camera'
+  | 'ui.managePresetsCategory.lens'
+  | 'ui.managePresetsCategory.film'
+  | 'ui.managePresetsCategory.author'
+> = {
+  Camera: 'ui.managePresetsCategory.camera',
+  Lens: 'ui.managePresetsCategory.lens',
+  Film: 'ui.managePresetsCategory.film',
+  Author: 'ui.managePresetsCategory.author'
 }
 
 function valuesForCategory(catalog: ConfigCatalog, cat: Cat): string[] {
@@ -99,14 +105,36 @@ function IconPencil(): ReactElement {
   )
 }
 
+function IconTrash(): ReactElement {
+  return (
+    <svg
+      className="preset-slideout-icon-svg preset-slideout-icon-svg-sm"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden
+      focusable="false"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" />
+    </svg>
+  )
+}
+
 export function ManagePresetsPanel(props: {
   catalog: ConfigCatalog
   onClose: () => void
   onAdd: (cat: Cat) => void
   onEdit: (cat: Cat, editId: number) => void
+  onClone: (cat: Cat, sourcePresetId: number) => void
+  onDeleteRequest: (cat: Cat, presetId: number, displayName: string) => void
 }): ReactElement {
   const { t } = useTranslation()
-  const { catalog, onClose, onAdd, onEdit } = props
+  const { catalog, onClose, onAdd, onEdit, onClone, onDeleteRequest } = props
   const catLabel = (cat: Cat): string => t(CAT_I18N[cat])
   const [catOpen, setCatOpen] = useState<Record<Cat, boolean>>(collapsedCats)
   const [filterByCat, setFilterByCat] = useState<Record<Cat, string>>({
@@ -206,16 +234,40 @@ export function ManagePresetsPanel(props: {
                           return (
                             <li key={name}>
                               <span className="preset-slideout-name">{name}</span>
-                              <button
-                                type="button"
-                                className="preset-slideout-icon-btn preset-slideout-icon-btn-row"
-                                aria-label={t('ui.edit')}
-                                title={t('ui.edit')}
-                                disabled={id == null}
-                                onClick={() => id != null && onEdit(cat, id)}
-                              >
-                                <IconPencil />
-                              </button>
+                              <div className="preset-slideout-list-actions">
+                                <button
+                                  type="button"
+                                  className="preset-slideout-icon-btn preset-slideout-icon-btn-row"
+                                  aria-label={t('ui.edit')}
+                                  title={t('ui.edit')}
+                                  disabled={id == null}
+                                  onClick={() => id != null && onEdit(cat, id)}
+                                >
+                                  <IconPencil />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="preset-slideout-icon-btn preset-slideout-icon-btn-row preset-slideout-clone-btn"
+                                  aria-label={t('ui.clonePresetAria', { name })}
+                                  title={t('ui.clonePreset')}
+                                  disabled={id == null}
+                                  onClick={() => id != null && onClone(cat, id)}
+                                >
+                                  <span className="preset-slideout-clone-glyph" aria-hidden>
+                                    ⧉
+                                  </span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="preset-slideout-icon-btn preset-slideout-icon-btn-row preset-slideout-icon-btn-danger"
+                                  aria-label={t('ui.deletePresetAria', { name })}
+                                  title={t('ui.deletePreset')}
+                                  disabled={id == null}
+                                  onClick={() => id != null && onDeleteRequest(cat, id, name)}
+                                >
+                                  <IconTrash />
+                                </button>
+                              </div>
                             </li>
                           )
                         })

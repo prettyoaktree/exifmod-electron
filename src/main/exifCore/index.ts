@@ -6,6 +6,7 @@ export {
   getPresetRecord,
   createPreset,
   updatePreset,
+  deletePreset,
   suggestedLensMountCodes,
   validateConfigFiles,
   verifyPresetDatabase,

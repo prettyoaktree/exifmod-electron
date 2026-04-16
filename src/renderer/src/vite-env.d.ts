@@ -23,6 +23,7 @@ export interface ExifmodApi {
   applyExif: (filePath: string, payload: Record<string, unknown>) => Promise<{ ok: boolean }>
   createPreset: (input: CreatePresetInput) => Promise<number>
   updatePreset: (input: UpdatePresetInput) => Promise<number>
+  deletePreset: (id: number) => Promise<void>
   getPreset: (id: number) => Promise<PresetRecord | null>
   suggestedLensMounts: () => Promise<string[]>
   resolveImageList: (targetPath: string) => Promise<string[]>

@@ -35,6 +35,24 @@ npm run dev
 | `npm run build:vite` | Build main/preload/renderer only (no installer) |
 | `npm test` | Vitest |
 
+### Development vs release data (presets, config)
+
+Unpackaged runs (`npm run dev`, `electron-vite preview`, etc.) store Electron **user data** under a separate folder so they do not share the preset database or preferences with the **installed app**. On macOS that is typically **`~/Library/Application Support/EXIFmod-dev`** versus **`~/Library/Application Support/EXIFmod`** for the packaged build.
+
+### Reset all app data (first-run QA)
+
+To wipe **preferences, preset database, bundled seed re-import on next empty DB, tutorial flags, last folder choice,** and everything else stored under this app’s Electron **user data** directory for the build you are running, launch once with:
+
+```bash
+npm run dev -- -- --reset-app-data
+```
+
+(`--reset-app-data` must come after **`--`** so electron-vite forwards it to Electron; see above.) Or pass **`--reset-app-data`** after the executable when running a **packaged** build (resets the release **`EXIFmod`** user data folder, not **`EXIFmod-dev`**). Quit any other running EXIFmod instance first (single-instance lock). Combine with **`--simulate-first-run`** if you want the onboarding tutorial to open without persisting completion:
+
+```bash
+npm run dev -- --reset-app-data --simulate-first-run
+```
+
 ### macOS: install a local build to `/Applications`
 
 ```bash

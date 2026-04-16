@@ -48,6 +48,7 @@ import { PresetEditorModal } from './PresetEditor.js'
 import { ManagePresetsPanel } from './ManagePresetsPanel.js'
 import { TutorialModal } from './TutorialModal.js'
 import type { Cat } from './categories.js'
+import { unwrapIpcErrorMessage } from './ipcError.js'
 import { truncateMiddle } from './format/truncateMiddle.js'
 import { StatusFooter, type ApplicationPhase } from './StatusFooter.js'
 import type { UpdaterUiPayload } from '@shared/updaterUi.js'
@@ -317,8 +318,11 @@ export function App(): React.ReactElement {
     mode: 'new' | 'edit'
     category: Cat
     editId: number | null
+    /** When creating a duplicate: load fields from this preset id; name stays empty. */
+    cloneFromId?: number | null
   } | null>(null)
   const [managePresetsOpen, setManagePresetsOpen] = useState(false)
+  const [deletePresetConfirm, setDeletePresetConfirm] = useState<null | { id: number; cat: Cat; name: string }>(null)
   const [exifPreviewOpen, setExifPreviewOpen] = useState(false)
   const [exifPreviewBody, setExifPreviewBody] = useState('')
   const [exifPreviewLoading, setExifPreviewLoading] = useState(false)
@@ -525,7 +529,7 @@ export function App(): React.ReactElement {
       setApplicationMessages(merged)
       setApplicationPhase(merged.length > 0 ? 'error' : 'ok')
     } catch (e) {
-      setApplicationMessages([e instanceof Error ? e.message : String(e)])
+      setApplicationMessages([unwrapIpcErrorMessage(e)])
       setApplicationPhase('error')
     }
   }, [t])
@@ -1226,7 +1230,7 @@ export function App(): React.ReactElement {
           alert(
             t('ui.applyError', {
               path,
-              message: e instanceof Error ? e.message : String(e)
+              message: unwrapIpcErrorMessage(e)
             })
           )
         }
@@ -1491,7 +1495,7 @@ export function App(): React.ReactElement {
     try {
       await api.updaterDownload()
     } catch (e) {
-      setUpdaterState({ kind: 'error', message: e instanceof Error ? e.message : String(e) })
+      setUpdaterState({ kind: 'error', message: unwrapIpcErrorMessage(e) })
     }
   }, [])
 
@@ -2650,15 +2654,89 @@ export function App(): React.ReactElement {
           </div>
         </div>
       ) : null}
+      {deletePresetConfirm ? (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setDeletePresetConfirm(null)
+          }}
+        >
+          <div
+            className="modal modal-dialog-confirm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-preset-confirm-title"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <h3 id="delete-preset-confirm-title" className="modal-confirm-heading">
+              {t('ui.deletePresetConfirmTitle')}
+            </h3>
+            <p className="modal-confirm-detail">{t('ui.deletePresetConfirmDetail', { name: deletePresetConfirm.name })}</p>
+            <p className="modal-confirm-detail">{t('ui.deletePresetConfirmNote')}</p>
+            <div className="modal-confirm-actions">
+              <button type="button" className="btn" onClick={() => setDeletePresetConfirm(null)}>
+                {t('dialog.buttonCancel')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => {
+                  void (async () => {
+                    const c = deletePresetConfirm
+                    if (!c) return
+                    const api = window.exifmod
+                    if (!api) {
+                      alert(t('ui.preloadUnavailable'))
+                      return
+                    }
+                    try {
+                      await api.deletePreset(c.id)
+                    } catch (e) {
+                      alert(unwrapIpcErrorMessage(e))
+                      setDeletePresetConfirm(null)
+                      return
+                    }
+                    setDeletePresetConfirm(null)
+                    const idField = idKeyForCategory(c.cat)
+                    const clearField = categoryToClearKey(c.cat)
+                    setPendingByPath((prev) => {
+                      const next = { ...prev }
+                      for (const key of Object.keys(next)) {
+                        const st = next[key]
+                        if (!st) continue
+                        if (st[idField] === c.id) {
+                          next[key] = { ...st, [idField]: null, [clearField]: false }
+                        }
+                      }
+                      return next
+                    })
+                    setPresetEditor((pe) => (pe?.mode === 'edit' && pe.editId === c.id ? null : pe))
+                    await reloadCatalog()
+                  })()
+                }}
+              >
+                {t('ui.deletePreset')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {managePresetsOpen && catalog && (
         <ManagePresetsPanel
           catalog={catalog}
           onClose={() => setManagePresetsOpen(false)}
           onAdd={(cat) => {
-            setPresetEditor({ mode: 'new', category: cat, editId: null })
+            setPresetEditor({ mode: 'new', category: cat, editId: null, cloneFromId: null })
           }}
           onEdit={(cat, editId) => {
-            setPresetEditor({ mode: 'edit', category: cat, editId })
+            setPresetEditor({ mode: 'edit', category: cat, editId, cloneFromId: null })
+          }}
+          onClone={(cat, sourceId) => {
+            setPresetEditor({ mode: 'new', category: cat, editId: null, cloneFromId: sourceId })
+          }}
+          onDeleteRequest={(cat, presetId, displayName) => {
+            setDeletePresetConfirm({ id: presetId, cat, name: displayName })
           }}
         />
       )}
@@ -2667,6 +2745,7 @@ export function App(): React.ReactElement {
           mode={presetEditor.mode}
           category={presetEditor.category}
           editId={presetEditor.mode === 'edit' ? presetEditor.editId : null}
+          cloneFromId={presetEditor.mode === 'new' ? presetEditor.cloneFromId ?? null : null}
           onClose={() => setPresetEditor(null)}
           onSaved={() => void reloadCatalog()}
         />
