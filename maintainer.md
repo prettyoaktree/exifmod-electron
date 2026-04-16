@@ -33,3 +33,11 @@ TAP_DIR=/path/to/homebrew-exifmod ./scripts/publish-homebrew-tap-release.sh
 ```
 
 That updates the cask to download the DMG from **this** repo’s releases (not from the tap repo’s releases).
+
+Policy notes:
+
+- Homebrew is the bootstrap/install channel; in-app updater remains the primary day-to-day updater for signed macOS builds.
+- Keep the cask versioned/checksummed (no dynamic latest URL strategy).
+- Keep `auto_updates true` on the cask intentionally; cask bumps still happen every GitHub app release so new Homebrew installs get latest.
+- On each GitHub app release, publish the Homebrew cask bump in the same release cycle.
+- Retain a rolling window of the latest **3** app releases on GitHub for updater safety; prune older releases only after validating newest feed/artifacts.
