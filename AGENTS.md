@@ -22,6 +22,8 @@ Optional **Ollama** integration calls a **local** HTTP server (`ollamaDescribeIm
 
 **Maintainer-only:** see `[maintainer.md](maintainer.md)` for Apple signing, notarization, and GitHub Actions setup (checklists and secret *names* only—never commit real credentials in git).
 
+**Shipping a release (agents):** follow the Cursor project skill `[.cursor/skills/exifmod-release/SKILL.md](.cursor/skills/exifmod-release/SKILL.md)` so `package.json` version, git tag `vX.Y.Z`, GitHub Release assets (updater + DMG), release notes, and Homebrew cask stay aligned.
+
 **Rule:** If you change something users see or EXIF/preset semantics, update `**docs/product.md`** and/or `**docs/exif-preset-mapping.md`** in the same change when appropriate. If you change **status footer** behavior or add environment checks that belong in the footer, update `**docs/status-footer.md`** in the same change.
 
 ## Repository layout
@@ -64,6 +66,7 @@ Prefer `**npm test**` before finishing a task that touches logic; use `**npm run
 
 ## Release tagging
 
+- For the full ordered checklist (bump, tag, CI, assets, Homebrew), use `[.cursor/skills/exifmod-release/SKILL.md](.cursor/skills/exifmod-release/SKILL.md)`.
 - When asked to tag and push a release, use the existing tag format `vX.Y.Z` (for example `v1.3.2`).
 - After pushing the tag, **always** create GitHub release notes for that tag in the same workflow (via `gh release create` if missing, or `gh release edit` to update).
 - Include concise highlights and the commit range / key commits since the previous release tag.
