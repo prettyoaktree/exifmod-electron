@@ -65,6 +65,12 @@ npm run build        # tsc check, vite build, electron-builder
 
 Prefer `**npm test**` before finishing a task that touches logic; use `**npm run build:vite**` for a quicker compile check without packaging.
 
+## Release tagging
+
+- When asked to tag and push a release, use the existing tag format `vX.Y.Z` (for example `v1.3.2`).
+- After pushing the tag, **always** create GitHub release notes for that tag in the same workflow (via `gh release create` if missing, or `gh release edit` to update).
+- Include concise highlights and the commit range / key commits since the previous release tag.
+
 ## Major features and feature branches
 
 For a **major update** or **new feature** (not small bugfixes, copy tweaks, or one-line fixes), **plans should explicitly state** that all development for that work happens on a **dedicated feature branch** (for example `feature/<short-name>`). Merge to the main integration branch when the feature is complete and reviewed.
