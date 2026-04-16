@@ -21,6 +21,12 @@ The cask installs **`exiftool`**; EXIFmod still needs a working `exiftool` on yo
 
 **In-app updates (macOS):** the signed app checks GitHub Releases for updates after launch (you are prompted before download). Use **Help → Check for Updates…** anytime. Development builds from source do not auto-update.
 
+## Install (Windows)
+
+1. Download the **NSIS installer** (`EXIFmod-<version>.exe`) from **[GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases)** and run it.
+2. Install **[ExifTool](https://exiftool.org/)** separately and ensure **`exiftool`** is on your **PATH** (EXIFmod does not bundle it). For example, using [winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/) manually in a terminal: `winget install -e --id OliverBetz.ExifTool` — then restart EXIFmod if it was already open.
+3. **In-app updates (Windows):** the packaged app uses the same GitHub Releases feed (`latest.yml`). Use **Help → Check for Updates…** after install. Unsigned builds may trigger Microsoft Defender SmartScreen until the app is code-signed.
+
 ## Build from source
 
 ```bash

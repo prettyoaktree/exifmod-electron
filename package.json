@@ -102,6 +102,17 @@
       "entitlementsInherit": "build/entitlements.mac.inherit.plist",
       "notarize": false
     },
+    "win": {
+      "artifactName": "${productName}-${version}.${ext}",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
     "fileAssociations": [
       {
         "ext": [
