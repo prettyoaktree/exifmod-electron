@@ -36,7 +36,7 @@ Copy and tick through:
 5. [ ] **Wait for CI**: both [`.github/workflows/release-macos.yml`](.github/workflows/release-macos.yml) and [`.github/workflows/release-windows.yml`](.github/workflows/release-windows.yml) run on `push: tags: v*`. Confirm **both** succeed.
 6. [ ] **Verify GitHub Release assets** (required for updater + Homebrew script):
    - **macOS:** `EXIFmod-<version>.dmg`, `EXIFmod-<version>.dmg.sha256`, `EXIFmod-<version>.zip`, `latest-mac.yml`
-   - **Windows:** `EXIFmod-<version>.exe` (NSIS), `latest.yml`, and related blockmap files from electron-builder
+   - **Windows:** `EXIFmod-<version>-setup.exe` (NSIS), `latest.yml`, and related blockmap files from electron-builder
    - Under `releases/download/v<version>/` (not an untagged draft URL) — see [maintainer.md](maintainer.md) § Release checklist.
 7. [ ] **Release notes**: create or edit the GitHub release for `vX.Y.Z` with highlights and commit range since the previous tag (repo convention in [AGENTS.md](AGENTS.md)).
 8. [ ] **Publish the GitHub release** (not a draft): after assets and notes are in place, confirm `isDraft` is false and clear draft if needed:

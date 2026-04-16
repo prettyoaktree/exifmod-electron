@@ -23,7 +23,7 @@ The cask installs **`exiftool`**; EXIFmod still needs a working `exiftool` on yo
 
 ## Install (Windows)
 
-1. Download the **NSIS installer** (`EXIFmod-<version>.exe`) from **[GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases)** and run it.
+1. Download the **NSIS installer** (`EXIFmod-<version>-setup.exe`) from **[GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases)** and run it. You should see an install wizard (not a blank screen). If double-click appears to do nothing, wait briefly while Defender scans the file, check the taskbar for a **UAC** prompt behind other windows, or run from **Command Prompt** to capture a log: `"EXIFmod-<version>-setup.exe" /LOG=%TEMP%\exifmod-nsis.log`
 2. Install **[ExifTool](https://exiftool.org/)** separately and ensure **`exiftool`** is on your **PATH** (EXIFmod does not bundle it). For example, using [winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/) manually in a terminal: `winget install -e --id OliverBetz.ExifTool` — then restart EXIFmod if it was already open.
 3. **In-app updates (Windows):** the packaged app uses the same GitHub Releases feed (`latest.yml`). Use **Help → Check for Updates…** after install. Unsigned builds may trigger Microsoft Defender SmartScreen until the app is code-signed.
 
