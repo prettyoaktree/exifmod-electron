@@ -41,9 +41,13 @@ Copy and tick through:
    - `latest-mac.yml`
    - Under `releases/download/v<version>/` (not an untagged draft URL) — see [maintainer.md](maintainer.md) § Release checklist.
 7. [ ] **Release notes**: create or edit the GitHub release for `vX.Y.Z` with highlights and commit range since the previous tag (repo convention in [AGENTS.md](AGENTS.md)).
-8. [ ] **Homebrew cask** (same release cycle): from a clean tap clone, run  
+8. [ ] **Publish the GitHub release** (not a draft): after assets and notes are in place, confirm `isDraft` is false and clear draft if needed:
+   - `gh release view vX.Y.Z --json isDraft,isLatest`
+   - If `isDraft` is true: `gh release edit vX.Y.Z --draft=false`
+   - To mark this release as the **latest** on the repo: `gh release edit vX.Y.Z --latest` (use when this version should supersede prior releases in the GitHub UI).
+9. [ ] **Homebrew cask** (same release cycle): from a clean tap clone, run  
    `TAP_DIR=/path/to/homebrew-exifmod ./scripts/publish-homebrew-tap-release.sh` — see [maintainer.md](maintainer.md).
-9. [ ] **Retention**: maintainer policy — keep a rolling window of the latest **3** app releases on GitHub before pruning older ones.
+10. [ ] **Retention**: maintainer policy — keep a rolling window of the latest **3** app releases on GitHub before pruning older ones.
 
 ## Commands reference
 
@@ -55,13 +59,18 @@ git push origin vX.Y.Z
 # Verify release has assets (must not be empty)
 gh release view vX.Y.Z --json tagName,assets
 
+# Ensure release is published (not draft) and optionally latest
+gh release view vX.Y.Z --json isDraft,isLatest
+gh release edit vX.Y.Z --draft=false
+gh release edit vX.Y.Z --latest
+
 # Local publish (maintainers / CI parity); requires GH_TOKEN and signing env
 npm run release:github
 ```
 
 ## Agent behavior
 
-- **Do not** mark a release complete until step **6** passes (non-empty assets, correct tag).
+- **Do not** mark a release complete until step **6** passes (non-empty assets, correct tag) and step **8** passes (release is not a draft unless intentionally shipping a draft).
 - **Do not** declare “released” from tag + empty GitHub release alone.
 - If the user only asked for a tag, **still** ensure `package.json` was bumped on the tagged commit; otherwise stop and explain the invariant.
 - After shipping, if `package.json` on `main` still lags the tag, treat that as a **process bug** to fix with a follow-up bump commit (do not assume tag alone updates the repo version).
