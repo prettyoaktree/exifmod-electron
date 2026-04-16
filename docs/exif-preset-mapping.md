@@ -20,7 +20,7 @@ Implementation references:
 1. Each preset stores a JSON `**payload**` of tag names → values (EXIF field names as used by ExifTool, e.g. `Make`, `Model`, `Keywords`).
 2. **Camera** presets also store `**lens_system`**, `**lens_mount**`, `**lens_adaptable**` in the database. These drive **lens compatibility** in the UI; they are **not** written as EXIF tags named `LensSystem` / `LensMount` / `LensAdaptable` (see below).
 3. When applying metadata, `**mergePayloads`** loads the selected Camera, Lens, Author, and Film presets and merges their JSON payloads in this order: **Camera → Lens → Author → Film**. If the same tag appears in more than one preset, **later categories win** (last write wins).
-4. `**readConfigPayload`** drops keys in `**CONTROL_FIELDS**` (`LensSystem`, `LensMount`, `LensAdaptable`) from stored JSON before merge, so those names never enter the merged write payload from preset JSON.
+4. `**readConfigPayload`** drops keys in `**CONTROL_FIELDS**` (`LensSystem`, `LensMount`, `LensAdaptable`, `FixedShutter`, `FixedAperture`) from stored JSON before merge, so those names never enter the merged write payload from preset JSON. The fixed-shutter / fixed-aperture keys are **import-only** metadata for JSON seed files; camera rows persist them as `**fixed_shutter**` / `**fixed_aperture**` in the database (same as the Preset Editor).
 5. `**sanitizeWritePayload**` removes `**Film**` and `**Film Maker**` from whatever is about to be written, so those keys are **never** passed to ExifTool from the merged payload (they may still exist in stored preset JSON for catalog / legacy reasons).
 
 After that merge, the main window can add `**ExposureTime`**, `**FNumber**`, `**ImageDescription**`, and merged `**Keywords**` from the editing controls (see below).
@@ -58,6 +58,8 @@ These are the fields the **New / Edit preset** dialogs edit (`PresetEditor.tsx`)
 | `fixed_shutter`  | ✓      |      | When set, camera preset supplies EXIF **ExposureTime** only from the preset; main UI shutter field is read-only |
 | `fixed_aperture` | ✓      |      | When set, camera preset supplies EXIF **FNumber** only from the preset; main UI aperture field is read-only     |
 
+
+**Preset Editor validation:** Before save, the dialog enforces minimum fields so each preset maps to concrete EXIF / catalog semantics: non-empty **preset name** (all categories); **Make** and **Model** for Camera; **lens mount** for interchangeable Camera; **LensMake** and **LensModel** for Lens presets; **film stock** display (derived like `filmStockDisplayFromKeywordsPayload`) for Film; **Author name** (Artist/Creator) for Author. Fixed-lens Camera presets do not require lens make/model. ISO (Film) and Copyright (Author) remain optional. See `src/renderer/src/presetEditorValidation.ts`.
 
 Lens presets **no longer** save `ExposureTime` or `FNumber` in the editor; any legacy values are stripped when saving or loading a Lens preset (`PresetEditor.tsx`).
 

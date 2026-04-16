@@ -1,0 +1,11 @@
+{
+  "Make": "Kodak",
+  "Model": "Kodak Instamatic X-15",
+  "LensSystem": "fixed",
+  "LensMake": "Kodak",
+  "LensModel": "Kodak Instamatic 43mm f/11",
+  "ExposureTime": "1/90",
+  "FNumber": 11,
+  "FixedShutter": true,
+  "FixedAperture": true
+}
