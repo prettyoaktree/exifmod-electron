@@ -213,6 +213,8 @@
       "ollamaLabel": "Ollama",
       "ollamaPanelTitle": "IA locale (Ollama)",
       "ollamaReadyBody": "Ollama est joignable. Utilisez le bouton IA dans Description et mots-clés lorsque des fichiers sont sélectionnés.",
+      "ollamaGeneratingProgress": "Génération des descriptions et mots-clés : {{current}} sur {{total}} fichier(s)…",
+      "ollamaGenerationComplete": "Génération de la description et des mots-clés terminée.",
       "updatesLabel": "Mises à jour",
       "updatesPanelTitle": "Mises à jour de l’application",
       "updaterIdleBody": "Aucune activité de mise à jour. Utilisez Aide → Rechercher des mises à jour pour chercher une nouvelle version.",

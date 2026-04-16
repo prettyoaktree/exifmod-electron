@@ -1890,9 +1890,11 @@ table.mapping.preset-modal-mapping .preset-modal-stack {
   width: 1.25rem;
   height: 1.25rem;
   transition: transform 0.15s ease;
+  /** Path draws right; -90° points up (panel opens above the bar). */
+  transform: rotate(-90deg);
 }
 
-/** Closed = points right; open = points down (same path, rotated 90°). */
+/** Open = points down (collapse direction). */
 .status-footer-chevron--open .status-footer-chevron-svg {
   transform: rotate(90deg);
 }

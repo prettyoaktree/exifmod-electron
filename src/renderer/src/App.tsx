@@ -17,7 +17,7 @@ import {
 } from '@shared/exifLimits.js'
 import { isOllamaTransportFailureError } from '@shared/ollamaNetErrors.js'
 import { OLLAMA_ERROR_EMPTY_SOFT } from '@shared/ollamaResultCodes.js'
-import type { CameraMetadata, ConfigCatalog } from '@shared/types.js'
+import type { AiDescribeBusyState, CameraMetadata, ConfigCatalog } from '@shared/types.js'
 import { filterLensValues } from '@shared/lensFilter.js'
 import {
   formatExposureTimeForUi,
@@ -231,8 +231,6 @@ function mergePendingStateForNewValueUi(
 
 type StagedTextUniformity = 'empty' | 'uniform' | 'mixed'
 
-type AiDescribeBusy = null | { mode: 'single' } | { mode: 'batch'; current: number; total: number }
-
 type OllamaSession =
   | 'checking'
   | 'server_down'
@@ -339,7 +337,8 @@ export function App(): React.ReactElement {
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
   const [quitConfirmOpen, setQuitConfirmOpen] = useState(false)
   const quitConfirmOpenRef = useRef(false)
-  const [aiDescribeBusy, setAiDescribeBusy] = useState<AiDescribeBusy>(null)
+  const [aiDescribeBusy, setAiDescribeBusy] = useState<AiDescribeBusyState>(null)
+  const [ollamaGenerationCompleteMessage, setOllamaGenerationCompleteMessage] = useState<string | null>(null)
   const [ollamaSession, setOllamaSession] = useState<OllamaSession>('checking')
   /** Shown next to the inline Start control when `ollamaTryStartServer` fails (user can retry). */
   const [ollamaStartError, setOllamaStartError] = useState<string | null>(null)
@@ -1367,6 +1366,7 @@ export function App(): React.ReactElement {
       return
     }
     setAiDescribeBusy({ mode: 'single' })
+    let describeSucceeded = false
     try {
       const r = await api.ollamaDescribeImage(path, { maxDescriptionUtf8Bytes })
       if (!r.ok) {
@@ -1380,8 +1380,12 @@ export function App(): React.ReactElement {
         return
       }
       applyOllamaResultToPending(path, r)
+      describeSucceeded = true
     } finally {
       setAiDescribeBusy(null)
+    }
+    if (describeSucceeded) {
+      setOllamaGenerationCompleteMessage(t('ui.statusFooter.ollamaGenerationComplete'))
     }
   }, [stagingPaths, pendingByPath, metadataByPath, t, applyOllamaResultToPending, handleOllamaDescribeTransportFailure])
 
@@ -1421,6 +1425,8 @@ export function App(): React.ReactElement {
       }
       if (failures.length > 0) {
         setAiBatchErrorsDialog({ failures, total })
+      } else if (total > 0) {
+        setOllamaGenerationCompleteMessage(t('ui.statusFooter.ollamaGenerationComplete'))
       }
     },
     [t, metadataByPath, applyOllamaResultToPending, handleOllamaDescribeTransportFailure]
@@ -1465,6 +1471,7 @@ export function App(): React.ReactElement {
 
   const onOllamaInlineDismiss = useCallback(() => {
     setOllamaStartError(null)
+    setOllamaGenerationCompleteMessage(null)
   }, [])
 
   const onUpdaterDownload = useCallback(async () => {
@@ -2321,6 +2328,8 @@ export function App(): React.ReactElement {
         preloadMissing={preloadMissing}
         ollamaSession={ollamaSession}
         ollamaStartError={ollamaStartError}
+        aiDescribeBusy={aiDescribeBusy}
+        ollamaGenerationCompleteMessage={ollamaGenerationCompleteMessage}
         updaterSupported={updaterSupported}
         updaterState={updaterState}
         onOllamaStart={() => void onOllamaInlineStart()}

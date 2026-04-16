@@ -19,7 +19,7 @@ Every footer **segment** uses the same structure:
 | ------- | ------- |
 | **Status light** | Small disc; color encodes **semantic state** (see §2). Same visual grammar for every segment. |
 | **Label** | Short text (e.g. “Application”, “Ollama”, “Updates”). Truncate on narrow widths; full text in `title` if needed. |
-| **Chevron** | Same affordance on every segment: “opens detail panel”. |
+| **Chevron** | Same affordance on every segment: “opens detail panel” **above** the bar. Collapsed: points **up**; when the panel is open: points **down** (collapse). |
 | **Popover** | Anchored panel: **messages** (what is wrong or what is happening) + **actions** (buttons). Primary actions live **in the panel** unless product explicitly duplicates one on the bar for all segments consistently. |
 
 **Interaction**
@@ -44,7 +44,7 @@ Lights are **semantic**, not decorative. Use the same meaning across segments wh
 | **Green** | Healthy, ready, or idle-with-no-problem for that domain. | Application OK, Ollama server reachable, updater idle / up-to-date. |
 | **Amber** | Attention, optional degradation, or user-dismissible situation — **core metadata I/O may still work**. | Ollama down but not blocking file edits; update available but not downloaded. |
 | **Red** | **Blocking or hard failure** for that domain **after** any required “verifying” phase for that domain has completed (where applicable). | Application critical failure; updater error; Ollama **start** failed after user action (if surfaced as segment-level failure). |
-| **Blue / pulse** | **Long-running in-flight** operation (seconds+), distinct from Application’s short **gray** gate. | Ollama checking/launching, update downloading or explicit “checking for updates”. |
+| **Blue / pulse** | **Long-running in-flight** operation (seconds+), distinct from Application’s short **gray** gate. | Ollama checking/launching; **AI describe** (single or batch) in progress; update downloading or explicit “checking for updates”. |
 
 **Rules**
 
@@ -118,6 +118,8 @@ Implementation today uses `OllamaSession` in [`App.tsx`](../src/renderer/src/App
 | `declined` | **Amber** or **Green** (product: “user skipped”) | Closed | Yes | User chose not to start server this session. | Optional: “Try again” → back to `server_down` flow |
 | `failed` | **Amber** | Closed | Yes | Generic unreachable / startup failure copy. | Retry / Check install per product |
 | `ollamaTryStartServer` error (after user click) | **Red** or **Amber** | Open with error detail | Yes | Show `ollamaStartError` string. | **Retry** (Start again), dismiss |
+| **AI describe running** (`ollamaDescribeImage` single or batch) | **Blue / pulse** | **Closed by default** (do not auto-open when generation **starts**) | Yes | When opened: progress line (`ui.statusFooter.ollamaGeneratingProgress` for batch, or loading copy for single). | None (wait) |
+| **AI describe finished successfully** | (returns to session row, e.g. **Green** when `ready`) | **Auto-open** Ollama panel with completion banner (`ui.statusFooter.ollamaGenerationComplete`) above normal session copy — **skipped** if Application is in forced **`error`** (panel cannot open) | Yes | Banner + usual `ready` (or other) body until user dismisses panel (clears banner). | — |
 
 **Note:** If Application is in **`error`**, Ollama panel may be secondary; do not steal focus from forced Application panel.
 

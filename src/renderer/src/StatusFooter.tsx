@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import type { AiDescribeBusyState } from '@shared/types.js'
 import type { UpdaterUiPayload as UpdaterUiState } from '@shared/updaterUi.js'
 
 export type ApplicationPhase = 'verifying' | 'ok' | 'error'
@@ -191,6 +192,10 @@ export type StatusFooterProps = {
   preloadMissing: boolean
   ollamaSession: OllamaSession
   ollamaStartError: string | null
+  /** While set, Ollama segment shows generation progress and uses the pulsing blue light. */
+  aiDescribeBusy: AiDescribeBusyState
+  /** Shown at the top of the Ollama panel after a successful describe run; triggers auto-open when set. */
+  ollamaGenerationCompleteMessage: string | null
   updaterSupported: boolean
   updaterState: UpdaterUiState
   onOllamaStart: () => void
@@ -209,6 +214,8 @@ export function StatusFooter({
   preloadMissing,
   ollamaSession,
   ollamaStartError,
+  aiDescribeBusy,
+  ollamaGenerationCompleteMessage,
   updaterSupported,
   updaterState,
   onOllamaStart,
@@ -230,6 +237,7 @@ export function StatusFooter({
 
   const ollamaLight: StatusLightKind = (() => {
     if (ollamaStartError) return 'error'
+    if (aiDescribeBusy) return 'progress'
     if (ollamaSession === 'checking' || ollamaSession === 'launching') return 'progress'
     if (ollamaSession === 'ready') return 'ok'
     return 'warn'
@@ -275,6 +283,13 @@ export function StatusFooter({
     }
     prevOpenSegmentRef.current = openSegment
   }, [openSegment, onOllamaPanelDismiss])
+
+  /** After successful AI describe, surface completion in the Ollama panel (cannot steal focus from forced Application error panel). */
+  useEffect(() => {
+    if (!ollamaGenerationCompleteMessage) return
+    if (applicationDismissDisabled) return
+    setOpenSegment('ollama')
+  }, [ollamaGenerationCompleteMessage, applicationDismissDisabled])
 
   const setSegmentOpen = useCallback(
     (id: SegmentId, open: boolean): void => {
@@ -322,7 +337,7 @@ export function StatusFooter({
     <p className="status-footer-panel-message">{t('ui.statusFooter.applicationOkBody')}</p>
   )
 
-  const ollamaBody = (() => {
+  const ollamaBodyDefault = (() => {
     if (ollamaSession === 'checking') return <p className="status-footer-panel-message">{t('ui.aiDescribeOllamaChecking')}</p>
     if (ollamaSession === 'launching') return <p className="status-footer-panel-message">{t('ui.aiDescribeOllamaLaunching')}</p>
     if (ollamaSession === 'ready') return <p className="status-footer-panel-message">{t('ui.statusFooter.ollamaReadyBody')}</p>
@@ -349,6 +364,24 @@ export function StatusFooter({
     }
     return <p className="status-footer-panel-message">{t('ui.aiDescribeOllamaUnavailable')}</p>
   })()
+
+  const ollamaBody = aiDescribeBusy ? (
+    <p className="status-footer-panel-message">
+      {aiDescribeBusy.mode === 'batch'
+        ? t('ui.statusFooter.ollamaGeneratingProgress', {
+            current: aiDescribeBusy.current,
+            total: aiDescribeBusy.total
+          })
+        : t('ui.aiDescribeLoading')}
+    </p>
+  ) : (
+    <>
+      {ollamaGenerationCompleteMessage ? (
+        <p className="status-footer-panel-message">{ollamaGenerationCompleteMessage}</p>
+      ) : null}
+      {ollamaBodyDefault}
+    </>
+  )
 
   const updaterBody = (() => {
     if (!updaterSupported) return null

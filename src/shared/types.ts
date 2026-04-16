@@ -87,3 +87,9 @@ export interface MergeImportResult {
   imported: number
   skipped: MergeImportSkip[]
 }
+
+/** AI describe in progress (footer status + Ollama panel copy). */
+export type AiDescribeBusyState =
+  | null
+  | { mode: 'single' }
+  | { mode: 'batch'; current: number; total: number }

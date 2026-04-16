@@ -213,6 +213,8 @@
       "ollamaLabel": "Generative AI",
       "ollamaPanelTitle": "Generative AI (Ollama)",
       "ollamaReadyBody": "Ollama is available. You can use the AI button in Description and keywords to generate content using AI.",
+      "ollamaGeneratingProgress": "Generating descriptions and keywords for {{current}} of {{total}} files…",
+      "ollamaGenerationComplete": "Description and keyword generation finished.",
       "updatesLabel": "Updates",
       "updatesPanelTitle": "App Updates",
       "updaterIdleBody": "No update activity. Choose Help → Check for Updates to look for a new release.",
