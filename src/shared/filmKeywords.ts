@@ -1,3 +1,5 @@
+import { fitKeywordsForExif } from './exifLimits.js'
+
 /** Suffix for film stock EXIF keyword tokens written by EXIFmod (literal substring for inference). */
 export const FILM_STOCK_SUFFIX = ' Film Stock'
 
@@ -43,7 +45,7 @@ export function filmStockDisplayFromKeywordsPayload(pl: Record<string, unknown>)
   }
   const nonFilm = vals.filter((v) => v.toLowerCase() !== 'film')
   if (nonFilm.length === 0) return ''
-  const withFs = nonFilm.find((k) => k.includes('Film Stock'))
+  const withFs = nonFilm.find((k) => k.toLowerCase().includes('film stock'))
   if (withFs) return stripFilmStockSuffix(withFs)
   return nonFilm.map((k) => stripFilmStockSuffix(k)).join(', ')
 }
@@ -80,9 +82,74 @@ export function formatKeywordsField(keywords: string[]): string {
   return keywords.join(', ')
 }
 
+/** Keywords array from merged preset payload (`Keywords` tag: string or string[]). */
+export function mergedPresetKeywordsArray(v: unknown): string[] {
+  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean)
+  if (typeof v === 'string') return v.split(/[,;]/).map((s) => s.trim()).filter(Boolean)
+  return []
+}
+
 /**
- * Stock hint for catalog matching: prefer keyword containing `Film Stock`, else legacy = token after `film`.
+ * Comma-separated descriptive keywords only (film identity tokens removed) for the New Keywords field.
  */
+export function formatDescriptiveKeywordsLine(text: string): string {
+  return formatKeywordsField(stripFilmIdentityFromKeywords(parseKeywordsField(text)))
+}
+
+/**
+ * True when the descriptive (non-film) keyword sets parsed from `a` and `b` match, order-insensitive.
+ */
+export function descriptiveSlicesEqual(a: string, b: string): boolean {
+  const norm = (s: string): string[] =>
+    stripFilmIdentityFromKeywords(parseKeywordsField(s))
+      .map((x) => x.toLowerCase())
+      .sort((x, y) => x.localeCompare(y, 'en'))
+  const sa = norm(a)
+  const sb = norm(b)
+  return sa.length === sb.length && sa.every((v, i) => v === sb[i]!)
+}
+
+export type BuildMergedKeywordsForWriteOpts = {
+  /** `merged['Keywords']` after preset merge (Camera → Lens → Author → Film). */
+  mergedPresetKeywords: unknown
+  keywordsText: string
+  /** Last-read Keywords field from the file (string form). */
+  keywordsBaseline: string
+  clearKeywords: boolean
+  clearFilm: boolean
+}
+
+/**
+ * Final Keywords array for EXIF write: film-identifying tokens first (from Film preset or on-file),
+ * then descriptive tokens from the New field or, when empty, from the file baseline. Lanes do not
+ * overwrite each other.
+ */
+export function buildMergedKeywordsForWrite(opts: BuildMergedKeywordsForWriteOpts): string[] {
+  if (opts.clearKeywords) return []
+
+  const presetKw = mergedPresetKeywordsArray(opts.mergedPresetKeywords)
+
+  let filmTokens: string[] = []
+  if (!opts.clearFilm) {
+    const fromPreset = extractFilmIdentityKeywords(presetKw)
+    filmTokens =
+      fromPreset.length > 0
+        ? fromPreset
+        : extractFilmIdentityKeywords(parseKeywordsField(opts.keywordsBaseline))
+    filmTokens = filmTokens.map((k) => (k.toLowerCase() === 'film' ? 'film' : k))
+  }
+
+  const uiDesc = stripFilmIdentityFromKeywords(parseKeywordsField(opts.keywordsText))
+  const baseDesc = stripFilmIdentityFromKeywords(parseKeywordsField(opts.keywordsBaseline))
+  const descriptiveTokens = uiDesc.length > 0 ? uiDesc : baseDesc
+
+  let combined = mergeKeywordsDeduped(filmTokens, descriptiveTokens)
+  if (opts.clearFilm) {
+    combined = stripFilmIdentityFromKeywords(combined)
+  }
+  return fitKeywordsForExif(combined)
+}
+
 /**
  * Remove film catalog identity tokens from a keyword list (marker `film`, `… Film Stock`, legacy stock hint).
  * Used when clearing Film row metadata without removing unrelated keywords.
@@ -95,8 +162,8 @@ export function stripFilmIdentityFromKeywords(tokens: string[]): string[] {
   return trimmed.filter((k) => {
     const kl = k.toLowerCase()
     if (kl === 'film') return false
-    if (k.includes('Film Stock')) return false
-    if (stockKw && k === stockKw) return false
+    if (k.toLowerCase().includes('film stock')) return false
+    if (stockKw && k.toLowerCase() === stockKw.toLowerCase()) return false
     if (hint) {
       const base = stripFilmStockSuffix(k)
       if (base.toLowerCase() === hint.toLowerCase()) return false
@@ -128,7 +195,7 @@ export function filmStockHintFromExifKeywords(keywordValues: string[]): string {
   if (!hasFilm) return ''
   for (const k of trimmed) {
     if (k.toLowerCase() === 'film') continue
-    if (k.includes('Film Stock')) return stripFilmStockSuffix(k).trim()
+    if (k.toLowerCase().includes('film stock')) return stripFilmStockSuffix(k).trim()
   }
   const idx = trimmed.findIndex((k) => k.toLowerCase() === 'film')
   if (idx >= 0 && idx + 1 < trimmed.length) {

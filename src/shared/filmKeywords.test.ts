@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildMergedKeywordsForWrite,
+  descriptiveSlicesEqual,
   extractFilmIdentityKeywords,
   filmStockHintFromExifKeywords,
   filmStockKeywordFromDisplayName,
+  formatDescriptiveKeywordsLine,
   mergeKeywordsDeduped,
   normalizeFilmPresetPayloadForMerge,
   parseKeywordsField,
@@ -35,6 +38,10 @@ describe('filmStockHintFromExifKeywords', () => {
 
   it('returns empty without film marker', () => {
     expect(filmStockHintFromExifKeywords(['foo'])).toBe('')
+  })
+
+  it('matches Film Stock suffix case-insensitively', () => {
+    expect(filmStockHintFromExifKeywords(['film', 'Kodak PORTRA film stock', 'x'])).toBe('Kodak PORTRA')
   })
 })
 
@@ -80,6 +87,10 @@ describe('stripFilmIdentityFromKeywords', () => {
   it('removes legacy stock hint after film', () => {
     expect(stripFilmIdentityFromKeywords(['film', 'Legacy Stock', 'x'])).toEqual(['x'])
   })
+
+  it('removes film identity case-insensitively', () => {
+    expect(stripFilmIdentityFromKeywords(['Film', 'Kodak Portra 400 film stock', 'beach'])).toEqual(['beach'])
+  })
 })
 
 describe('extractFilmIdentityKeywords', () => {
@@ -93,5 +104,95 @@ describe('extractFilmIdentityKeywords', () => {
     expect(
       extractFilmIdentityKeywords(['Film', 'film', 'Acme Film Stock', 'acme film stock', 'other'])
     ).toEqual(['Film', 'Acme Film Stock'])
+  })
+})
+
+describe('descriptiveSlicesEqual', () => {
+  it('ignores film tokens and keyword order', () => {
+    expect(descriptiveSlicesEqual('beach, film, Kodak Film Stock', 'Kodak Film Stock, beach, film')).toBe(true)
+    expect(descriptiveSlicesEqual('beach', 'beach, portrait')).toBe(false)
+  })
+})
+
+describe('formatDescriptiveKeywordsLine', () => {
+  it('drops film identity tokens', () => {
+    expect(formatDescriptiveKeywordsLine('beach, film, Kodak Portra 400 Film Stock')).toBe('beach')
+  })
+})
+
+describe('buildMergedKeywordsForWrite', () => {
+  it('returns empty when clearKeywords', () => {
+    expect(
+      buildMergedKeywordsForWrite({
+        mergedPresetKeywords: ['film', 'X Film Stock'],
+        keywordsText: 'beach',
+        keywordsBaseline: '',
+        clearKeywords: true,
+        clearFilm: false
+      })
+    ).toEqual([])
+  })
+
+  it('preserves descriptives from baseline when keywordsText is empty', () => {
+    const baseline = 'beach, film, Kodak Portra 400 Film Stock'
+    const out = buildMergedKeywordsForWrite({
+      mergedPresetKeywords: ['film', 'Kodak Portra 400 Film Stock'],
+      keywordsText: '',
+      keywordsBaseline: baseline,
+      clearKeywords: false,
+      clearFilm: false
+    })
+    expect(out).toContain('film')
+    expect(out).toContain('Kodak Portra 400 Film Stock')
+    expect(out).toContain('beach')
+  })
+
+  it('uses film tokens from baseline when preset has no film Keywords', () => {
+    const baseline = 'sunset, film, Acme 100 Film Stock'
+    const out = buildMergedKeywordsForWrite({
+      mergedPresetKeywords: [],
+      keywordsText: '',
+      keywordsBaseline: baseline,
+      clearKeywords: false,
+      clearFilm: false
+    })
+    expect(out).toContain('film')
+    expect(out).toContain('sunset')
+  })
+
+  it('strips film identity when clearFilm', () => {
+    const baseline = 'beach, film, Kodak Portra 400 Film Stock'
+    const out = buildMergedKeywordsForWrite({
+      mergedPresetKeywords: ['film', 'Kodak Portra 400 Film Stock'],
+      keywordsText: '',
+      keywordsBaseline: baseline,
+      clearKeywords: false,
+      clearFilm: true
+    })
+    expect(out).not.toContain('film')
+    expect(out).toContain('beach')
+  })
+
+  it('canonicalizes film marker to lowercase in write output', () => {
+    const out = buildMergedKeywordsForWrite({
+      mergedPresetKeywords: ['Film', 'Acme 100 FILM STOCK'],
+      keywordsText: '',
+      keywordsBaseline: 'portrait, FILM, Acme 100 film stock',
+      clearKeywords: false,
+      clearFilm: false
+    })
+    expect(out).toContain('film')
+    expect(out).not.toContain('Film')
+  })
+
+  it('does not introduce standalone Film marker from mixed casing', () => {
+    const out = buildMergedKeywordsForWrite({
+      mergedPresetKeywords: ['FILM', 'Acme 100 film stock'],
+      keywordsText: 'street',
+      keywordsBaseline: '',
+      clearKeywords: false,
+      clearFilm: false
+    })
+    expect(out.filter((k) => k.toLowerCase() === 'film')).toEqual(['film'])
   })
 })

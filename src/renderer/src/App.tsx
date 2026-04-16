@@ -4,7 +4,10 @@ import { useTranslation } from 'react-i18next'
 import { withCopyrightAsWrittenToExif } from '@shared/copyrightFormat.js'
 import { applyCategoryClears } from '@shared/exifClearTags.js'
 import {
+  buildMergedKeywordsForWrite,
+  descriptiveSlicesEqual,
   extractFilmIdentityKeywords,
+  formatDescriptiveKeywordsLine,
   formatKeywordsField,
   mergeKeywordsDeduped,
   parseKeywordsField,
@@ -103,12 +106,6 @@ function emptyPending(): PendingState {
     clearNotes: false,
     clearKeywords: false
   }
-}
-
-function keywordsFromMergedPayloadField(v: unknown): string[] {
-  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean)
-  if (typeof v === 'string') return v.split(/[,;]/).map((s) => s.trim()).filter(Boolean)
-  return []
 }
 
 function pathKey(p: string): string {
@@ -754,7 +751,15 @@ export function App(): React.ReactElement {
           const md = meta[path]!
           const desc = imageDescriptionFromMetadata(md)
           const kw = keywordsFieldFromMetadata(md)
-          next[k] = { ...row, notesBaseline: desc, keywordsBaseline: kw }
+          const descriptiveOnly = formatDescriptiveKeywordsLine(kw)
+          const shouldReseedKeywords =
+            row.keywordsText.trim() === '' || descriptiveSlicesEqual(row.keywordsText, row.keywordsBaseline)
+          next[k] = {
+            ...row,
+            notesBaseline: desc,
+            keywordsBaseline: kw,
+            keywordsText: shouldReseedKeywords ? descriptiveOnly : row.keywordsText
+          }
         }
         return next
       })
@@ -822,13 +827,13 @@ export function App(): React.ReactElement {
         if (st.clearKeywords) {
           merged = { ...merged, Keywords: '' }
         } else {
-          const presetKw = keywordsFromMergedPayloadField(merged['Keywords'])
-          const uiKw = parseKeywordsField(st.keywordsText)
-          let kwCombined = mergeKeywordsDeduped(presetKw, uiKw)
-          if (st.clearFilm) {
-            kwCombined = stripFilmIdentityFromKeywords(kwCombined)
-          }
-          const finalKw = fitKeywordsForExif(kwCombined)
+          const finalKw = buildMergedKeywordsForWrite({
+            mergedPresetKeywords: merged['Keywords'],
+            keywordsText: st.keywordsText,
+            keywordsBaseline: st.keywordsBaseline,
+            clearKeywords: false,
+            clearFilm: st.clearFilm
+          })
           if (finalKw.length > 0) {
             merged = { ...merged, Keywords: finalKw }
           } else {
@@ -1246,7 +1251,8 @@ export function App(): React.ReactElement {
             next[pathKey(path)] = {
               ...emptyPending(),
               notesBaseline: desc,
-              keywordsBaseline: kw
+              keywordsBaseline: kw,
+              keywordsText: formatDescriptiveKeywordsLine(kw)
             }
           }
           return next
@@ -1304,7 +1310,12 @@ export function App(): React.ReactElement {
         const md = metadataByPath[k] ?? {}
         const desc = imageDescriptionFromMetadata(md)
         const kw = keywordsFieldFromMetadata(md)
-        next[k] = { ...emptyPending(), notesBaseline: desc, keywordsBaseline: kw }
+        next[k] = {
+          ...emptyPending(),
+          notesBaseline: desc,
+          keywordsBaseline: kw,
+          keywordsText: formatDescriptiveKeywordsLine(kw)
+        }
       }
       return next
     })
@@ -1336,7 +1347,8 @@ export function App(): React.ReactElement {
         }
         const md = metadataByPath[pathKey(path)] ?? {}
         const filmKeywordsFromCurrent = extractFilmIdentityKeywords(parseKeywordsField(keywordsFieldFromMetadata(md)))
-        const appendedKw = mergeKeywordsDeduped(parseKeywordsField(s.keywordsText), r.keywords)
+        const descriptivePending = stripFilmIdentityFromKeywords(parseKeywordsField(s.keywordsText))
+        const appendedKw = mergeKeywordsDeduped(descriptivePending, r.keywords)
         const mergedKw = fitKeywordsForExif(mergeKeywordsDeduped(filmKeywordsFromCurrent, appendedKw))
         return {
           ...s,
