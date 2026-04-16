@@ -24,7 +24,8 @@ The workflow [`.github/workflows/release-macos.yml`](.github/workflows/release-m
 2. Bump `version` in `package.json` to match the release you intend to ship.
 3. Push git tag `v<version>` (must match `package.json`, e.g. `v1.0.2` for `1.0.2`).
 4. **Invariant check before tagging:** `package.json.version` numeric part must equal the tag numeric part (standard: `version=1.3.2`, `tag=v1.3.2`).
-5. Confirm **Release (macOS)** uploaded `EXIFmod-<version>.dmg`, `EXIFmod-<version>.dmg.sha256` (for the Homebrew bump script), `EXIFmod-<version>.zip`, and `latest-mac.yml`, and **Release (Windows)** uploaded the NSIS installer, `latest.yml`, and updater blockmap files, all under `releases/download/v<version>/...` (not an `untagged-...` draft URL).
+5. **Do not** pre-create a **published** GitHub Release with `gh release create` before CI unless you understand `electron-builder`: it matches **draft** vs **published** releases. This repo sets `build.publish.releaseType` to **`release`** in `package.json` so assets upload correctly. If you already created an empty published release and CI skipped binaries, delete that release (`gh release delete vX.Y.Z`) and re-run the **Release (macOS)** and **Release (Windows)** workflows on `main` at the commit that includes the version bump (or move the tag and push).
+6. Confirm **Release (macOS)** uploaded `EXIFmod-<version>.dmg`, `EXIFmod-<version>.dmg.sha256` (for the Homebrew bump script), `EXIFmod-<version>.zip`, and `latest-mac.yml`, and **Release (Windows)** uploaded the NSIS installer, `latest.yml`, and updater blockmap files, all under `releases/download/v<version>/...` (not an `untagged-...` draft URL).
 
 ## Homebrew cask bump
 

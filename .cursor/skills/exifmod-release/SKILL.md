@@ -25,6 +25,8 @@ description: >-
 
 **Anti-pattern:** creating only a GitHub “release” + tag with **no workflow run** or **no assets** — in-app auto-update (`electron-updater`) will not work.
 
+**Anti-pattern:** running `gh release create vX.Y.Z` **before** CI finishes **unless** you know what you are doing: `electron-builder` defaults to **`publish.releaseType: draft`**. A **published** release created first makes uploads **skip** with `existingType=release publishingType=draft` — you end up with **no DMG/ZIP/installer** (only side effects such as `gh release upload` for the SHA256 step). This repo sets **`releaseType: "release"`** in [package.json](package.json) `build.publish` so CI can upload to a normal release. Prefer **push the tag first**, let CI attach assets, **then** edit release notes in the GitHub UI (or use `gh release edit`).
+
 ## Ordered checklist
 
 Copy and tick through:

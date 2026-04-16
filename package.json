@@ -50,7 +50,8 @@
     "publish": {
       "provider": "github",
       "owner": "prettyoaktree",
-      "repo": "exifmod-electron"
+      "repo": "exifmod-electron",
+      "releaseType": "release"
     },
     "appId": "dev.ay.exifmod",
     "productName": "EXIFmod",
