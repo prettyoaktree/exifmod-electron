@@ -17,11 +17,15 @@ The cask installs Homebrew’s **`exiftool`** formula as well; EXIFmod still **r
 
 The cask **downloads the installer DMG** from the public **[exifmod-electron](https://github.com/prettyoaktree/exifmod-electron)** app repository’s [GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases) (the tap repository still hosts the Homebrew formula and cask metadata).
 
+Homebrew here is primarily a **bootstrap/install** path. After installation, EXIFmod’s built-in updater can advance the app version independently of Homebrew’s originally installed cask metadata.
+
 ### Automatic updates (macOS, release app)
 
 In the **signed release** app, EXIFmod periodically checks **[GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases)** for a newer version. When an update is available, you are prompted before anything is downloaded. After the download finishes, you can **restart to install**. Development builds (`npm run dev`) do not perform automatic updates.
 
 You can also choose **Help → Check for Updates…** at any time.
+
+Because of this split model (Homebrew install + in-app update), `brew upgrade` is not always the canonical indicator of the currently installed EXIFmod version once auto-update has run.
 
 ---
 
