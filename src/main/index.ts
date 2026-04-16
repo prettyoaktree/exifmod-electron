@@ -824,7 +824,6 @@ function setupIpc(): void {
       return false
     }
   })
-
   ipcMain.on('app:confirm-close', () => {
     allowMainWindowClose = true
     const w = mainWindow
