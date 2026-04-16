@@ -61,7 +61,9 @@ Presets are stored in a **local SQLite database** (managed by the app). They are
 | **Author** | Author identity and optional copyright text (copyright is formatted on write — see technical doc).                                    |
 
 
-You can **create** and **edit** presets from the **Manage Presets** panel. Preset names are unique within each category.
+On a **first launch** with an empty preset database, EXIFmod seeds the catalog from **bundled JSON** examples shipped in the app (then imports any additional `camera_*.json`, `lens_*.json`, `film_*.json`, or `author_*.json` files from your app **config** folder, if present). No default SQLite file is shipped. After the catalog has ever contained at least one preset, **deleting every preset** leaves the catalog empty and does **not** restore the bundled defaults (you can still add presets manually or drop JSON into the config folder). A full wipe of app data (see the README) restores true first-run behavior.
+
+You can **create**, **edit**, and **delete** presets from the **Manage Presets** panel. Preset names are unique within each category. **Delete** removes the preset from the catalog only; it does not change metadata already written to image files. If you had pending edits using that preset, those selections are cleared for the affected category (back to **None** / **Do Not Modify** as appropriate).
 
 ---
 
@@ -94,6 +96,8 @@ Use the **Edit** menu (or standard shortcuts such as **⌘C** / **Ctrl+C**, **�
 
 **Help → Tutorial…** opens a short guided walkthrough of the main workflow. The first time you launch the app, that tutorial opens automatically; after you close or finish it, the app remembers not to show it again on startup. Developers can pass **`--simulate-first-run`** on the command line (for example with `npm run dev -- --simulate-first-run`) to open the same automatic tutorial without writing that “seen” flag—useful for testing the first-run experience repeatedly.
 
+To **fully reset** local app storage (preset SQLite, `config` JSON presets, tutorial and LRC snapshot flags, last image folder choice, and any other files under Electron’s **user data** directory for EXIFmod), quit the app and launch once with **`--reset-app-data`** (see the README “Reset all app data” section). You can combine **`--reset-app-data`** and **`--simulate-first-run`** to approximate a clean install plus first-run tutorial in one launch.
+
 On macOS, **Help → Check for Updates…** runs the same update check as the **Updates** area in the status bar (progress and results appear there). It queries GitHub Releases for a newer **signed** release (see **Automatic updates** above).
 
 On macOS, **EXIFmod → About EXIFmod** opens the standard About window with the app icon, the same headline as the main window title bar area, the **version of the build you are running** (from the app bundle), and copyright **© 2026 Alon Yaffe, All Rights Reserved.**
@@ -121,7 +125,7 @@ The **Manage Presets** slide-out lists presets by category. When a category is e
 From the **File** menu:
 
 - **Import Preset Database…** — Merge presets from a previously exported EXIFmod SQLite database. Conflicts or invalid rows are reported; valid presets are imported.
-- **Export Preset Database…** — Save the current preset database as `presets.sqlite3` to a folder you choose (useful for backup or moving to another machine).
+- **Export Preset Database…** — Save the current preset database to a file you name (default suggestion `presets.sqlite3`; useful for backup or moving to another machine).
 
 ---
 

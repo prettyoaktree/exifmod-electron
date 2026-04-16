@@ -7,7 +7,10 @@ import {
   filmStockKeywordFromDisplayName,
   normalizeFilmPresetPayloadForMerge
 } from '@shared/filmKeywords.js'
+import type { PresetRecord } from '@shared/types.js'
 import type { Cat } from './categories.js'
+import { unwrapIpcErrorMessage } from './ipcError.js'
+import { validatePresetEditorInput } from './presetEditorValidation.js'
 
 type CatLower = 'camera' | 'lens' | 'author' | 'film'
 
@@ -177,11 +180,13 @@ export function PresetEditorModal(props: {
   mode: 'new' | 'edit'
   category: Cat
   editId: number | null
+  /** New preset: duplicate fields from this catalog id; name field stays empty. */
+  cloneFromId?: number | null
   onClose: () => void
   onSaved: () => void
 }): React.ReactElement {
   const { t } = useTranslation()
-  const { mode, category, editId, onClose, onSaved } = props
+  const { mode, category, editId, cloneFromId = null, onClose, onSaved } = props
   const categoryLabel = t(CAT_I18N[category])
   const [name, setName] = useState('')
   const [payload, setPayload] = useState<Record<string, unknown>>({})
@@ -202,33 +207,38 @@ export function PresetEditorModal(props: {
 
   useEffect(() => {
     void (async () => {
+      const applyRecord = (rec: PresetRecord, nameForForm: string): void => {
+        setName(nameForForm)
+        let pl = { ...rec.payload }
+        if (category === 'Lens') {
+          delete pl['ExposureTime']
+          delete pl['FNumber']
+        }
+        if (category === 'Camera' || category === 'Lens') {
+          pl = migrateLegacyLensFromPayload(pl)
+        }
+        if (category === 'Film') {
+          pl = migrateFilmPayloadFromDb(pl)
+        }
+        if (category === 'Author') {
+          pl = migrateAuthorPayloadFromDb(pl)
+        }
+        setPayload(pl)
+        if (rec.lens_system === 'fixed' || rec.lens_system === 'interchangeable') {
+          setLensSystem(rec.lens_system)
+        }
+        setLensMount(rec.lens_mount ?? '')
+        setLensAdaptable(Boolean(rec.lens_adaptable))
+        setFixedShutter(rec.fixed_shutter === true)
+        setFixedAperture(rec.fixed_aperture === true)
+      }
+
       if (mode === 'edit' && editId != null) {
         const rec = await window.exifmod.getPreset(editId)
-        if (rec) {
-          setName(rec.name)
-          let pl = { ...rec.payload }
-          if (category === 'Lens') {
-            delete pl['ExposureTime']
-            delete pl['FNumber']
-          }
-          if (category === 'Camera' || category === 'Lens') {
-            pl = migrateLegacyLensFromPayload(pl)
-          }
-          if (category === 'Film') {
-            pl = migrateFilmPayloadFromDb(pl)
-          }
-          if (category === 'Author') {
-            pl = migrateAuthorPayloadFromDb(pl)
-          }
-          setPayload(pl)
-          if (rec.lens_system === 'fixed' || rec.lens_system === 'interchangeable') {
-            setLensSystem(rec.lens_system)
-          }
-          setLensMount(rec.lens_mount ?? '')
-          setLensAdaptable(Boolean(rec.lens_adaptable))
-          setFixedShutter(rec.fixed_shutter === true)
-          setFixedAperture(rec.fixed_aperture === true)
-        }
+        if (rec) applyRecord(rec, rec.name)
+      } else if (mode === 'new' && cloneFromId != null) {
+        const rec = await window.exifmod.getPreset(cloneFromId)
+        if (rec) applyRecord(rec, '')
       } else {
         setName('')
         setPayload({})
@@ -239,11 +249,22 @@ export function PresetEditorModal(props: {
         setFixedAperture(false)
       }
     })()
-  }, [mode, editId, category])
+  }, [mode, editId, category, cloneFromId])
 
   const save = async () => {
     setErr(null)
     try {
+      const validationKey = validatePresetEditorInput({
+        category,
+        name,
+        payload,
+        lensSystem,
+        lensMount
+      })
+      if (validationKey) {
+        setErr(t(validationKey))
+        return
+      }
       const cat = catToLower(category)
       let toSave = normalizeLensPayloadForSave(payload, category)
       if (category === 'Camera') {
@@ -305,7 +326,7 @@ export function PresetEditorModal(props: {
       onSaved()
       onClose()
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e))
+      setErr(unwrapIpcErrorMessage(e))
     }
   }
 

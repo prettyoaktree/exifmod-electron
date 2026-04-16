@@ -38,6 +38,7 @@ const api = {
     ipcRenderer.invoke('exif:apply', filePath, payload) as Promise<{ ok: boolean }>,
   createPreset: (input: CreatePresetInput) => ipcRenderer.invoke('presets:create', input) as Promise<number>,
   updatePreset: (input: UpdatePresetInput) => ipcRenderer.invoke('presets:update', input) as Promise<number>,
+  deletePreset: (id: number) => ipcRenderer.invoke('presets:delete', id) as Promise<void>,
   getPreset: (id: number) => ipcRenderer.invoke('presets:get', id) as Promise<PresetRecord | null>,
   suggestedLensMounts: () => ipcRenderer.invoke('presets:suggestedMounts') as Promise<string[]>,
   resolveImageList: (targetPath: string) =>

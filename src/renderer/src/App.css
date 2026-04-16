@@ -1339,6 +1339,38 @@ button.preset-slideout-close:focus-visible {
   white-space: nowrap;
 }
 
+.preset-slideout-list-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+/* Same ⧉ affordance as metadata “copy current → new” (see .meta-copy-current-btn) */
+.preset-slideout-clone-btn {
+  padding: 0.12rem;
+}
+
+.preset-slideout-clone-glyph {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.preset-slideout-icon-btn-danger {
+  color: var(--danger);
+}
+
+.preset-slideout-icon-btn-danger:hover:not(:disabled) {
+  color: var(--danger);
+  opacity: 0.85;
+}
+
+.preset-slideout-icon-btn-danger:focus-visible {
+  outline-color: var(--danger);
+}
+
 .modal.modal-commit {
   width: min(400px, 92vw);
   padding: 1.25rem;
