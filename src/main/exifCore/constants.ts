@@ -1,3 +1,6 @@
+import { homedir } from 'node:os'
+import { join } from 'node:path'
+
 export const CONTROL_FIELDS = new Set([
   'LensSystem',
   'LensMount',
@@ -15,11 +18,35 @@ export {
 
 export const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.tif', '.tiff'])
 
-export const EXIFTOOL_CANDIDATES = [
+const EXIFTOOL_CANDIDATES_MAC = [
   '/opt/homebrew/bin/exiftool',
   '/usr/local/bin/exiftool',
   '/usr/bin/exiftool'
 ]
+
+/** Common install locations when `which` / `where` does not resolve (e.g. GUI launch with a minimal PATH). */
+export function getExiftoolPathCandidates(): readonly string[] {
+  if (process.platform === 'win32') {
+    const pf = process.env.ProgramFiles
+    const pf86 = process.env['ProgramFiles(x86)']
+    const local = process.env.LocalAppData
+    const out: string[] = []
+    if (pf) {
+      out.push(join(pf, 'exiftool', 'exiftool.exe'))
+      out.push(join(pf, 'ExifTool', 'exiftool.exe'))
+    }
+    if (pf86) {
+      out.push(join(pf86, 'exiftool', 'exiftool.exe'))
+    }
+    if (local) {
+      out.push(join(local, 'Programs', 'exiftool', 'exiftool.exe'))
+    }
+    out.push(join(homedir(), 'scoop', 'shims', 'exiftool.exe'))
+    out.push('C:\\ProgramData\\chocolatey\\bin\\exiftool.exe')
+    return out
+  }
+  return EXIFTOOL_CANDIDATES_MAC
+}
 
 export const DB_FILENAME = 'presets.sqlite3'
 export const DB_BACKUP_FILENAME = 'presets.sqlite3.good'

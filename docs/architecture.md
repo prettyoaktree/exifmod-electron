@@ -19,7 +19,7 @@ Technical overview for contributors and tooling (AI agents: see also `[AGENTS.md
 
 | Path                                          | Role                                                                                                     |
 | --------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `[src/main/](../src/main/)`                   | IPC, menus, ExifTool runner, Ollama lifecycle, DB paths, macOS auto-update wiring                        |
+| `[src/main/](../src/main/)`                   | IPC, menus, ExifTool runner, Ollama lifecycle, DB paths, packaged auto-update (macOS + Windows)          |
 | `[src/main/exifCore/](../src/main/exifCore/)` | Merge/sanitize/write, SQL catalog                                                                        |
 | `[src/renderer/](../src/renderer/)`           | React UI (`App.tsx`, preset editor, panels)                                                              |
 | `[src/preload/](../src/preload/)`             | `contextBridge` → `window.exifmod`                                                                       |
@@ -36,13 +36,15 @@ Path aliases: `@shared` → `src/shared`, `@renderer` → `src/renderer/src` (se
 
 `window.exifmod` covers paths, locale, dialogs, catalog/presets, EXIF read/merge/apply, **batch `HasSettings` probe** (`exif:probeHasSettings`) for the Lightroom Classic write confirmation, optional Ollama helpers, filesystem helpers, and startup paths for cold “Open With” flows. The **Help** menu can install the bundled **Lightroom Classic** plug-in from `[src/main/installLightroomPlugin.ts](../src/main/installLightroomPlugin.ts)`. The authoritative preload list is in `[src/preload/index.ts](../src/preload/index.ts)`.
 
-## macOS packaging and releases
+## Packaging and releases
 
 - **electron-builder** configuration lives in `[package.json](../package.json)` under `"build"`.
-- **Releases** for the signed app are published on **[GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases)** (DMG + ZIP + `latest-mac.yml` for auto-updates). CI workflow: `[.github/workflows/release-macos.yml](../.github/workflows/release-macos.yml)`.
-- **Homebrew cask** metadata lives in the separate tap repo; `[scripts/publish-homebrew-tap-release.sh](../scripts/publish-homebrew-tap-release.sh)` bumps the cask to point at the app repo DMG URL.
+- **Releases** are published on **[GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases)**:
+  - **macOS:** DMG + ZIP + `latest-mac.yml` (auto-update). CI: `[.github/workflows/release-macos.yml](../.github/workflows/release-macos.yml)` (signed + notarized when secrets are configured).
+  - **Windows:** NSIS installer + `latest.yml` (auto-update). CI: `[.github/workflows/release-windows.yml](../.github/workflows/release-windows.yml)`.
+- **Homebrew cask** (macOS only) lives in the separate tap repo; `[scripts/publish-homebrew-tap-release.sh](../scripts/publish-homebrew-tap-release.sh)` bumps the cask to point at the app repo DMG URL.
 
-Operator-only signing, notarization, and GitHub Actions setup are documented in `[maintainer.md](../maintainer.md)` (secret names and procedures only—never commit real credentials).
+Operator-only signing (Apple + optional Windows), notarization, and GitHub Actions setup are documented in `[maintainer.md](../maintainer.md)` (secret names and procedures only—never commit real credentials).
 
 ## macOS behavior notes
 

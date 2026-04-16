@@ -19,13 +19,17 @@ The cask **downloads the installer DMG** from the public **[exifmod-electron](ht
 
 Homebrew here is primarily a **bootstrap/install** path. After installation, EXIFmod’s built-in updater can advance the app version independently of Homebrew’s originally installed cask metadata.
 
-### Automatic updates (macOS, release app)
+### Install on Windows
 
-In the **signed release** app, EXIFmod periodically checks **[GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases)** for a newer version. When an update is available, you are prompted before anything is downloaded. After the download finishes, you can **restart to install**. Development builds (`npm run dev`) do not perform automatic updates.
+Download the **NSIS installer** from the app repository’s [GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases). **ExifTool** is not bundled: install it separately and ensure **`exiftool`** is on your **PATH** (then restart EXIFmod if it was already running). The README lists typical install options.
+
+### Automatic updates (release app, macOS and Windows)
+
+In the **packaged release** app (signed **macOS** build or **Windows** installer from releases), EXIFmod periodically checks **[GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases)** for a newer version. When an update is available, you are prompted before anything is downloaded. After the download finishes, you can **restart to install**. Development builds (`npm run dev`) do not perform automatic updates.
 
 You can also choose **Help → Check for Updates…** at any time.
 
-Because of this split model (Homebrew install + in-app update), `brew upgrade` is not always the canonical indicator of the currently installed EXIFmod version once auto-update has run.
+Because of this split model on macOS (Homebrew install + in-app update), `brew upgrade` is not always the canonical indicator of the currently installed EXIFmod version once auto-update has run.
 
 ---
 
@@ -98,7 +102,7 @@ Use the **Edit** menu (or standard shortcuts such as **⌘C** / **Ctrl+C**, **�
 
 To **fully reset** local app storage (preset SQLite, `config` JSON presets, tutorial and LRC snapshot flags, last image folder choice, and any other files under Electron’s **user data** directory for EXIFmod), quit the app and launch once with **`--reset-app-data`** (see the README “Reset all app data” section). You can combine **`--reset-app-data`** and **`--simulate-first-run`** to approximate a clean install plus first-run tutorial in one launch.
 
-On macOS, **Help → Check for Updates…** runs the same update check as the **Updates** area in the status bar (progress and results appear there). It queries GitHub Releases for a newer **signed** release (see **Automatic updates** above).
+On **macOS** and **Windows** packaged builds, **Help → Check for Updates…** runs the same update check as the **Updates** area in the status bar (progress and results appear there). It queries GitHub Releases for a newer release (macOS builds are **signed**; Windows builds follow the same feed—see **Automatic updates** above).
 
 On macOS, **EXIFmod → About EXIFmod** opens the standard About window with the app icon, the same headline as the main window title bar area, the **version of the build you are running** (from the app bundle), and copyright **© 2026 Alon Yaffe, All Rights Reserved.**
 
@@ -137,7 +141,7 @@ On launch, the app verifies that the preset database is usable and that **ExifTo
 
 ## Status bar (system health)
 
-The main window includes a **status bar** along the bottom for **Application** readiness (preload bridge, **ExifTool**, preset catalog), **Ollama** (optional local AI), and—on the **signed macOS release** build—**Updates**. Each area uses the same pattern: a **status indicator** (color reflects health or progress), a short label, and a **detail panel** you can open for explanations and actions (for example, starting Ollama or downloading an update).
+The main window includes a **status bar** along the bottom for **Application** readiness (preload bridge, **ExifTool**, preset catalog), **Ollama** (optional local AI), and—on **packaged macOS and Windows** release builds—**Updates**. Each area uses the same pattern: a **status indicator** (color reflects health or progress), a short label, and a **detail panel** you can open for explanations and actions (for example, starting Ollama or downloading an update).
 
 While startup checks are still running, the **Application** indicator stays **neutral** until verification finishes, so you are not interrupted on a healthy machine. If a **blocking** problem is detected after those checks complete (for example ExifTool missing), the Application detail opens automatically and stays open until the situation is resolved or no longer applies.
 

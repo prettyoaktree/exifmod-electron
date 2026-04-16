@@ -2,7 +2,7 @@
 name: exifmod-release
 description: >-
   Ships a new EXIFmod (exifmod-electron) version end-to-end: semver bump in
-  package.json, git tag vX.Y.Z, GitHub Release with signed macOS artifacts and
+  package.json, git tag vX.Y.Z, GitHub Release with macOS + Windows artifacts and
   updater metadata, release notes, and Homebrew cask bump. Use when the user
   asks to release, ship, tag, bump version, publish GitHub release, or cut a
   patch/minor/major for EXIFmod.
@@ -14,7 +14,7 @@ description: >-
 
 - Changes are on `main` per repo policy (protected branch: use a PR when required).
 - `npm test` passes on the commit you will tag.
-- Maintainer signing secrets are configured for **Release (macOS)** — see [maintainer.md](maintainer.md) and [.github/workflows/release-macos.yml](.github/workflows/release-macos.yml).
+- Maintainer signing secrets are configured for **Release (macOS)** (and optional Windows code signing) — see [maintainer.md](maintainer.md), [.github/workflows/release-macos.yml](.github/workflows/release-macos.yml), and [.github/workflows/release-windows.yml](.github/workflows/release-windows.yml).
 
 ## Critical invariant (do not skip)
 
@@ -33,12 +33,10 @@ Copy and tick through:
 2. [ ] **Bump** `version` in [package.json](package.json) on `main` and commit (e.g. `chore(release): bump version to X.Y.Z`).
 3. [ ] **Push** `main` (or merge PR then pull latest locally).
 4. [ ] **Tag** that exact commit: `git tag -a vX.Y.Z -m "Release vX.Y.Z"` then `git push origin vX.Y.Z`.
-5. [ ] **Wait for CI**: [`.github/workflows/release-macos.yml`](.github/workflows/release-macos.yml) runs on `push: tags: v*`. Confirm the workflow succeeds.
+5. [ ] **Wait for CI**: both [`.github/workflows/release-macos.yml`](.github/workflows/release-macos.yml) and [`.github/workflows/release-windows.yml`](.github/workflows/release-windows.yml) run on `push: tags: v*`. Confirm **both** succeed.
 6. [ ] **Verify GitHub Release assets** (required for updater + Homebrew script):
-   - `EXIFmod-<version>.dmg`
-   - `EXIFmod-<version>.dmg.sha256`
-   - `EXIFmod-<version>.zip`
-   - `latest-mac.yml`
+   - **macOS:** `EXIFmod-<version>.dmg`, `EXIFmod-<version>.dmg.sha256`, `EXIFmod-<version>.zip`, `latest-mac.yml`
+   - **Windows:** `EXIFmod-<version>-setup.exe` (NSIS), `latest.yml`, and related blockmap files from electron-builder
    - Under `releases/download/v<version>/` (not an untagged draft URL) — see [maintainer.md](maintainer.md) § Release checklist.
 7. [ ] **Release notes**: create or edit the GitHub release for `vX.Y.Z` with highlights and commit range since the previous tag (repo convention in [AGENTS.md](AGENTS.md)).
 8. [ ] **Publish the GitHub release** (not a draft): after assets and notes are in place, confirm `isDraft` is false and clear draft if needed:
