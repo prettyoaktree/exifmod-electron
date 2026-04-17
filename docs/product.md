@@ -104,7 +104,7 @@ To **fully reset** local app storage (preset SQLite, `config` JSON presets, tuto
 
 On **macOS** and **Windows** packaged builds, **Help → Check for Updates…** runs the same update check as the **Updates** area in the status bar (progress and results appear there). It queries GitHub Releases for a newer release (macOS builds are **signed**; Windows builds follow the same feed—see **Automatic updates** above).
 
-On macOS, **EXIFmod → About EXIFmod** opens the standard About window with the app icon, the same headline as the main window title bar area, the **version of the build you are running** (from the app bundle), and copyright **© 2026 Alon Yaffe, All Rights Reserved.**
+On macOS, **EXIFmod → About EXIFmod** opens the standard About window with the app icon, the same headline as the main window title bar area, the **version of the build you are running** (from the app bundle), and copyright **© 2026 EXIFmod, All Rights Reserved.**
 
 ### Lightroom Classic (JPEG and TIFF)
 

@@ -21,7 +21,7 @@ describe('sanitizeWritePayload', () => {
 
   it('does not double-prefix Copyright that already has © and year', () => {
     const y = new Date().getFullYear()
-    const already = `© ${y} Alon Yaffe. All rights reserved.`
+    const already = `© ${y} EXIFmod. All rights reserved.`
     expect(sanitizeWritePayload({ Copyright: already })).toEqual({ Copyright: already })
   })
 })

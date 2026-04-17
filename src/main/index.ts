@@ -55,7 +55,7 @@ import type { UpdaterUiPayload } from './autoUpdate.js'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
-const APP_COPYRIGHT = '© 2026 Alon Yaffe, All Rights Reserved.'
+const APP_COPYRIGHT = '© 2026 EXIFmod, All Rights Reserved.'
 
 /** Dev: wasm path must not use process.cwd() — `open` can start Electron with cwd `/`, yielding `/node_modules/...`. */
 function resolveDevSqlWasmPath(): string {
