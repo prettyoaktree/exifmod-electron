@@ -12,6 +12,8 @@ export type { UpdaterUiPayload } from '../shared/updaterUi.js'
 
 let wired = false
 let vocalManualCheck = false
+/** True between background `checking` and first terminal outcome (`available`, `update-not-available`, catch, or silent error). */
+let autoCheckInflight = false
 
 export type AutoUpdateOptions = {
   /** Called before `quitAndInstall` so the main window close guard does not block shutdown. */
@@ -32,6 +34,7 @@ function wireOnce(opts: AutoUpdateOptions): void {
   autoUpdater.autoInstallOnAppQuit = true
 
   autoUpdater.on('update-available', (info) => {
+    if (autoCheckInflight) autoCheckInflight = false
     const version = info.version ?? ''
     send(opts, { kind: 'available', version })
     if (vocalManualCheck) vocalManualCheck = false
@@ -41,6 +44,9 @@ function wireOnce(opts: AutoUpdateOptions): void {
     if (vocalManualCheck) {
       vocalManualCheck = false
       send(opts, { kind: 'upToDate', version: app.getVersion() })
+    } else if (autoCheckInflight) {
+      autoCheckInflight = false
+      send(opts, { kind: 'idle' })
     }
   })
 
@@ -64,6 +70,9 @@ function wireOnce(opts: AutoUpdateOptions): void {
     if (vocalManualCheck) {
       vocalManualCheck = false
       send(opts, { kind: 'error', message: msg })
+    } else if (autoCheckInflight) {
+      autoCheckInflight = false
+      send(opts, { kind: 'idle' })
     }
   })
 }
@@ -76,8 +85,14 @@ export function registerAutoUpdates(opts: AutoUpdateOptions): void {
   if (!isAutoUpdateSupported()) return
   wireOnce(opts)
   setTimeout(() => {
+    send(opts, { kind: 'checking', source: 'auto' })
+    autoCheckInflight = true
     void autoUpdater.checkForUpdates().catch((e) => {
       console.error('[autoUpdate] startup check failed', e)
+      if (autoCheckInflight) {
+        autoCheckInflight = false
+        send(opts, { kind: 'idle' })
+      }
     })
   }, STARTUP_CHECK_DELAY_MS)
 }
@@ -93,7 +108,7 @@ export async function manualCheckForUpdates(opts: AutoUpdateOptions): Promise<vo
   }
   wireOnce(opts)
   vocalManualCheck = true
-  send(opts, { kind: 'checking' })
+  send(opts, { kind: 'checking', source: 'manual' })
   try {
     await autoUpdater.checkForUpdates()
   } catch (e) {

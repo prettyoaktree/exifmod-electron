@@ -132,14 +132,16 @@ Implementation today uses `OllamaSession` in [`App.tsx`](../src/renderer/src/App
 | Condition / phase | Light | Panel default | Dismissible | Description | Actions |
 | ------------------- | ----- | ------------- | ----------- | ----------- | ------- |
 | Idle | **Green** | Closed | Yes | Hint to use Help or the button to check. | **Check for Updates…** (`updater:check` IPC — same as Help menu) |
-| `upToDate` (after manual check) | **Green** | Open if user had opened Updates | Yes | “You’re up to date” (version). | None |
-| `checking` (Help menu or footer button) | **Blue / pulse** | **Auto-opens** Updates panel unless Application is in `error` | Yes | “Checking for updates…” | None |
-| Update available | **Amber** | Closed or product default | Yes | New version string, release notes if available. | **Download**, **Later** |
-| Downloading | **Blue / pulse** | Optional open | Yes | Progress % + progress bar (`download-progress`). | Optional: **Cancel** if supported |
-| Downloaded, pending restart | **Amber** | Open optional | Yes | Explain restart installs update. | **Restart and install**, **Later** |
-| Error (check or download) | **Red** | Open on user-initiated failure | Yes | Error message string. | **Retry**, **Dismiss** per product |
+| `upToDate` (after manual check) | **Green** | **Auto-opens** when the manual check completes unless the user already closed the Updates panel during that flow (then stays closed until the next manual check) | Yes | “You’re up to date” (version). | None |
+| `checking` with `source: manual` (Help menu or footer **Check**) | **Blue / pulse** | **Auto-opens** immediately (confirms explicit user action) unless Application is in `error` | Yes | “Checking for updates…”; panel stays in sync with later phases until the user closes it. **If the user closes the panel** during this manual flow, it **does not auto-reopen** on `available` / `downloading` / `downloaded` / `upToDate` / `error` until the next manual `checking`. | None |
+| `checking` with `source: auto` (delayed startup check) | **Blue / pulse** | **Closed** | Yes | Background check in progress; no popover. | None |
+| No update after auto check | **Green** | Closed | Yes | Main returns to `idle`. | — |
+| Update available | **Amber** | **Auto-opens** after a **background** check finds an update (unless Application is in `error`). After a **manual** check, opens with completion rules above. | Yes | New version string, release notes if available. | **Download**, **Later** |
+| Downloading | **Blue / pulse** | Follows manual vs auto open rules above | Yes | Progress % + progress bar (`download-progress`). | Optional: **Cancel** if supported |
+| Downloaded, pending restart | **Amber** | **Auto-opens** after background download completes if the panel was closed mid-download; manual flow respects user-closed flag | Yes | Explain restart installs update. | **Restart and install**, **Later** |
+| Error (check or download) | **Red** | **Auto-opens** for manual check errors (unless user closed panel during that manual flow); background check failures reset to `idle` without a dedicated error row in typical networking cases | Yes | Error message string. | **Retry**, **Dismiss** per product |
 
-**IPC:** Main pushes state via `updater:state`; renderer never assumes `autoUpdater` directly. **`updater:check`** invokes the same `manualCheckForUpdates` path as **Help → Check for Updates** (emits `checking`, then `checkForUpdates`). Actions: `updater:download`, `updater:quitAndInstall`, `updater:dismiss`. Document new phases in this table when adding steps (e.g. staging).
+**IPC:** Main pushes state via `updater:state`; renderer never assumes `autoUpdater` directly. **`checking`** includes `source: 'manual' | 'auto'`. **`updater:check`** invokes the same `manualCheckForUpdates` path as **Help → Check for Updates** (emits `checking` + `manual`, then `checkForUpdates`). Actions: `updater:download`, `updater:quitAndInstall`, `updater:dismiss`. Document new phases in this table when adding steps (e.g. staging).
 
 ---
 
