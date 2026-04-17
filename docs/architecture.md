@@ -54,6 +54,15 @@ Operator-only signing (Apple + optional Windows), notarization, and GitHub Actio
 - **Menu bar shows “Electron” during development** — packaged builds use `build.productName` (`EXIFmod`). See `[README.md](../README.md)`.
 - **Development user data** — `[src/main/setDevUserDataPath.ts](../src/main/setDevUserDataPath.ts)` redirects Electron `userData` to a sibling folder with a `-dev` suffix when `!app.isPackaged`, so preset SQLite and preferences do not overlap the installed app. See the README “Development vs release data” section.
 
+## Lightroom Classic plugin (technical)
+
+User-facing behavior is in [`docs/product.md`](product.md). This section covers how the bundled plug-ins invoke EXIFmod on macOS.
+
+- **Help → Install Lightroom Classic Plugin…** copies the bundled plug-ins from [`src/main/installLightroomPlugin.ts`](../src/main/installLightroomPlugin.ts) into Adobe’s **Modules** folder, replacing any previous copy for upgrades.
+- From an **unpacked dev build** (`npm run dev`), installation includes **EXIFmod Open (Dev)** in addition to **EXIFmod Open**. The dev plug-in uses Lightroom’s **`LrShell.openPathsViaCommandLine`** to run **`/usr/bin/open -n -a <node_modules/electron/dist/Electron.app> --args --exifmod-from-lrc <absolute-repo-root>`** plus the image file. **`-n`** starts a short-lived second process so Electron can emit **`second-instance`** to the running app with full `argv`; without **`-n`**, macOS often only activates the app and the image path never reaches EXIFmod (see the Lightroom Classic SDK `LrShell` reference).
+- The **release** plug-in uses the same **`open`** pattern with **`/Applications/EXIFmod.app`** and **`--exifmod-from-lrc`**. Finder and other **Open With** flows do **not** add that marker.
+- Use **Library → Plug-in Extras → Open in EXIFmod Dev** for the dev flow; **Open in EXIFmod** defaults to **`/Applications/EXIFmod.app`** (or a path set in the plug-in’s preferences). From a **packaged release app**, only **EXIFmod Open** is installed.
+
 ## Tests
 
 **Vitest** — unit tests near sources (e.g. `*.test.ts`), integration-style tests for ExifTool where applicable. Run `npm test` after behavioral changes.
