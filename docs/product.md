@@ -25,9 +25,9 @@ Download the **NSIS installer** from the app repository’s [GitHub Releases](ht
 
 ### Automatic updates (release app, macOS and Windows)
 
-In the **packaged release** app (signed **macOS** build or **Windows** installer from releases), EXIFmod periodically checks **[GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases)** for a newer version. When an update is available, you are prompted before anything is downloaded. After the download finishes, you can **restart to install**. Development builds (`npm run dev`) do not perform automatic updates.
+In the **packaged release** app (signed **macOS** build or **Windows** installer from releases), EXIFmod periodically checks **[GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases)** for a newer version. While that **background** check runs, the **Updates** status light shows progress and the detail panel stays **closed**; when no update is found, the light returns to green. When an update **is** available, the **Updates** panel **opens automatically** so you see **Download** / **Later** before anything is downloaded. After the download finishes, you can **restart to install** (the panel can open again when the install is ready if you had closed it mid-download). Development builds (`npm run dev`) do not perform automatic updates.
 
-You can also choose **Help → Check for Updates…** at any time.
+**Help → Check for Updates…** (or **Check** in the Updates panel) is a **manual** check: the Updates panel **opens immediately** so you see progress, and it **stays open** through the result unless you close it—if you close it during that check, it **stays closed** until the next time you start a manual check.
 
 Because of this split model on macOS (Homebrew install + in-app update), `brew upgrade` is not always the canonical indicator of the currently installed EXIFmod version once auto-update has run.
 

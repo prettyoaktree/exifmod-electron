@@ -230,6 +230,10 @@ export function StatusFooter({
   const applicationPanelRef = useRef<HTMLDivElement>(null)
   const prevPhaseRef = useRef<ApplicationPhase>(applicationPhase)
   const prevOpenSegmentRef = useRef<SegmentId | null>(null)
+  /** Which flow produced the current check/download sequence (`idle` clears). */
+  const activeCheckSourceRef = useRef<'manual' | 'auto' | null>(null)
+  /** User closed the Updates panel during a manual check/download; suppress auto re-open until next manual `checking`. */
+  const manualUpdatesPanelUserClosedRef = useRef(false)
 
   const applicationDismissDisabled = applicationPhase === 'error'
   const applicationLight: StatusLightKind =
@@ -269,13 +273,50 @@ export function StatusFooter({
     live?.focus?.()
   }, [applicationPhase, openSegment])
 
-  /** Help → Check for Updates (and `updater:check`) push `checking` from main — surface it in the footer. */
+  /** Manual vs background updater: open panel per product rules; track dismiss during manual flows. */
   useEffect(() => {
     if (!updaterSupported) return
-    if (updaterState.kind !== 'checking') return
+
+    if (updaterState.kind === 'idle') {
+      activeCheckSourceRef.current = null
+      manualUpdatesPanelUserClosedRef.current = false
+      return
+    }
+
+    if (updaterState.kind === 'checking') {
+      activeCheckSourceRef.current = updaterState.source
+      if (updaterState.source === 'manual') {
+        manualUpdatesPanelUserClosedRef.current = false
+        if (applicationPhase !== 'error') setOpenSegment('updates')
+      }
+      return
+    }
+
     if (applicationPhase === 'error') return
-    setOpenSegment('updates')
-  }, [updaterSupported, updaterState.kind, applicationPhase])
+
+    const src = activeCheckSourceRef.current
+    if (src === 'auto') {
+      if (
+        updaterState.kind === 'available' ||
+        updaterState.kind === 'downloaded' ||
+        updaterState.kind === 'error'
+      ) {
+        setOpenSegment('updates')
+      }
+      return
+    }
+
+    if (src === 'manual' && !manualUpdatesPanelUserClosedRef.current) {
+      if (
+        updaterState.kind === 'available' ||
+        updaterState.kind === 'downloaded' ||
+        updaterState.kind === 'upToDate' ||
+        updaterState.kind === 'error'
+      ) {
+        setOpenSegment('updates')
+      }
+    }
+  }, [updaterSupported, updaterState, applicationPhase])
 
   useEffect(() => {
     if (prevOpenSegmentRef.current === 'ollama' && openSegment !== 'ollama') {
@@ -307,6 +348,17 @@ export function StatusFooter({
   const toggle = (id: SegmentId): void => {
     setSegmentOpen(id, openSegment !== id)
   }
+
+  const toggleUpdates = useCallback((): void => {
+    if (openSegment === 'updates') {
+      if (activeCheckSourceRef.current === 'manual' && updaterState.kind !== 'idle') {
+        manualUpdatesPanelUserClosedRef.current = true
+      }
+      setSegmentOpen('updates', false)
+    } else {
+      setSegmentOpen('updates', true)
+    }
+  }, [openSegment, updaterState.kind, setSegmentOpen])
 
   const applicationTitle =
     applicationPhase === 'verifying'
@@ -497,7 +549,7 @@ export function StatusFooter({
           isOpen={openSegment === 'updates'}
           dismissDisabled={false}
           blocksOtherPanels={false}
-          onToggle={() => toggle('updates')}
+          onToggle={toggleUpdates}
         >
           {updaterBody}
         </StatusFooterSegment>
