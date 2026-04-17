@@ -3,9 +3,10 @@ name: exifmod-release
 description: >-
   Ships a new EXIFmod (exifmod-electron) version end-to-end: semver bump in
   package.json, git tag vX.Y.Z, GitHub Release with macOS + Windows artifacts and
-  updater metadata, release notes, and Homebrew cask bump. Use when the user
-  asks to release, ship, tag, bump version, publish GitHub release, or cut a
-  patch/minor/major for EXIFmod.
+  updater metadata, release notes, Homebrew cask bump, and winget-pkgs manifest
+  bump (staged under winget/manifests/). Use when the user asks to release,
+  ship, tag, bump version, publish GitHub release, or cut a patch/minor/major
+  for EXIFmod.
 ---
 
 # EXIFmod release (exifmod-electron)
@@ -36,9 +37,9 @@ Copy and tick through:
 3. [ ] **Push** `main` (or merge PR then pull latest locally).
 4. [ ] **Tag** that exact commit: `git tag -a vX.Y.Z -m "Release vX.Y.Z"` then `git push origin vX.Y.Z`.
 5. [ ] **Wait for CI**: both [`.github/workflows/release-macos.yml`](.github/workflows/release-macos.yml) and [`.github/workflows/release-windows.yml`](.github/workflows/release-windows.yml) run on `push: tags: v*`. Confirm **both** succeed.
-6. [ ] **Verify GitHub Release assets** (required for updater + Homebrew script):
+6. [ ] **Verify GitHub Release assets** (required for updater + Homebrew / winget scripts):
    - **macOS:** `EXIFmod-<version>.dmg`, `EXIFmod-<version>.dmg.sha256`, `EXIFmod-<version>.zip`, `latest-mac.yml`
-   - **Windows:** `EXIFmod-<version>-setup.exe` (NSIS), `latest.yml`, and related blockmap files from electron-builder
+   - **Windows:** `EXIFmod-<version>-setup.exe` (NSIS), `EXIFmod-<version>-setup.exe.sha256` (from Windows CI), `latest.yml`, and related blockmap files from electron-builder
    - Under `releases/download/v<version>/` (not an untagged draft URL) — see [maintainer.md](maintainer.md) § Release checklist.
 7. [ ] **Release notes**: create or edit the GitHub release for `vX.Y.Z` with highlights and commit range since the previous tag (repo convention in [AGENTS.md](AGENTS.md)).
 8. [ ] **Publish the GitHub release** (not a draft): after assets and notes are in place, confirm `isDraft` is false and clear draft if needed:
@@ -47,7 +48,11 @@ Copy and tick through:
    - To mark this release as the **latest** on the repo: `gh release edit vX.Y.Z --latest` (use when this version should supersede prior releases in the GitHub UI).
 9. [ ] **Homebrew cask** (same release cycle): from a clean tap clone, run  
    `TAP_DIR=/path/to/homebrew-exifmod ./scripts/publish-homebrew-tap-release.sh` — see [maintainer.md](maintainer.md).
-10. [ ] **Retention**: maintainer policy — keep a rolling window of the latest **3** app releases on GitHub before pruning older ones.
+10. [ ] **Winget community manifest** (Windows catalog): with `gh` authenticated and a **shallow clone of your winget-pkgs fork** (add **`upstream`** → `https://github.com/microsoft/winget-pkgs.git` once), run from this repo (same pattern as **`TAP_DIR`** for Homebrew — you must set the path):
+   - `WINGET_PKGS_DIR=/path/to/your/winget-pkgs-fork-clone ./scripts/publish-winget-release.sh`  
+   - The script copies [`winget/manifests/p/PrettyOakTree/EXIFmod/<version>/`](../../../winget/manifests/p/PrettyOakTree/EXIFmod/), fills **`InstallerSha256`** from **`EXIFmod-<version>-setup.exe.sha256`** on the GitHub Release (uploaded by Windows CI), commits on a branch from **`upstream/master`**, pushes to **`origin`**, and opens a PR to **`microsoft/winget-pkgs`**. Use **`DRY_RUN=1`** to preview commands.
+   - **Optional (Windows):** `winget validate --manifest <path>` / local install test before merging upstream.
+11. [ ] **Retention**: maintainer policy — keep a rolling window of the latest **3** app releases on GitHub before pruning older ones.
 
 ## Commands reference
 
@@ -66,6 +71,9 @@ gh release edit vX.Y.Z --latest
 
 # Local publish (maintainers / CI parity); requires GH_TOKEN and signing env
 npm run release:github
+
+# Winget-pkgs PR (after release assets include EXIFmod-<ver>-setup.exe.sha256)
+WINGET_PKGS_DIR=/path/to/your/winget-pkgs-fork-clone ./scripts/publish-winget-release.sh
 ```
 
 ## Agent behavior

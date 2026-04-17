@@ -43,6 +43,7 @@ Path aliases: `@shared` → `src/shared`, `@renderer` → `src/renderer/src` (se
   - **macOS:** DMG + ZIP + `latest-mac.yml` (auto-update). CI: `[.github/workflows/release-macos.yml](../.github/workflows/release-macos.yml)` (signed + notarized when secrets are configured).
   - **Windows:** NSIS installer + `latest.yml` (auto-update). CI: `[.github/workflows/release-windows.yml](../.github/workflows/release-windows.yml)`.
 - **Homebrew cask** (macOS only) lives in the separate tap repo; `[scripts/publish-homebrew-tap-release.sh](../scripts/publish-homebrew-tap-release.sh)` bumps the cask to point at the app repo DMG URL.
+- **Winget** (Windows): staged multi-file manifests under `[winget/manifests/](../winget/manifests)` are published to [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) via [`scripts/publish-winget-release.sh`](../scripts/publish-winget-release.sh) (set **`WINGET_PKGS_DIR`** to your fork clone, like **`TAP_DIR`** for Homebrew); see `[.cursor/skills/exifmod-release/SKILL.md](../.cursor/skills/exifmod-release/SKILL.md)`.
 
 Operator-only signing (Apple + optional Windows), notarization, and GitHub Actions setup are documented in `[maintainer.md](../maintainer.md)` (secret names and procedures only—never commit real credentials).
 

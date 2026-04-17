@@ -21,7 +21,9 @@ Homebrew here is primarily a **bootstrap/install** path. After installation, EXI
 
 ### Install on Windows
 
-Download the **NSIS installer** from the app repository’s [GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases). **ExifTool** is not bundled: install it separately and ensure **`exiftool`** is on your **PATH** (then restart EXIFmod if it was already running). The README lists typical install options.
+**Winget:** Staged manifests under [`winget/manifests/`](../winget/manifests) target the [community winget catalog](https://github.com/microsoft/winget-pkgs) as **`PrettyOakTree.EXIFmod`**, with **`OliverBetz.ExifTool`** declared as a package dependency. After that entry is accepted, **`winget install -e --id PrettyOakTree.EXIFmod`** can install the app and ExifTool together. **`RequireExplicitUpgrade`** is set so **`winget upgrade --all`** does not fight the app’s built-in updater; prefer **Help → Check for Updates…** for normal upgrades.
+
+**GitHub Releases:** Download the **NSIS installer** from the app repository’s [GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases). **ExifTool** is not bundled: install it separately and ensure **`exiftool`** is on your **PATH** (then restart EXIFmod if it was already running). The README lists typical install options.
 
 ### Automatic updates (release app, macOS and Windows)
 

@@ -32,3 +32,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run release:github
+
+      - name: Upload NSIS SHA256 for winget manifest bump
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $VERSION = node -p "require('./package.json').version"
+          $TAG = "v${VERSION}"
+          $EXE = "release/EXIFmod-${VERSION}-setup.exe"
+          $OUT = "release/EXIFmod-${VERSION}-setup.exe.sha256"
+          if (-not (Test-Path $EXE)) { throw "Missing $EXE" }
+          $hash = (Get-FileHash -Algorithm SHA256 -Path $EXE).Hash.ToLower()
+          $name = Split-Path $EXE -Leaf
+          # LF + UTF-8 no BOM (matches shasum / Unix; avoids CRLF confusing parsers)
+          $line = "${hash}  ${name}"
+          $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+          $fullOut = Join-Path (Get-Location) $OUT
+          [System.IO.File]::WriteAllText($fullOut, $line + "`n", $utf8NoBom)
+          gh release upload $TAG $OUT --clobber --repo $env:GITHUB_REPOSITORY
