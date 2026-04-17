@@ -128,6 +128,12 @@ ruby - "$CASK_FILE" "$VERSION" "$SHA256" "$APP_REPO" <<'RUBY'
   body = File.read(cask_path)
   body.sub!(/^(\s*)version\s+.*$/, "\\1version \"#{version}\"")
   body.sub!(/^(\s*)sha256\s+.*$/, "\\1sha256 \"#{sha}\"")
+  # EXIFmod uses electron-updater; brew should treat this as a self-updating app (see homebrew-exifmod/RELEASE.md).
+  if body.match?(/^\s*auto_updates\s+/)
+    body.sub!(/^\s*auto_updates\s+.*$/, "  auto_updates true")
+  else
+    body.sub!(/^(\s*sha256\s+".*"\r?\n)/, "\\1  auto_updates true\n")
+  end
   # Cask must interpolate #{version} in the url string (Homebrew evaluates the cask Ruby).
   url_line = '  url "https://github.com/' + app_repo + '/releases/download/v#{version}/EXIFmod-#{version}.dmg"'
   unless body.match?(/^\s*url\s+"/)
