@@ -28,6 +28,10 @@ function emptyCatalog(over: Partial<ConfigCatalog> = {}): ConfigCatalog {
     film_file_map: {},
     camera_metadata_map: {},
     lens_metadata_map: {},
+    camera_identity_by_name: {},
+    lens_identity_by_name: {},
+    author_identity_by_name: {},
+    film_identity_by_name: {},
     ...over
   }
 }
@@ -85,6 +89,13 @@ describe('matchStateForCameraCategory', () => {
   it('matches existing preset', () => {
     expect(matchStateForCameraCategory(cat, [{ Make: 'Canon', Model: 'Canon P' }])).toEqual({ kind: 'matched' })
   })
+  it('matches when preset display name differs but payload identity matches EXIF', () => {
+    const renamed = emptyCatalog({
+      camera_values: ['None', 'My preset'],
+      camera_identity_by_name: { 'My preset': 'Canon P' }
+    })
+    expect(matchStateForCameraCategory(renamed, [{ Make: 'Canon', Model: 'Canon P' }])).toEqual({ kind: 'matched' })
+  })
   it('unmatched yields draft', () => {
     const r = matchStateForCameraCategory(cat, [{ Make: 'FED', Model: 'FED 1' }])
     expect(r.kind).toBe('unmatched')
@@ -135,6 +146,19 @@ describe('matchStateForAuthorCategory', () => {
 describe('matchStateForLensCategory', () => {
   const cat = emptyCatalog({ lens_values: ['None', 'Minolta Rokkor MD 50mm f/2'] })
   const mounts = ['Minolta MD']
+  it('matches when preset display name differs but payload identity matches EXIF', () => {
+    const renamed = emptyCatalog({
+      lens_values: ['None', 'My lens'],
+      lens_identity_by_name: { 'My lens': 'Minolta Rokkor MD 50mm f/2' }
+    })
+    expect(
+      matchStateForLensCategory(
+        renamed,
+        [{ LensMake: 'Minolta', LensModel: 'Minolta Rokkor MD 50mm f/2' }],
+        mounts
+      )
+    ).toEqual({ kind: 'matched' })
+  })
   it('unmatched with inferred mount in draft when unique', () => {
     const r = matchStateForLensCategory(
       cat,

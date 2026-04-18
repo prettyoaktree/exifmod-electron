@@ -30,6 +30,14 @@ export interface ConfigCatalog {
   film_file_map: Record<string, number | null | undefined>
   camera_metadata_map: Record<string, CameraMetadata>
   lens_metadata_map: Record<string, LensMetadata>
+  /**
+   * Preset display name → identity derived from saved payload (same rules as EXIF matching).
+   * Used so metadata can match a preset after the user renames it while keeping suggested fields.
+   */
+  camera_identity_by_name: Record<string, string>
+  lens_identity_by_name: Record<string, string>
+  author_identity_by_name: Record<string, string>
+  film_identity_by_name: Record<string, string>
 }
 
 export interface PresetRecord {
