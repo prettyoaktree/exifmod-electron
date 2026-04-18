@@ -9,7 +9,7 @@ import {
   PRESET_CATALOG_INITIALIZED_FLAG
 } from './constants.js'
 import { resolveBundledDefaultPresetsDir } from '../bundledPresetsPath.js'
-import { migrateLensMountDisplayNames, openDb } from './database.js'
+import { migrateFixedCameraClearLensMount, migrateLensMountDisplayNames, openDb } from './database.js'
 import { PresetStoreError } from './errors.js'
 import { formatExposureTimeForUi, formatFnumberForUi } from '../../shared/exifDisplayFormat.js'
 import { normalizeFilmPresetPayloadForMerge, stripFilmStockSuffix } from '../../shared/filmKeywords.js'
@@ -134,6 +134,14 @@ function normalizeLensMount(value: string | null | undefined, category: string):
   if (category !== 'camera' && category !== 'lens') return null
   const normalized = String(value ?? '').trim()
   return normalized || null
+}
+
+/** Same inference as loadCatalog for camera rows seeded from JSON without LensSystem. */
+function cameraLensSystemFromImportJson(raw: Record<string, unknown>): string {
+  const n = String(raw['LensSystem'] ?? '').trim().toLowerCase()
+  if (n === 'fixed' || n === 'interchangeable') return n
+  const hasLensData = Object.keys(raw).some((k) => k.startsWith('Lens'))
+  return hasLensData ? 'fixed' : 'interchangeable'
 }
 
 function normalizeLensAdaptable(value: boolean | number | null | undefined, category: string): number | null {
@@ -391,10 +399,17 @@ export async function importJsonPresetsFromDirectories(
           .replace(/_/g, ' ')
           .replace(/\b\w/g, (c) => c.toUpperCase())
         const displayName = displayNameForRecord(category, rawData, fallbackName)
-        const lens_system = rawData['LensSystem'] as string | undefined
-        const lens_mount = rawData['LensMount'] as string | undefined
+        let lens_system = rawData['LensSystem'] as string | undefined
+        let lens_mount = rawData['LensMount'] as string | undefined
         const lens_adaptable_raw = rawData['LensAdaptable']
-        const lens_adaptable = lens_adaptable_raw == null ? null : lens_adaptable_raw ? 1 : 0
+        let lens_adaptable = lens_adaptable_raw == null ? null : lens_adaptable_raw ? 1 : 0
+        if (category === 'camera') {
+          lens_system = cameraLensSystemFromImportJson(rawData)
+          if (lens_system === 'fixed') {
+            lens_mount = undefined
+            lens_adaptable = 0
+          }
+        }
         const fixed_shutter = fixedShutter01FromImportJson(rawData, category)
         const fixed_aperture = fixedAperture01FromImportJson(rawData, category)
         const payload: Record<string, unknown> = {}
@@ -457,6 +472,7 @@ export async function ensureDatabaseInitialized(paths: DataPaths): Promise<void>
   let count = 0
   try {
     migrateLensMountDisplayNames(db)
+    migrateFixedCameraClearLensMount(db)
     const row = db.get('SELECT COUNT(*) AS cnt FROM presets')
     count = Number(row?.cnt ?? 0)
   } finally {
@@ -705,8 +721,12 @@ export async function createPreset(
   if (!normalized_name) throw new PresetStoreError('Preset name is required.')
   const payload_json = normalizePayloadJson(payload)
   const ls = normalizeLensSystem(lens_system, normalized_category)
-  const lm = normalizeLensMount(lens_mount, normalized_category)
-  const la = normalizeLensAdaptable(lens_adaptable, normalized_category)
+  let lm = normalizeLensMount(lens_mount, normalized_category)
+  let la = normalizeLensAdaptable(lens_adaptable, normalized_category)
+  if (normalized_category === 'camera' && ls === 'fixed') {
+    lm = null
+    la = 0
+  }
   const fs = normalizeFixedShutterFlag(fixed_shutter, normalized_category)
   const fa = normalizeFixedApertureFlag(fixed_aperture, normalized_category)
 
@@ -751,8 +771,12 @@ export async function updatePreset(
   const payload_json = normalizePayloadJson(payload)
   const category = existing.category
   const ls = normalizeLensSystem(lens_system, category)
-  const lm = normalizeLensMount(lens_mount, category)
-  const la = normalizeLensAdaptable(lens_adaptable, category)
+  let lm = normalizeLensMount(lens_mount, category)
+  let la = normalizeLensAdaptable(lens_adaptable, category)
+  if (category === 'camera' && ls === 'fixed') {
+    lm = null
+    la = 0
+  }
   const fs = normalizeFixedShutterFlag(fixed_shutter, category)
   const fa = normalizeFixedApertureFlag(fixed_aperture, category)
 
@@ -987,9 +1011,13 @@ export async function mergePresetsFromSqliteFile(sourceFilePath: string, destPat
 
       try {
         const payloadNorm = normalizePayloadJson(payload)
-        const ls = normalizeLensSystem(row['lens_system'] as string | null, category)
-        const lm = normalizeLensMount(row['lens_mount'] as string | null, category)
-        const la = normalizeLensAdaptable(row['lens_adaptable'] as boolean | number | null, category)
+        let ls = normalizeLensSystem(row['lens_system'] as string | null, category)
+        let lm = normalizeLensMount(row['lens_mount'] as string | null, category)
+        let la = normalizeLensAdaptable(row['lens_adaptable'] as boolean | number | null, category)
+        if (category === 'camera' && ls === 'fixed') {
+          lm = null
+          la = 0
+        }
         const fs = normalizeFixedShutterFlag(row['fixed_shutter'] as boolean | number | null, category)
         const fa = normalizeFixedApertureFlag(row['fixed_aperture'] as boolean | number | null, category)
         dest.runOnly(

@@ -55,3 +55,18 @@ export function migrateLensMountDisplayNames(db: PersistedDatabase): void {
   }
   db.persist()
 }
+
+/** Fixed-lens cameras never store a lens mount; clear legacy rows. */
+export function migrateFixedCameraClearLensMount(db: PersistedDatabase): void {
+  db.runOnly(
+    `UPDATE presets SET lens_mount = NULL
+     WHERE category = 'camera' AND lens_system = 'fixed'
+       AND lens_mount IS NOT NULL AND TRIM(lens_mount) <> ''`
+  )
+  db.runOnly(
+    `UPDATE presets SET lens_adaptable = 0
+     WHERE category = 'camera' AND lens_system = 'fixed'
+       AND IFNULL(lens_adaptable, 0) != 0`
+  )
+  db.persist()
+}

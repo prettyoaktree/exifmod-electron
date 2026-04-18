@@ -284,6 +284,7 @@
     "validationCameraMakeRequired": "Indiquez la marque de l’appareil.",
     "validationCameraModelRequired": "Indiquez le modèle de l’appareil.",
     "validationCameraLensMountRequired": "Indiquez la monture pour les boîtiers à objectifs interchangeables.",
+    "validationCameraFixedNoLensMount": "Les boîtiers à objectif fixe n’ont pas de monture. Passez en interchangeable ou videz la monture.",
     "validationLensMakeRequired": "Indiquez la marque de l’objectif.",
     "validationLensModelRequired": "Indiquez le modèle de l’objectif.",
     "validationFilmStockRequired": "Indiquez un nom de pellicule / stock.",

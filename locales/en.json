@@ -284,6 +284,7 @@
     "validationCameraMakeRequired": "Enter the camera make.",
     "validationCameraModelRequired": "Enter the camera model.",
     "validationCameraLensMountRequired": "Enter the lens mount for interchangeable-lens cameras.",
+    "validationCameraFixedNoLensMount": "Fixed-lens cameras cannot have a lens mount. Choose interchangeable or clear the mount.",
     "validationLensMakeRequired": "Enter the lens make.",
     "validationLensModelRequired": "Enter the lens model.",
     "validationFilmStockRequired": "Enter a film stock name.",

@@ -47,6 +47,7 @@ const IMPLICIT_REFERENCES = new Set([
   'presetEditor.validationCameraMakeRequired',
   'presetEditor.validationCameraModelRequired',
   'presetEditor.validationCameraLensMountRequired',
+  'presetEditor.validationCameraFixedNoLensMount',
   'presetEditor.validationLensMakeRequired',
   'presetEditor.validationLensModelRequired',
   'presetEditor.validationFilmStockRequired',
