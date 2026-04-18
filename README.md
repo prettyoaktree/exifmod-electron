@@ -27,7 +27,7 @@ brew install --cask exifmod
 
 - Homebrew installs **ExifTool** when needed.
 
-### Windows Installation via Winget (pending approval)
+### Windows Installation via Winget
 
 ```powershell
 winget install -e --id PrettyOakTree.EXIFmod

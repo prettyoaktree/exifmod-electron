@@ -29,7 +29,7 @@ Supported image extensions in the file list and for OS “open with” flows: **
 
 **Platforms, installers, Homebrew, winget, SmartScreen, and ExifTool on PATH** are documented in **[README.md](../README.md)**. In short:
 
-- EXIFmod **requires** a working **`exiftool`** on your `PATH` for metadata I/O (installers and package managers typically pull it in—see the README).
+- EXIFmod **requires** a working `**exiftool`** on your `PATH` for metadata I/O (installers and package managers typically pull it in—see the README).
 - In **packaged** macOS and Windows builds, the app can **check GitHub Releases** for updates and **asks before downloading**; use **Help → Check for Updates…** or the **Updates** area in the status bar for a manual check. Development builds (`npm run dev`) do not auto-update.
 
 ---
@@ -38,12 +38,14 @@ Supported image extensions in the file list and for OS “open with” flows: **
 
 Presets are stored in a **local SQLite database** (managed by the app). They are grouped into four categories:
 
-| Category   | Typical use                                                                                                                           |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+
+| Category   | Typical use                                                                                                                                                                                                                                                                                     |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Camera** | Body make/model; lens system (fixed vs interchangeable), mount, adapter compatibility; optional lens make/model on fixed-lens bodies; optional **fixed shutter speed** and/or **fixed aperture** (stored with explicit DB flags; written as EXIF `ExposureTime` / `FNumber` only when enabled). |
-| **Lens**   | Lens-oriented fields; the UI can filter lens choices using camera/lens metadata from the catalog.                                     |
-| **Film**   | Film stock and ISO; keywords are composed for EXIF (see [exif-preset-mapping.md](exif-preset-mapping.md)).                            |
-| **Author** | Author identity and optional copyright text (copyright is formatted on write — see that doc).                                        |
+| **Lens**   | Lens-oriented fields; the UI can filter lens choices using camera/lens metadata from the catalog.                                                                                                                                                                                               |
+| **Film**   | Film stock and ISO; keywords are composed for EXIF (see [exif-preset-mapping.md](exif-preset-mapping.md)).                                                                                                                                                                                      |
+| **Author** | Author identity and optional copyright text (copyright is formatted on write — see that doc).                                                                                                                                                                                                   |
+
 
 On a **first launch** with an empty preset database, EXIFmod seeds the catalog from **bundled JSON** examples shipped in the app (then imports any additional `camera_*.json`, `lens_*.json`, `film_*.json`, or `author_*.json` files from your app **config** folder, if present). No default SQLite file is shipped. After the catalog has ever contained at least one preset, **deleting every preset** leaves the catalog empty and does **not** restore the bundled defaults (you can still add presets manually or drop JSON into the config folder). A full wipe of app data (see the README) restores true first-run behavior.
 
@@ -81,9 +83,9 @@ When multiple files are selected, the UI can show **Multiple** where values diff
 
 ## Optional local AI (Ollama)
 
-EXIFmod can call a **local Ollama** server over HTTP to suggest **Description** and **Keywords** from downscaled JPEG previews. You need **Ollama** installed with a **vision-capable** model; the app defaults to **`gemma4`** unless you set **`EXIFMOD_OLLAMA_MODEL`** (and optionally **`EXIFMOD_OLLAMA_HOST`**). On startup the app checks reachability; if Ollama is not running, use the **Ollama** segment in the **status bar** to start **`ollama serve`** when prompted.
+EXIFmod can call a **local Ollama** server over HTTP to suggest **Description** and **Keywords** from downscaled JPEG previews. You need **Ollama** installed with a **vision-capable** model; the app defaults to `**gemma4`** unless you set `**EXIFMOD_OLLAMA_MODEL**` (and optionally `**EXIFMOD_OLLAMA_HOST**`). On startup the app checks reachability; if Ollama is not running, use the **Ollama** segment in the **status bar** to start `**ollama serve`** when prompted.
 
-For one selected file, AI runs immediately; for several files, the app asks for confirmation, then processes sequentially. Per-file failures do not stop the batch. When you quit EXIFmod: if Ollama **was already running** when the app started, EXIFmod **does not** stop it; if EXIFmod **started** **`ollama serve`** after you opted in, it **terminates** that process on quit.
+For one selected file, AI runs immediately; for several files, the app asks for confirmation, then processes sequentially. Per-file failures do not stop the batch. When you quit EXIFmod: if Ollama **was already running** when the app started, EXIFmod **does not** stop it; if EXIFmod **started** `**ollama serve`** after you opted in, it **terminates** that process on quit.
 
 If you try to close the app while there are **pending metadata changes** that would alter files on write, EXIFmod shows a confirmation dialog.
 
@@ -93,9 +95,9 @@ If you try to close the app while there are **pending metadata changes** that wo
 
 Use the **Edit** menu (or **⌘C** / **Ctrl+C**, **⌘A** / **Ctrl+A**) to copy or select text in Description, Keywords, and the EXIF preview. On macOS, an Edit menu with standard roles is required for those shortcuts in the web content.
 
-**Help → Tutorial…** opens a short guided walkthrough; the first launch may open it automatically until dismissed. Developers can use **`--simulate-first-run`** (e.g. `npm run dev -- --simulate-first-run`) to test without persisting the “seen” flag.
+**Help → Tutorial…** opens a short guided walkthrough; the first launch may open it automatically until dismissed. Developers can use `**--simulate-first-run`** (e.g. `npm run dev -- --simulate-first-run`) to test without persisting the “seen” flag.
 
-To **fully reset** local app storage, quit and launch once with **`--reset-app-data`** (see the README). You can combine **`--reset-app-data`** and **`--simulate-first-run`** for a clean slate plus first-run tutorial.
+To **fully reset** local app storage, quit and launch once with `**--reset-app-data`** (see the README). You can combine `**--reset-app-data**` and `**--simulate-first-run**` for a clean slate plus first-run tutorial.
 
 On packaged macOS and Windows builds, **Help → Check for Updates…** matches the **Updates** flow in the status bar.
 
