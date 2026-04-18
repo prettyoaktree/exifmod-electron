@@ -58,11 +58,12 @@ Path aliases: `@shared` → `src/shared`, `@renderer` → `src/renderer/src` (se
 ```bash
 npm install          # dependencies
 npm run dev          # electron-vite + Electron
-npm test             # vitest (run after behavioral changes)
-npm run build        # tsc check, vite build, electron-builder
+npm test             # vitest (+ locale key check); run after logic / i18n key changes
+npm run build:vite   # tsc + vite production build — default compile check (no packaging)
+npm run build        # full pipeline: tsc, vite build, electron-builder (packaging/signing)
 ```
 
-Prefer `**npm test**` before finishing a task that touches logic; use `**npm run build:vite**` for a quicker compile check without packaging.
+**Agents:** Do **not** run `**npm run build**` (the full electron-builder pipeline) unless the user **explicitly** asks for a full build or release packaging. For verification, run `**npm test**` when behavior or shared helpers change, and `**npm run build:vite**` when you need a compile/typecheck without packaging.
 
 ## Release tagging
 
