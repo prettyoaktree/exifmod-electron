@@ -34,6 +34,9 @@ export function validatePresetEditorInput(input: PresetEditorValidationInput): s
     if (!trimNonEmpty(String(payload['Model'] ?? ''))) {
       return 'presetEditor.validationCameraModelRequired'
     }
+    if (lensSystem === 'fixed' && trimNonEmpty(lensMount)) {
+      return 'presetEditor.validationCameraFixedNoLensMount'
+    }
     if (lensSystem === 'interchangeable' && !trimNonEmpty(lensMount)) {
       return 'presetEditor.validationCameraLensMountRequired'
     }

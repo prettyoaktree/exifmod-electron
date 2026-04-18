@@ -58,6 +58,18 @@ describe('validatePresetEditorInput', () => {
     ).toBeNull()
   })
 
+  it('Camera: fixed lens cannot have a lens mount value', () => {
+    expect(
+      validatePresetEditorInput({
+        category: 'Camera',
+        name: 'N',
+        payload: basePayload,
+        lensSystem: 'fixed',
+        lensMount: 'Olympus XA'
+      })
+    ).toBe('presetEditor.validationCameraFixedNoLensMount')
+  })
+
   it('Lens: requires LensMake and LensModel; mount optional', () => {
     expect(
       validatePresetEditorInput({

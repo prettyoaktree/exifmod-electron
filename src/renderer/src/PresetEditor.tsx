@@ -230,8 +230,8 @@ export function PresetEditorModal(props: {
         if (rec.lens_system === 'fixed' || rec.lens_system === 'interchangeable') {
           setLensSystem(rec.lens_system)
         }
-        setLensMount(rec.lens_mount ?? '')
-        setLensAdaptable(Boolean(rec.lens_adaptable))
+        setLensMount(rec.lens_system === 'fixed' ? '' : (rec.lens_mount ?? ''))
+        setLensAdaptable(rec.lens_system === 'fixed' ? false : Boolean(rec.lens_adaptable))
         setFixedShutter(rec.fixed_shutter === true)
         setFixedAperture(rec.fixed_aperture === true)
       }
@@ -345,8 +345,13 @@ export function PresetEditorModal(props: {
           name,
           payload: toSave,
           lens_system: category === 'Camera' ? lensSystem : null,
-          lens_mount: category === 'Camera' || category === 'Lens' ? lensMount || null : null,
-          lens_adaptable: category === 'Camera' ? lensAdaptable : null,
+          lens_mount:
+            category === 'Lens'
+              ? lensMount || null
+              : category === 'Camera' && lensSystem === 'interchangeable'
+                ? lensMount || null
+                : null,
+          lens_adaptable: category === 'Camera' ? (lensSystem === 'fixed' ? false : lensAdaptable) : null,
           fixed_shutter: category === 'Camera' ? fixedShutter : undefined,
           fixed_aperture: category === 'Camera' ? fixedAperture : undefined
         })
@@ -356,8 +361,13 @@ export function PresetEditorModal(props: {
           name,
           payload: toSave,
           lens_system: category === 'Camera' ? lensSystem : null,
-          lens_mount: category === 'Camera' || category === 'Lens' ? lensMount || null : null,
-          lens_adaptable: category === 'Camera' ? lensAdaptable : null,
+          lens_mount:
+            category === 'Lens'
+              ? lensMount || null
+              : category === 'Camera' && lensSystem === 'interchangeable'
+                ? lensMount || null
+                : null,
+          lens_adaptable: category === 'Camera' ? (lensSystem === 'fixed' ? false : lensAdaptable) : null,
           fixed_shutter: category === 'Camera' ? fixedShutter : undefined,
           fixed_aperture: category === 'Camera' ? fixedAperture : undefined
         })
@@ -410,7 +420,14 @@ export function PresetEditorModal(props: {
                     <select
                       className="input"
                       value={lensSystem}
-                      onChange={(e) => setLensSystem(e.target.value as 'fixed' | 'interchangeable')}
+                      onChange={(e) => {
+                        const v = e.target.value as 'fixed' | 'interchangeable'
+                        setLensSystem(v)
+                        if (v === 'fixed') {
+                          setLensMount('')
+                          setLensAdaptable(false)
+                        }
+                      }}
                     >
                       <option value="interchangeable">{t('presetEditor.interchangeable')}</option>
                       <option value="fixed">{t('presetEditor.fixedLens')}</option>
