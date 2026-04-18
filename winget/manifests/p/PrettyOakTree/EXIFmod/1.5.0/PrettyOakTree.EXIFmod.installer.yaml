@@ -22,7 +22,7 @@ Installers:
   - Architecture: x64
     Scope: user
     InstallerUrl: https://github.com/prettyoaktree/exifmod-electron/releases/download/v1.5.0/EXIFmod-1.5.0-setup.exe
-    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+    InstallerSha256: 22C91DBFFCE42D5B925896C08D2CB63223B9939BC1A53C7556DE61D63BB7F6FF
     RequireExplicitUpgrade: true
 ManifestType: installer
 ManifestVersion: 1.9.0
