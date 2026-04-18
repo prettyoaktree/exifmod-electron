@@ -3,7 +3,9 @@
  * so preview / "pending write" only reflect tags that would actually change.
  */
 
+import { parseExposureTimeToSeconds } from '@shared/exifDisplayFormat.js'
 import { fitKeywordsForExif } from '@shared/exifLimits.js'
+import { stripFilmStockSuffix } from '@shared/filmKeywords.js'
 import {
   exposureTimeRawFromMetadata,
   fnumberRawFromMetadata,
@@ -15,6 +17,32 @@ function normalizeKeywordList(v: unknown): string[] {
   if (typeof v === 'string') return v.split(/[,;]/).map((s) => s.trim()).filter(Boolean)
   if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean)
   return []
+}
+
+/** Normalized form for keyword diff equality (case-insensitive multiset). */
+function keywordTokenForCompare(token: string): string {
+  return token.trim().toLowerCase()
+}
+
+/**
+ * Lightroom / other tools sometimes add both `… Film Stock` and a shorter duplicate of the same stock name.
+ * For diff purposes, drop the bare token when a `… film stock` token covers it (same base name).
+ */
+function dedupeFilmStockShadowKeywords(lowerCased: Set<string>): void {
+  for (const t of [...lowerCased]) {
+    if (!t.endsWith(' film stock')) continue
+    const base = stripFilmStockSuffix(t).toLowerCase().trim()
+    if (base && lowerCased.has(base)) lowerCased.delete(base)
+  }
+}
+
+function keywordMultisetNormalized(tokens: string[]): string[] {
+  const lowered = fitKeywordsForExif(tokens)
+    .map((x) => keywordTokenForCompare(x))
+    .filter(Boolean)
+  const set = new Set(lowered)
+  dedupeFilmStockShadowKeywords(set)
+  return [...set].sort((x, y) => x.localeCompare(y, 'en'))
 }
 
 /** Keywords from exiftool -j (tag names vary by file). */
@@ -35,7 +63,7 @@ function keywordsFromFileMeta(meta: Record<string, unknown>): string[] {
   return []
 }
 
-/** Same effective keywords after fit (merge order can differ from on-disk order). */
+/** Same effective keywords after fit (merge order can differ from on-disk order; compare case-insensitively). */
 function keywordListsEquivalent(proposed: unknown, meta: Record<string, unknown>): boolean {
   const p =
     proposed === ''
@@ -44,16 +72,32 @@ function keywordListsEquivalent(proposed: unknown, meta: Record<string, unknown>
         ? proposed.map((x) => String(x))
         : []
   const fromFile = keywordsFromFileMeta(meta)
-  const a = fitKeywordsForExif(p)
-  const b = fitKeywordsForExif(fromFile)
-  if (a.length !== b.length) return false
-  const sa = [...a].sort((x, y) => x.localeCompare(y, 'en'))
-  const sb = [...b].sort((x, y) => x.localeCompare(y, 'en'))
-  return sa.every((s, i) => s === sb[i])
+  const sa = keywordMultisetNormalized(p)
+  const sb = keywordMultisetNormalized(fromFile)
+  if (sa.length !== sb.length) return false
+  return sa.every((s, i) => s === sb[i]!)
 }
 
 function strTrimEq(a: unknown, b: unknown): boolean {
   return String(a ?? '').trim() === String(b ?? '').trim()
+}
+
+/**
+ * Preset payloads may use decimal seconds; exiftool often returns rationals like `1/60`.
+ * Prefer exact string match (legacy behavior), then numeric seconds equivalence.
+ */
+function exposureTimeMatches(proposed: unknown, meta: Record<string, unknown>): boolean {
+  const raw = exposureTimeRawFromMetadata(meta)
+  const pStr = String(proposed ?? '').trim()
+  if (!pStr) return raw == null || String(raw ?? '').trim() === ''
+  if (strTrimEq(proposed, raw)) return true
+  const pSec = parseExposureTimeToSeconds(proposed)
+  const mSec = parseExposureTimeToSeconds(raw)
+  if (pSec != null && mSec != null) {
+    const tol = Math.max(1e-15, Math.max(pSec, mSec) * 1e-10)
+    return Math.abs(pSec - mSec) <= tol
+  }
+  return false
 }
 
 function numLikeEq(proposed: unknown, meta: unknown): boolean {
@@ -81,12 +125,8 @@ function tagMatches(key: string, proposed: unknown, meta: Record<string, unknown
       )
     case 'Copyright':
       return strTrimEq(proposed, metadataFirstTag(meta, ['Copyright', 'EXIF:Copyright', 'XMP:Rights'] as const))
-    case 'ExposureTime': {
-      const raw = exposureTimeRawFromMetadata(meta)
-      const p = String(proposed).trim()
-      if (!p) return raw == null || String(raw).trim() === ''
-      return strTrimEq(p, raw)
-    }
+    case 'ExposureTime':
+      return exposureTimeMatches(proposed, meta)
     case 'FNumber':
       return fnumberMatches(proposed, meta)
     case 'ISO':

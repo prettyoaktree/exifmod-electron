@@ -322,10 +322,12 @@ button.btn-sm {
   z-index: 3;
 }
 
-/** Widen for “Generating…”; base `.btn-ai-spark` supplies 2rem min size. */
+/** Widen for “Generating…”; base `.meta-inline-icon-btn` is 2.25rem square. */
 .meta-subsection-ai-anchor > .btn-ai-spark.btn-ai-spark--loading {
   width: auto;
-  min-width: 2rem;
+  min-width: 2.25rem;
+  padding: 0 0.45rem;
+  justify-content: center;
 }
 
 .meta-subsection-title {
@@ -348,29 +350,9 @@ button.btn-sm {
   margin: 0;
 }
 
+/** AI spark: shell + hover come from `.meta-inline-icon-btn` when used in metadata. */
 .btn-ai-spark {
   flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2rem;
-  min-height: 2rem;
-  padding: 0.2rem 0.35rem;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  box-shadow: none;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.btn-ai-spark:hover:not(:disabled) {
-  color: var(--accent);
-}
-
-.btn-ai-spark:focus-visible {
-  outline: 2px solid rgba(var(--accent-rgb), 0.55);
-  outline-offset: 2px;
 }
 
 /** Ollama is up and the describe action can run: full-contrast icon. */
@@ -408,10 +390,6 @@ button.btn-sm {
   50% {
     color: var(--text);
   }
-}
-
-.btn-ai-spark-icon {
-  display: block;
 }
 
 .btn-ai-spark-loading {
@@ -518,36 +496,64 @@ button.btn-sm {
   margin-bottom: 0.5rem;
 }
 
-button.btn-meta-gear {
+/**
+ * Metadata panel: shared borderless icon buttons (Manage Presets, new preset from EXIF, copy, AI).
+ * Same hit area and glyph size; hover/focus makes affordance obvious vs static text.
+ */
+.meta-inline-icon-btn {
+  box-sizing: border-box;
+  width: 2.25rem;
+  height: 2.25rem;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  margin: 0;
+  padding: 0;
+  border: none !important;
+  border-radius: 6px;
+  background: transparent !important;
+  box-shadow: none;
+  font-size: inherit;
+  font-weight: 400;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 2rem;
-  height: 2rem;
-  margin: 0;
-  padding: 0;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
   color: var(--muted);
   cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
 }
 
-button.btn-meta-gear:hover {
-  background: rgba(255, 255, 255, 0.65);
-  color: var(--text);
+.meta-inline-icon-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.65) !important;
+  color: var(--accent);
 }
 
-button.btn-meta-gear:focus-visible {
-  outline: 2px solid var(--accent);
+.meta-inline-icon-btn:focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), 0.55);
   outline-offset: 2px;
 }
 
-.btn-meta-gear-icon {
-  display: block;
+.meta-inline-icon-btn:disabled {
+  cursor: not-allowed;
+}
+
+.meta-inline-icon-btn .btn-meta-gear-icon,
+.meta-inline-icon-btn .meta-create-preset-from-exif-icon,
+.meta-inline-icon-btn .btn-ai-spark-icon {
   width: 1.25rem;
   height: 1.25rem;
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.meta-inline-icon-btn .meta-copy-current-glyph {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1;
+  display: block;
 }
 
 .meta-section-head h2 {
@@ -706,29 +712,6 @@ table.mapping.mapping-desc-kw td:nth-child(4) {
   word-break: break-word;
 }
 
-/* Override global `button.btn-icon` horizontal padding so icons are not clipped to dots */
-button.btn-icon.meta-copy-current-btn,
-button.btn-icon.meta-create-preset-from-exif-btn {
-  box-sizing: border-box;
-  padding: 0;
-}
-
-.meta-copy-current-btn {
-  min-width: 2.25rem;
-  width: 2.25rem;
-  height: 2.25rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.meta-copy-current-glyph {
-  display: block;
-  font-size: 1.125rem;
-  font-weight: 600;
-  line-height: 1;
-}
-
 .meta-current-value-with-action {
   display: flex;
   align-items: center;
@@ -739,24 +722,6 @@ button.btn-icon.meta-create-preset-from-exif-btn {
 .meta-current-value-with-action > span {
   flex: 1;
   min-width: 0;
-}
-
-.meta-create-preset-from-exif-btn {
-  flex-shrink: 0;
-  min-width: 2rem;
-  width: 2rem;
-  height: 2rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.meta-create-preset-from-exif-icon {
-  display: block;
-  width: 1.25rem;
-  height: 1.25rem;
-  flex-shrink: 0;
-  overflow: visible;
 }
 
 table.mapping th:last-child,
@@ -1413,7 +1378,7 @@ button.preset-slideout-close:focus-visible {
   flex-shrink: 0;
 }
 
-/* Same ⧉ affordance as metadata “copy current → new” (see .meta-copy-current-btn) */
+/* Same ⧉ affordance as metadata “copy current → new” (see `.meta-inline-icon-btn`) */
 .preset-slideout-clone-btn {
   padding: 0.12rem;
 }

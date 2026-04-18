@@ -1872,7 +1872,7 @@ export function App(): React.ReactElement {
               <button
                 type="button"
                 tabIndex={-1}
-                className="btn-meta-gear"
+                className="btn-meta-gear meta-inline-icon-btn"
                 aria-label={t('ui.managePresets')}
                 title={t('ui.managePresets')}
                 onClick={() => setManagePresetsOpen(true)}
@@ -1961,7 +1961,7 @@ export function App(): React.ReactElement {
                               <button
                                 type="button"
                                 tabIndex={-1}
-                                className="btn btn-icon meta-create-preset-from-exif-btn"
+                                className="meta-inline-icon-btn meta-create-preset-from-exif-btn"
                                 title={t('ui.createPresetFromMetadataTitle')}
                                 aria-label={t('ui.createPresetFromMetadataAria')}
                                 onClick={() => {
@@ -2139,7 +2139,7 @@ export function App(): React.ReactElement {
                       type="button"
                       tabIndex={-1}
                       className={[
-                        'btn-ai-spark',
+                        'btn-ai-spark meta-inline-icon-btn',
                         (ollamaSession === 'checking' || ollamaSession === 'launching') && !aiDescribeBusy
                           ? 'btn-ai-spark--ollama-launching'
                           : '',
@@ -2159,7 +2159,7 @@ export function App(): React.ReactElement {
                       {aiDescribeBusy ? (
                         <span className="btn-ai-spark-loading">{aiDescribeBusyLabel}</span>
                       ) : (
-                        <svg className="btn-ai-spark-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden focusable="false">
+                        <svg className="btn-ai-spark-icon" viewBox="0 0 24 24" aria-hidden focusable="false">
                           <path
                             fill="currentColor"
                             d="M12 2l1.2 4.2L17.4 7.4l-4.2 1.2L12 12.8l-1.2-4.2L6.6 7.4l4.2-1.2L12 2zm7 8l.8 2.8 2.8.8-2.8.8L19 17.4l-.8-2.8-2.8-.8 2.8-.8L19 10zM6 14l.6 2.2 2.2.6-2.2.6L6 19.8l-.6-2.2-2.2-.6 2.2-.6L6 14z"
@@ -2210,7 +2210,7 @@ export function App(): React.ReactElement {
                           <button
                             type="button"
                             tabIndex={-1}
-                            className="btn btn-icon meta-copy-current-btn"
+                            className="meta-inline-icon-btn meta-copy-current-btn"
                             title={t('ui.copyCurrentToNew', { row: t('ui.notesImageDescription') })}
                             aria-label={t('ui.copyCurrentToNew', { row: t('ui.notesImageDescription') })}
                             onClick={() => {
@@ -2277,7 +2277,7 @@ export function App(): React.ReactElement {
                           <button
                             type="button"
                             tabIndex={-1}
-                            className="btn btn-icon meta-copy-current-btn"
+                            className="meta-inline-icon-btn meta-copy-current-btn"
                             title={t('ui.copyCurrentToNew', { row: t('ui.keywordsLabel') })}
                             aria-label={t('ui.copyCurrentToNew', { row: t('ui.keywordsLabel') })}
                             onClick={() => {
