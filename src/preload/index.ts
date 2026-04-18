@@ -41,6 +41,9 @@ const api = {
   deletePreset: (id: number) => ipcRenderer.invoke('presets:delete', id) as Promise<void>,
   getPreset: (id: number) => ipcRenderer.invoke('presets:get', id) as Promise<PresetRecord | null>,
   suggestedLensMounts: () => ipcRenderer.invoke('presets:suggestedMounts') as Promise<string[]>,
+  unusedLensMounts: () => ipcRenderer.invoke('presets:unusedLensMounts') as Promise<string[]>,
+  clearUnusedLensMount: (mount: string) =>
+    ipcRenderer.invoke('presets:clearUnusedLensMount', mount) as Promise<{ cleared: number }>,
   resolveImageList: (targetPath: string) =>
     ipcRenderer.invoke('fs:resolveImageList', targetPath) as Promise<string[]>,
   listImagesInDir: (dirPath: string) =>

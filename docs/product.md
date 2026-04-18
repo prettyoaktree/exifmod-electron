@@ -123,6 +123,8 @@ When your pending write includes at least one file that still has Camera Raw dev
 
 The **Manage Presets** slide-out lists presets by category. When a category is expanded, a **filter** field above the list narrows names by substring (independent filter per category). Collapsing a category clears its filter.
 
+Below the category lists, **Unused lens mounts** appears only when relevant: while that list is loading, if it failed to load, or when there is at least one unused mount. When shown, it is expandable like the other categories and lists mount names that appear in your camera presets but not in any lens preset; you can remove them safely. Clearing a name updates affected camera presets only; it does not change image files. Suggested mount strings also come from the optional `lens_mount_defaults.json` file in app data—those entries are not listed here.
+
 ---
 
 ## Import and export presets

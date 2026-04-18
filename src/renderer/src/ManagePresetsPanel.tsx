@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ConfigCatalog } from '@shared/types.js'
 import type { Cat } from './categories.js'
@@ -132,9 +132,10 @@ export function ManagePresetsPanel(props: {
   onEdit: (cat: Cat, editId: number) => void
   onClone: (cat: Cat, sourcePresetId: number) => void
   onDeleteRequest: (cat: Cat, presetId: number, displayName: string) => void
+  onClearUnusedLensMountRequest: (mount: string) => void
 }): ReactElement {
   const { t } = useTranslation()
-  const { catalog, onClose, onAdd, onEdit, onClone, onDeleteRequest } = props
+  const { catalog, onClose, onAdd, onEdit, onClone, onDeleteRequest, onClearUnusedLensMountRequest } = props
   const catLabel = (cat: Cat): string => t(CAT_I18N[cat])
   const [catOpen, setCatOpen] = useState<Record<Cat, boolean>>(collapsedCats)
   const [filterByCat, setFilterByCat] = useState<Record<Cat, string>>({
@@ -143,6 +144,40 @@ export function ManagePresetsPanel(props: {
     Film: '',
     Author: ''
   })
+  const [unusedLensMounts, setUnusedLensMounts] = useState<string[]>([])
+  const [unusedLensMountsLoading, setUnusedLensMountsLoading] = useState(true)
+  const [unusedLensMountsError, setUnusedLensMountsError] = useState<string | null>(null)
+  const [unusedMountsOpen, setUnusedMountsOpen] = useState(false)
+
+  useEffect(() => {
+    const api = window.exifmod
+    if (!api?.unusedLensMounts) {
+      setUnusedLensMountsLoading(false)
+      setUnusedLensMountsError(null)
+      return
+    }
+    setUnusedLensMountsLoading(true)
+    setUnusedLensMountsError(null)
+    void api
+      .unusedLensMounts()
+      .then((list) => {
+        setUnusedLensMounts(list)
+        setUnusedLensMountsLoading(false)
+      })
+      .catch((e: unknown) => {
+        setUnusedLensMountsError(String(e))
+        setUnusedLensMountsLoading(false)
+      })
+  }, [catalog])
+
+  const showUnusedLensMountsSection =
+    unusedLensMountsLoading || unusedLensMountsError != null || unusedLensMounts.length > 0
+
+  useEffect(() => {
+    if (!showUnusedLensMountsSection) {
+      setUnusedMountsOpen(false)
+    }
+  }, [showUnusedLensMountsSection])
 
   return (
     <div className="preset-slideout-backdrop" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -278,6 +313,57 @@ export function ManagePresetsPanel(props: {
               </section>
             )
           })}
+          {showUnusedLensMountsSection ? (
+            <section className="preset-slideout-section" aria-labelledby="unused-lens-mounts-heading">
+              <div className="preset-slideout-cat-row">
+                <button
+                  type="button"
+                  className="preset-slideout-cat-toggle preset-slideout-cat-toggle--unused-mounts"
+                  aria-expanded={unusedMountsOpen}
+                  onClick={() => setUnusedMountsOpen((o) => !o)}
+                >
+                  <PresetChevron open={unusedMountsOpen} />
+                  <span id="unused-lens-mounts-heading" className="preset-slideout-cat-title">
+                    {t('ui.unusedLensMountsSection')}
+                  </span>
+                </button>
+                <div className="preset-slideout-cat-row-spacer" aria-hidden />
+              </div>
+              {unusedMountsOpen ? (
+                <>
+                  <p className="preset-slideout-unused-hint">{t('ui.unusedLensMountsHint')}</p>
+                  {unusedLensMountsLoading ? (
+                    <p className="preset-slideout-list-empty" role="status">
+                      {t('ui.unusedLensMountsLoading')}
+                    </p>
+                  ) : unusedLensMountsError ? (
+                    <p className="preset-slideout-list-empty" role="alert">
+                      {unusedLensMountsError}
+                    </p>
+                  ) : (
+                    <ul className="preset-slideout-list">
+                      {unusedLensMounts.map((mount) => (
+                        <li key={mount}>
+                          <span className="preset-slideout-name">{mount}</span>
+                          <div className="preset-slideout-list-actions">
+                            <button
+                              type="button"
+                              className="preset-slideout-icon-btn preset-slideout-icon-btn-row preset-slideout-icon-btn-danger"
+                              aria-label={t('ui.clearUnusedLensMountAria', { mount })}
+                              title={t('ui.clearUnusedLensMountTitle')}
+                              onClick={() => onClearUnusedLensMountRequest(mount)}
+                            >
+                              <IconTrash />
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              ) : null}
+            </section>
+          ) : null}
         </div>
       </aside>
     </div>

@@ -26,6 +26,8 @@ export interface ExifmodApi {
   deletePreset: (id: number) => Promise<void>
   getPreset: (id: number) => Promise<PresetRecord | null>
   suggestedLensMounts: () => Promise<string[]>
+  unusedLensMounts: () => Promise<string[]>
+  clearUnusedLensMount: (mount: string) => Promise<{ cleared: number }>
   resolveImageList: (targetPath: string) => Promise<string[]>
   listImagesInDir: (dirPath: string) => Promise<string[]>
   isFile: (filePath: string) => Promise<boolean>

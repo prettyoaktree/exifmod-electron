@@ -334,6 +334,7 @@ export function App(): React.ReactElement {
   const [suggestedLensMountsList, setSuggestedLensMountsList] = useState<string[]>([])
   const [managePresetsOpen, setManagePresetsOpen] = useState(false)
   const [deletePresetConfirm, setDeletePresetConfirm] = useState<null | { id: number; cat: Cat; name: string }>(null)
+  const [clearUnusedLensMountConfirm, setClearUnusedLensMountConfirm] = useState<string | null>(null)
   const [exifPreviewOpen, setExifPreviewOpen] = useState(false)
   const [exifPreviewBody, setExifPreviewBody] = useState('')
   const [exifPreviewLoading, setExifPreviewLoading] = useState(false)
@@ -584,9 +585,9 @@ export function App(): React.ReactElement {
 
   useEffect(() => {
     const api = window.exifmod
-    if (!api?.suggestedLensMounts) return
+    if (!api?.suggestedLensMounts || !catalog) return
     void api.suggestedLensMounts().then(setSuggestedLensMountsList)
-  }, [])
+  }, [catalog])
 
   useEffect(() => {
     const api = window.exifmod
@@ -2823,6 +2824,61 @@ export function App(): React.ReactElement {
           </div>
         </div>
       ) : null}
+      {clearUnusedLensMountConfirm ? (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setClearUnusedLensMountConfirm(null)
+          }}
+        >
+          <div
+            className="modal modal-dialog-confirm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="clear-unused-mount-title"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <h3 id="clear-unused-mount-title" className="modal-confirm-heading">
+              {t('ui.clearUnusedLensMountConfirmTitle')}
+            </h3>
+            <p className="modal-confirm-detail">
+              {t('ui.clearUnusedLensMountConfirmDetail', { mount: clearUnusedLensMountConfirm })}
+            </p>
+            <div className="modal-confirm-actions">
+              <button type="button" className="btn" onClick={() => setClearUnusedLensMountConfirm(null)}>
+                {t('dialog.buttonCancel')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => {
+                  void (async () => {
+                    const mount = clearUnusedLensMountConfirm
+                    if (!mount) return
+                    const api = window.exifmod
+                    if (!api?.clearUnusedLensMount) {
+                      alert(t('ui.preloadUnavailable'))
+                      return
+                    }
+                    try {
+                      await api.clearUnusedLensMount(mount)
+                    } catch (e) {
+                      alert(unwrapIpcErrorMessage(e))
+                      setClearUnusedLensMountConfirm(null)
+                      return
+                    }
+                    setClearUnusedLensMountConfirm(null)
+                    await reloadCatalog()
+                  })()
+                }}
+              >
+                {t('ui.clearUnusedLensMountConfirmButton')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {managePresetsOpen && catalog && (
         <ManagePresetsPanel
           catalog={catalog}
@@ -2839,6 +2895,7 @@ export function App(): React.ReactElement {
           onDeleteRequest={(cat, presetId, displayName) => {
             setDeletePresetConfirm({ id: presetId, cat, name: displayName })
           }}
+          onClearUnusedLensMountRequest={(mount) => setClearUnusedLensMountConfirm(mount)}
         />
       )}
       {presetEditor && catalog && (

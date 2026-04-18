@@ -29,6 +29,8 @@ import {
   deletePreset,
   getPresetRecord,
   suggestedLensMountCodes,
+  listUnusedLensMounts,
+  clearUnusedLensMount,
   setSqlWasmPath,
   isSupportedImagePath
 } from './exifCore/index.js'
@@ -782,6 +784,20 @@ function setupIpc(): void {
     const paths = getDataPaths()
     await ensureDatabaseInitialized(paths)
     return suggestedLensMountCodes(paths)
+  })
+
+  ipcMain.handle('presets:unusedLensMounts', async () => {
+    const paths = getDataPaths()
+    return listUnusedLensMounts(paths)
+  })
+
+  ipcMain.handle('presets:clearUnusedLensMount', async (_e, mount: string) => {
+    const paths = getDataPaths()
+    try {
+      return await clearUnusedLensMount(paths, mount)
+    } catch (e) {
+      throw localizeThrownPresetError(e)
+    }
   })
 
   ipcMain.handle('fs:resolveImageList', (_e, targetPath: string) => {

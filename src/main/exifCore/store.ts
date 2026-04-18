@@ -252,6 +252,60 @@ function fetchDistinctLensMounts(db: PersistedDatabase): string[] {
   return rows.map((r) => String(r['lens_mount']).trim()).filter(Boolean)
 }
 
+/**
+ * Lens mount strings that appear on at least one preset but on no Lens preset (e.g. typo on a camera only).
+ */
+export async function listUnusedLensMounts(paths: DataPaths): Promise<string[]> {
+  if (!existsSync(paths.dbPath)) return []
+  await ensureDatabaseInitialized(paths)
+  const db = await openDb(paths)
+  try {
+    const rows = db.all(
+      `SELECT DISTINCT TRIM(p1.lens_mount) AS m
+       FROM presets p1
+       WHERE p1.lens_mount IS NOT NULL AND TRIM(p1.lens_mount) <> ''
+         AND NOT EXISTS (
+           SELECT 1 FROM presets p2
+           WHERE p2.category = 'lens'
+             AND TRIM(p2.lens_mount) = TRIM(p1.lens_mount)
+         )
+       ORDER BY m`
+    )
+    return rows.map((r) => String(r['m']).trim()).filter(Boolean)
+  } finally {
+    db.close()
+  }
+}
+
+/**
+ * Clear `lens_mount` on all Camera presets where it matches `mount` (trimmed), only if no Lens preset uses that mount.
+ */
+export async function clearUnusedLensMount(paths: DataPaths, mount: string): Promise<{ cleared: number }> {
+  const m = String(mount ?? '').trim()
+  if (!m) return { cleared: 0 }
+  await ensureDatabaseInitialized(paths)
+  const db = await openDb(paths)
+  try {
+    db.runOnly(
+      `UPDATE presets
+       SET lens_mount = NULL
+       WHERE category = 'camera'
+         AND lens_mount IS NOT NULL
+         AND TRIM(lens_mount) = ?
+         AND NOT EXISTS (
+           SELECT 1 FROM presets lp
+           WHERE lp.category = 'lens' AND TRIM(lp.lens_mount) = ?
+         )`,
+      [m, m]
+    )
+    const ch = db.get('SELECT changes() AS c')!
+    db.persist()
+    return { cleared: Number(ch['c'] ?? 0) }
+  } finally {
+    db.close()
+  }
+}
+
 /** JSON root control keys for camera fixed exposure (stripped from payload like LensSystem). */
 function fixedShutter01FromImportJson(raw: Record<string, unknown>, category: string): number | null {
   if (category !== 'camera') return null

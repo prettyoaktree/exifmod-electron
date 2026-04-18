@@ -1221,6 +1221,20 @@ button.preset-slideout-close:focus-visible {
   margin-bottom: 0.35rem;
 }
 
+/** Aligns with Add button column on category rows (no Add control in this row). */
+.preset-slideout-cat-row-spacer {
+  flex: 0 0 var(--preset-slideout-action-col);
+  width: var(--preset-slideout-action-col);
+  height: var(--preset-slideout-action-col);
+}
+
+.preset-slideout-unused-hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin: 0 0 0.45rem var(--preset-slideout-text-indent);
+  line-height: 1.35;
+}
+
 .preset-slideout-filter-row {
   padding-left: var(--preset-slideout-text-indent);
   margin-bottom: 0.4rem;
@@ -1286,6 +1300,19 @@ button.preset-slideout-close:focus-visible {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
+}
+
+/** Unused lens mounts row: draw the eye when this section is present. */
+.preset-slideout-cat-toggle--unused-mounts {
+  color: var(--danger);
+}
+
+.preset-slideout-cat-toggle--unused-mounts .preset-slideout-cat-title {
+  color: var(--danger);
+}
+
+.preset-slideout-cat-toggle--unused-mounts:focus-visible {
+  outline-color: var(--danger);
 }
 
 .preset-slideout-cat-toggle .exif-preview-chevron {

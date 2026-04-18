@@ -8,6 +8,8 @@ export {
   updatePreset,
   deletePreset,
   suggestedLensMountCodes,
+  listUnusedLensMounts,
+  clearUnusedLensMount,
   validateConfigFiles,
   verifyPresetDatabase,
   importPresetDatabase,
