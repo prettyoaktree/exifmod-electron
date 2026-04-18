@@ -8,6 +8,7 @@ import {
   normalizeFilmPresetPayloadForMerge
 } from '@shared/filmKeywords.js'
 import type { PresetRecord } from '@shared/types.js'
+import type { PresetInitialDraft } from '@shared/presetDraftFromMetadata.js'
 import type { Cat } from './categories.js'
 import { unwrapIpcErrorMessage } from './ipcError.js'
 import { validatePresetEditorInput } from './presetEditorValidation.js'
@@ -182,11 +183,13 @@ export function PresetEditorModal(props: {
   editId: number | null
   /** New preset: duplicate fields from this catalog id; name field stays empty. */
   cloneFromId?: number | null
+  /** New preset: prefill payload and controls from file metadata (name stays empty). */
+  initialDraft?: PresetInitialDraft | null
   onClose: () => void
   onSaved: () => void
 }): React.ReactElement {
   const { t } = useTranslation()
-  const { mode, category, editId, cloneFromId = null, onClose, onSaved } = props
+  const { mode, category, editId, cloneFromId = null, initialDraft = null, onClose, onSaved } = props
   const categoryLabel = t(CAT_I18N[category])
   const [name, setName] = useState('')
   const [payload, setPayload] = useState<Record<string, unknown>>({})
@@ -239,6 +242,42 @@ export function PresetEditorModal(props: {
       } else if (mode === 'new' && cloneFromId != null) {
         const rec = await window.exifmod.getPreset(cloneFromId)
         if (rec) applyRecord(rec, '')
+      } else if (mode === 'new' && initialDraft != null) {
+        setName('')
+        let pl = { ...initialDraft.payload }
+        if (category === 'Lens') {
+          delete pl['ExposureTime']
+          delete pl['FNumber']
+        }
+        if (category === 'Camera' || category === 'Lens') {
+          pl = migrateLegacyLensFromPayload(pl)
+        }
+        if (category === 'Film') {
+          pl = migrateFilmPayloadFromDb(pl)
+        }
+        if (category === 'Author') {
+          pl = migrateAuthorPayloadFromDb(pl)
+        }
+        setPayload(pl)
+        if (category === 'Camera') {
+          setLensSystem(initialDraft.lens_system ?? 'interchangeable')
+          setLensMount(initialDraft.lens_mount ?? '')
+          setLensAdaptable(Boolean(initialDraft.lens_adaptable))
+          setFixedShutter(initialDraft.fixed_shutter === true)
+          setFixedAperture(initialDraft.fixed_aperture === true)
+        } else if (category === 'Lens') {
+          setLensSystem('interchangeable')
+          setLensMount(initialDraft.lens_mount ?? '')
+          setLensAdaptable(false)
+          setFixedShutter(false)
+          setFixedAperture(false)
+        } else {
+          setLensSystem('interchangeable')
+          setLensMount('')
+          setLensAdaptable(false)
+          setFixedShutter(false)
+          setFixedAperture(false)
+        }
       } else {
         setName('')
         setPayload({})
@@ -249,7 +288,7 @@ export function PresetEditorModal(props: {
         setFixedAperture(false)
       }
     })()
-  }, [mode, editId, category, cloneFromId])
+  }, [mode, editId, category, cloneFromId, initialDraft])
 
   const save = async () => {
     setErr(null)

@@ -61,7 +61,7 @@ For the current selection, the app shows two metadata tables. The first table us
 
 ### Presets and fields
 
-- **Current** — Values inferred from the file’s existing EXIF (where applicable). When there is no value, the cell shows an em dash (—).
+- **Current** — Values inferred from the file’s existing EXIF (where applicable). When there is no value, the cell shows an em dash (—). For Camera, Lens, Film, and Author, when the inferred value does **not** match any preset in your catalog, a **+** control appears beside the text; it opens **New Preset** with fields prefilled from the file (you still enter a preset name and save). For **Film**, if keywords imply a film stock but no catalog film was resolved, **Current** can show a derived stock name (and optional ISO) so it lines up with that flow.
 - **New** — Pending edits. Preset pickers (or “None” / **Do Not Modify**) are **searchable**: type to filter the list, or open it with the chevron; **Tab** and **Arrow** keys still move between metadata fields when the list is closed.
 - **Shutter and aperture** — Editable when not pinned by the selected **camera** preset. If the camera preset defines a fixed shutter and/or fixed aperture, the **New** column shows those values **read-only** (same idea as a fixed-lens body’s **Lens** row). Otherwise, values are edited here and validated before write (fractions or decimals for shutter; f-numbers for aperture). An empty **New** field with the **Do Not Modify** placeholder means **do not write** that tag for that file.
 
@@ -69,7 +69,7 @@ For the current selection, the app shows two metadata tables. The first table us
 
 - **Description** maps to EXIF **ImageDescription** (UTF‑8 byte limit enforced on write).
 - The **New Keywords** textarea shows **descriptive-only** tokens (comma- or line-separated); film-identifying keywords (`film`, `… Film Stock`, legacy stock hints) are **not** shown there—they are still merged from the Film preset and/or the file’s existing keywords on **write**, with deduplication and total size limits. For both Description and Keywords, an empty **New** field means **do not change** what is on the file (no manual write for that field from this row).
-- **Copy** (Description/Keywords rows) — Copies the row’s **Current Value** into **New Value**. Enabled only when the current value is a single usable value for the selection (disabled when Current shows **Multiple**). For Keywords, **Copy** fills **New** with descriptive tokens only; film identity remains handled automatically at write (same as refresh and AI flows).
+- **Copy** (Description/Keywords rows) — Copies the row’s **Current Value** into **New Value**. The copy control is shown only when copying is allowed (single usable current value for the selection; not when Current shows **Multiple**). For Keywords, **Copy** fills **New** with descriptive tokens only; film identity remains handled automatically at write (same as refresh and AI flows).
 
 ### Remove and multi-select
 

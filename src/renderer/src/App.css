@@ -598,14 +598,23 @@ button.btn-meta-gear:focus-visible {
   resize: vertical;
 }
 
+/* Description + Keywords: same fixed height; scroll inside if needed */
+table.mapping.mapping-desc-kw textarea.notes-area.notes-area--in-table {
+  height: 4.5rem;
+  min-height: 4.5rem;
+  max-height: 4.5rem;
+  resize: none;
+  overflow-y: auto;
+}
+
 table.mapping.mapping-desc-kw tbody td {
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 /* Border + padding on textareas sit slightly below the cell edge; nudge checkbox to match. */
 table.mapping.mapping-desc-kw tbody td.mapping-col-remove-cell .meta-remove-checkbox {
   display: block;
-  margin: 3px auto 0;
+  margin: 0 auto;
 }
 
 .meta-section-commit {
@@ -697,11 +706,17 @@ table.mapping.mapping-desc-kw td:nth-child(4) {
   word-break: break-word;
 }
 
+/* Override global `button.btn-icon` horizontal padding so icons are not clipped to dots */
+button.btn-icon.meta-copy-current-btn,
+button.btn-icon.meta-create-preset-from-exif-btn {
+  box-sizing: border-box;
+  padding: 0;
+}
+
 .meta-copy-current-btn {
-  min-width: 2rem;
-  width: 2rem;
-  height: 2rem;
-  padding: 0.2rem;
+  min-width: 2.25rem;
+  width: 2.25rem;
+  height: 2.25rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -709,9 +724,39 @@ table.mapping.mapping-desc-kw td:nth-child(4) {
 
 .meta-copy-current-glyph {
   display: block;
-  font-size: 1rem;
+  font-size: 1.125rem;
   font-weight: 600;
   line-height: 1;
+}
+
+.meta-current-value-with-action {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.meta-current-value-with-action > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.meta-create-preset-from-exif-btn {
+  flex-shrink: 0;
+  min-width: 2rem;
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.meta-create-preset-from-exif-icon {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  overflow: visible;
 }
 
 table.mapping th:last-child,
@@ -732,6 +777,22 @@ table.mapping thead th {
 
 table.mapping tbody tr:last-child td {
   border-bottom: none;
+}
+
+/* Shutter + aperture: match preset combo control height; keep Current on one line so the row doesn’t grow */
+table.mapping:not(.mapping-desc-kw) tbody tr:nth-last-child(-n + 2) > td:nth-child(2) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+table.mapping:not(.mapping-desc-kw) tbody tr:nth-last-child(-n + 2) input.input {
+  box-sizing: border-box;
+  height: 2.25rem;
+  min-height: 2.25rem;
+  max-height: 2.25rem;
+  line-height: 1.25;
+  padding: 0.35rem 0.65rem;
 }
 
 .mapping-col-new-combo-cell {

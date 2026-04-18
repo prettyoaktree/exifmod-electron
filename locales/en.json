@@ -145,6 +145,8 @@
     "keywordsPlaceholder": "Optional comma-separated keywords.",
     "keywordsPlaceholderMixed": "Selected images have different keywords. Apply a common set of keywords to all images by entering them here, or use the AI button to generate unique keywords for each image.",
     "copyCurrentToNew": "Copy current {{row}} value",
+    "createPresetFromMetadataTitle": "New Preset From Current File Metadata",
+    "createPresetFromMetadataAria": "Open new preset with fields filled from current file metadata",
     "removeFromImage": "Remove from image",
     "removeFromImageAria": "Remove {{row}} from image",
     "aiBatchConfirmLead": "Generate AI Descriptions and Keywords for {{count}} File(s)?",

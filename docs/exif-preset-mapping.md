@@ -10,7 +10,7 @@ Implementation references:
 - Shared EXIF limits + merge helpers: `src/shared/exifLimits.ts` (UTF‑8 clamps, `mergeImageDescriptionAppend`, `fitKeywordsForExif`, `remainingUtf8BytesForAiDescription`), `src/shared/filmKeywords.ts` (`buildMergedKeywordsForWrite`, `mergeKeywordsDeduped`, `Film Stock` suffix helpers)
 - Preview “what would change”: `src/renderer/src/exif/payloadDiff.ts` (`diffWritePayloadFromMetadata` vs last `exiftool -j` read)
 - Preview + Ollama: `src/main/previewImage.ts` (640px max edge JPEG), `src/main/ollamaDescribe.ts` (loopback-only Ollama `/api/chat`; prompt enforces concise Notes; optional `maxDescriptionUtf8Bytes` from remaining ImageDescription space), `src/main/ollamaLifecycle.ts` (cached `**ollama:startupFlow`** vs uncached `**ollama:checkAvailability**` after describe transport failures)
-- “Current” column hints: `src/renderer/src/exif/infer.ts` (`inferCategoryValues`, exposure/aperture helpers)
+- “Current” column hints: `src/renderer/src/exif/infer.ts` (`inferCategoryValues`, exposure/aperture helpers); optional **Film** display fallback when keywords imply stock but no catalog name was resolved: `src/shared/presetDraftFromMetadata.ts` (`filmCurrentDisplayForStaging`). **Create preset from metadata** (Camera/Lens/Film/Author **+** beside Current) uses the same module to normalize make/model and lens strings like bundled seeds, compare case-insensitively to catalog display names, optionally infer a unique **lens mount** for Lens drafts, and open **New Preset** with a draft payload (preset name still required).
 - Preset editor forms: `src/renderer/src/PresetEditor.tsx`
 
 ---

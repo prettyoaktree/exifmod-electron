@@ -21,6 +21,14 @@ import {
 import { isOllamaTransportFailureError } from '@shared/ollamaNetErrors.js'
 import { OLLAMA_ERROR_EMPTY_SOFT } from '@shared/ollamaResultCodes.js'
 import type { AiDescribeBusyState, CameraMetadata, ConfigCatalog } from '@shared/types.js'
+import type { PresetInitialDraft } from '@shared/presetDraftFromMetadata.js'
+import {
+  filmCurrentDisplayForStaging,
+  matchStateForAuthorCategory,
+  matchStateForCameraCategory,
+  matchStateForFilmCategory,
+  matchStateForLensCategory
+} from '@shared/presetDraftFromMetadata.js'
 import { filterLensValues } from '@shared/lensFilter.js'
 import {
   formatExposureTimeForUi,
@@ -320,7 +328,10 @@ export function App(): React.ReactElement {
     editId: number | null
     /** When creating a duplicate: load fields from this preset id; name stays empty. */
     cloneFromId?: number | null
+    /** Prefill new preset from on-file metadata (Manage Presets / clone do not set this). */
+    initialDraft?: PresetInitialDraft | null
   } | null>(null)
+  const [suggestedLensMountsList, setSuggestedLensMountsList] = useState<string[]>([])
   const [managePresetsOpen, setManagePresetsOpen] = useState(false)
   const [deletePresetConfirm, setDeletePresetConfirm] = useState<null | { id: number; cat: Cat; name: string }>(null)
   const [exifPreviewOpen, setExifPreviewOpen] = useState(false)
@@ -570,6 +581,12 @@ export function App(): React.ReactElement {
     if (!api) return
     return api.onPresetsImported(() => void reloadCatalog())
   }, [reloadCatalog])
+
+  useEffect(() => {
+    const api = window.exifmod
+    if (!api?.suggestedLensMounts) return
+    void api.suggestedLensMounts().then(setSuggestedLensMountsList)
+  }, [])
 
   useEffect(() => {
     const api = window.exifmod
@@ -962,6 +979,14 @@ export function App(): React.ReactElement {
     return out
   }, [catalog, stagingPaths, metadataByPath])
 
+  const filmCurrentLine = useMemo(() => {
+    if (!catalog || !stagingPaths.length) return ''
+    const filmOpts = catalog.film_values
+    const inferFilms = stagingPaths.map((p) => inferCategoryValues(metadataByPath[p] ?? {}, filmOpts).Film ?? '')
+    const metas = stagingPaths.map((p) => metadataByPath[p] ?? {})
+    return filmCurrentDisplayForStaging(metas, inferFilms)
+  }, [catalog, stagingPaths, metadataByPath])
+
   const lensFilter = useMemo(() => {
     if (!catalog) return { allowed: [] as string[], state: 'readonly' as const }
     const camName = presetNameForId(catalog, 'Camera', formPending.cameraId)
@@ -974,6 +999,43 @@ export function App(): React.ReactElement {
       catalog.lens_metadata_map
     )
   }, [catalog, formPending])
+
+  const metadataPresetFromFile = useMemo(() => {
+    const show: Record<Cat, boolean> = { Camera: false, Lens: false, Film: false, Author: false }
+    const draft: Partial<Record<Cat, PresetInitialDraft>> = {}
+    if (!catalog || !stagingPaths.length) {
+      return { show, draft }
+    }
+    const metas = stagingPaths.map((p) => metadataByPath[p] ?? {})
+    const filmOpts = catalog.film_values
+    const inferFilms = stagingPaths.map((p) => inferCategoryValues(metadataByPath[p] ?? {}, filmOpts).Film ?? '')
+
+    const cam = matchStateForCameraCategory(catalog, metas)
+    if (cam.kind === 'unmatched') {
+      show.Camera = true
+      draft.Camera = cam.draft
+    }
+
+    const lensState = matchStateForLensCategory(catalog, metas, suggestedLensMountsList)
+    if (lensState.kind === 'unmatched' && lensFilter.state !== 'disabled') {
+      show.Lens = true
+      draft.Lens = lensState.draft
+    }
+
+    const filmState = matchStateForFilmCategory(catalog, metas, inferFilms)
+    if (filmState.kind === 'unmatched') {
+      show.Film = true
+      draft.Film = filmState.draft
+    }
+
+    const authorState = matchStateForAuthorCategory(catalog, metas)
+    if (authorState.kind === 'unmatched') {
+      show.Author = true
+      draft.Author = authorState.draft
+    }
+
+    return { show, draft }
+  }, [catalog, stagingPaths, metadataByPath, suggestedLensMountsList, lensFilter.state])
 
   const cameraMetaForForm = useMemo(
     () => cameraMetaForPending(catalog, formPending.cameraId),
@@ -1625,13 +1687,13 @@ export function App(): React.ReactElement {
 
   const canRemoveFilm = useMemo(() => {
     if (!staging.length) return false
-    if (inferredRow.Film === 'Multiple') return true
-    if (String(inferredRow.Film ?? '').trim() !== '') return true
+    if (filmCurrentLine === 'Multiple') return true
+    if (String(filmCurrentLine ?? '').trim() !== '') return true
     return stagingPaths.some((p) => {
       const m = metadataByPath[p] ?? {}
       return String(m['ISO'] ?? m['EXIF:ISO'] ?? '').trim() !== ''
     })
-  }, [staging.length, inferredRow.Film, stagingPaths, metadataByPath])
+  }, [staging.length, filmCurrentLine, stagingPaths, metadataByPath])
 
   const canRemoveAuthor = useMemo(() => {
     if (!staging.length) return false
@@ -1877,21 +1939,58 @@ export function App(): React.ReactElement {
                             ? catalog?.film_values
                             : catalog?.author_values
                     const ck = categoryToClearKey(cat)
+                    const currentValueText = cat === 'Film' ? filmCurrentLine : inferredRow[cat]
+                    const presetFromFileDraft = metadataPresetFromFile.draft[cat]
                     return (
                       <tr key={cat}>
                         <td>{catLabel(cat)}</td>
                         <td>
-                          <span
-                            className={
-                              inferredRow[cat] === 'Multiple' || !String(inferredRow[cat] ?? '').trim()
-                                ? 'meta-current-value-muted'
-                                : undefined
-                            }
-                          >
-                            {inferredRow[cat] === 'Multiple'
-                              ? t('ui.multiple')
-                              : String(inferredRow[cat] ?? '').trim() || emptyCurrentDisplay}
-                          </span>
+                          <div className="meta-current-value-with-action">
+                            <span
+                              className={
+                                currentValueText === 'Multiple' || !String(currentValueText ?? '').trim()
+                                  ? 'meta-current-value-muted'
+                                  : undefined
+                              }
+                            >
+                              {currentValueText === 'Multiple'
+                                ? t('ui.multiple')
+                                : String(currentValueText ?? '').trim() || emptyCurrentDisplay}
+                            </span>
+                            {metadataPresetFromFile.show[cat] && presetFromFileDraft ? (
+                              <button
+                                type="button"
+                                tabIndex={-1}
+                                className="btn btn-icon meta-create-preset-from-exif-btn"
+                                title={t('ui.createPresetFromMetadataTitle')}
+                                aria-label={t('ui.createPresetFromMetadataAria')}
+                                onClick={() => {
+                                  setPresetEditor({
+                                    mode: 'new',
+                                    category: cat,
+                                    editId: null,
+                                    cloneFromId: null,
+                                    initialDraft: presetFromFileDraft
+                                  })
+                                }}
+                              >
+                                <svg
+                                  className="meta-create-preset-from-exif-icon"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                  aria-hidden
+                                  focusable="false"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              </button>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="mapping-col-new-combo-cell">
                           <MetadataPresetCombo
@@ -2107,22 +2206,23 @@ export function App(): React.ReactElement {
                         </span>
                       </td>
                       <td className="mapping-col-copy-cell">
-                        <button
-                          type="button"
-                          tabIndex={-1}
-                          className="btn btn-icon meta-copy-current-btn"
-                          disabled={!canCopyNotesCurrent || anyClearFlags.clearNotes}
-                          title={t('ui.copyCurrentToNew', { row: t('ui.notesImageDescription') })}
-                          aria-label={t('ui.copyCurrentToNew', { row: t('ui.notesImageDescription') })}
-                          onClick={() => {
-                            const nextNotes = clampUtf8ByBytes(notesCurrentLine)
-                            updatePendingForPaths(staging, (s) => ({ ...s, notesText: nextNotes, clearNotes: false }))
-                          }}
-                        >
-                          <span className="meta-copy-current-glyph" aria-hidden>
-                            ⧉
-                          </span>
-                        </button>
+                        {canCopyNotesCurrent && !anyClearFlags.clearNotes ? (
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            className="btn btn-icon meta-copy-current-btn"
+                            title={t('ui.copyCurrentToNew', { row: t('ui.notesImageDescription') })}
+                            aria-label={t('ui.copyCurrentToNew', { row: t('ui.notesImageDescription') })}
+                            onClick={() => {
+                              const nextNotes = clampUtf8ByBytes(notesCurrentLine)
+                              updatePendingForPaths(staging, (s) => ({ ...s, notesText: nextNotes, clearNotes: false }))
+                            }}
+                          >
+                            <span className="meta-copy-current-glyph" aria-hidden>
+                              ⧉
+                            </span>
+                          </button>
+                        ) : null}
                       </td>
                       <td>
                         <textarea
@@ -2132,7 +2232,7 @@ export function App(): React.ReactElement {
                             .filter(Boolean)
                             .join(' ')}
                           readOnly={!staging.length}
-                          rows={3}
+                          rows={4}
                           placeholder={notesPlaceholderUi}
                           value={formPending.notesText}
                           disabled={!staging.length || anyClearFlags.clearNotes}
@@ -2173,26 +2273,27 @@ export function App(): React.ReactElement {
                         </span>
                       </td>
                       <td className="mapping-col-copy-cell">
-                        <button
-                          type="button"
-                          tabIndex={-1}
-                          className="btn btn-icon meta-copy-current-btn"
-                          disabled={!canCopyKeywordsCurrent || anyClearFlags.clearKeywords}
-                          title={t('ui.copyCurrentToNew', { row: t('ui.keywordsLabel') })}
-                          aria-label={t('ui.copyCurrentToNew', { row: t('ui.keywordsLabel') })}
-                          onClick={() => {
-                            updatePendingForPaths(staging, (s) => ({
-                              ...s,
-                              keywordsText: formatDescriptiveKeywordsLine(keywordsCurrentLine),
-                              clearKeywords: false,
-                              clearFilm: false
-                            }))
-                          }}
-                        >
-                          <span className="meta-copy-current-glyph" aria-hidden>
-                            ⧉
-                          </span>
-                        </button>
+                        {canCopyKeywordsCurrent && !anyClearFlags.clearKeywords ? (
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            className="btn btn-icon meta-copy-current-btn"
+                            title={t('ui.copyCurrentToNew', { row: t('ui.keywordsLabel') })}
+                            aria-label={t('ui.copyCurrentToNew', { row: t('ui.keywordsLabel') })}
+                            onClick={() => {
+                              updatePendingForPaths(staging, (s) => ({
+                                ...s,
+                                keywordsText: formatDescriptiveKeywordsLine(keywordsCurrentLine),
+                                clearKeywords: false,
+                                clearFilm: false
+                              }))
+                            }}
+                          >
+                            <span className="meta-copy-current-glyph" aria-hidden>
+                              ⧉
+                            </span>
+                          </button>
+                        ) : null}
                       </td>
                       <td>
                         <textarea
@@ -2206,7 +2307,7 @@ export function App(): React.ReactElement {
                             .join(' ')}
                           readOnly={!staging.length}
                           placeholder={keywordsPlaceholderUi}
-                          rows={2}
+                          rows={4}
                           value={formPending.keywordsText}
                           disabled={!staging.length || anyClearFlags.clearKeywords}
                           onChange={(e) =>
@@ -2746,6 +2847,7 @@ export function App(): React.ReactElement {
           category={presetEditor.category}
           editId={presetEditor.mode === 'edit' ? presetEditor.editId : null}
           cloneFromId={presetEditor.mode === 'new' ? presetEditor.cloneFromId ?? null : null}
+          initialDraft={presetEditor.mode === 'new' ? presetEditor.initialDraft ?? null : null}
           onClose={() => setPresetEditor(null)}
           onSaved={() => void reloadCatalog()}
         />

@@ -145,6 +145,8 @@
     "keywordsPlaceholder": "Mots-clés séparés par des virgules (facultatif).",
     "keywordsPlaceholderMixed": "Les images sélectionnées ont des mots-clés différents. Les mots-clés saisis ici deviennent les mêmes mots-clés en attente pour chaque fichier sélectionné, en remplaçant les valeurs divergentes. Le bouton IA ajoute les suggestions à la nouvelle valeur en attente de chaque fichier, puis supprime les doublons.",
     "copyCurrentToNew": "Copier la valeur actuelle vers la nouvelle valeur : {{row}}",
+    "createPresetFromMetadataTitle": "Nouveau préréglage à partir des métadonnées du fichier",
+    "createPresetFromMetadataAria": "Ouvrir un nouveau préréglage avec les champs préremplis à partir des métadonnées du fichier",
     "removeFromImage": "Retirer du fichier",
     "removeFromImageAria": "Retirer du fichier : {{row}}",
     "aiBatchConfirmLead": "Générer des descriptions et mots-clés IA pour {{count}} fichier(s) ?",
