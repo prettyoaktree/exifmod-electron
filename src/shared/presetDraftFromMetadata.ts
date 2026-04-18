@@ -151,6 +151,26 @@ export function catalogHasPresetName(values: readonly string[], candidate: strin
   return values.some((v) => v !== 'None' && v.trim().toLowerCase() === c)
 }
 
+/**
+ * True if some preset display name equals `exifDerived`, or a preset was saved under another name
+ * whose payload identity (same derivation as from file metadata) equals `exifDerived`.
+ */
+export function catalogCoversExifIdentity(
+  values: readonly string[],
+  identityByName: Record<string, string> | undefined,
+  exifDerived: string
+): boolean {
+  if (catalogHasPresetName(values, exifDerived)) return true
+  const x = exifDerived.trim().toLowerCase()
+  if (!x || !identityByName) return false
+  for (const name of values) {
+    if (name === 'None') continue
+    const id = identityByName[name]?.trim().toLowerCase() ?? ''
+    if (id && id === x) return true
+  }
+  return false
+}
+
 export function buildCameraPresetDraft(meta: Record<string, unknown>): PresetInitialDraft {
   const { Make, Model } = canonicalCameraMakeModel(meta)
   return {
@@ -230,7 +250,8 @@ export function matchStateForCameraCategory(
   if (u === 'multiple') return { kind: 'multiple' }
   const displayName = displays[0]!.trim()
   if (!displayName) return { kind: 'no_data' }
-  if (catalogHasPresetName(catalog.camera_values, displayName)) return { kind: 'matched' }
+  if (catalogCoversExifIdentity(catalog.camera_values, catalog.camera_identity_by_name, displayName))
+    return { kind: 'matched' }
   return { kind: 'unmatched', displayName, draft: buildCameraPresetDraft(metas[0]!) }
 }
 
@@ -245,7 +266,8 @@ export function matchStateForLensCategory(
   if (u === 'multiple') return { kind: 'multiple' }
   const displayName = displays[0]!.trim()
   if (!displayName) return { kind: 'no_data' }
-  if (catalogHasPresetName(catalog.lens_values, displayName)) return { kind: 'matched' }
+  if (catalogCoversExifIdentity(catalog.lens_values, catalog.lens_identity_by_name, displayName))
+    return { kind: 'matched' }
   return { kind: 'unmatched', displayName, draft: buildLensPresetDraft(metas[0]!, suggestedMounts) }
 }
 
@@ -280,7 +302,8 @@ export function matchStateForFilmCategory(
   const display = filmCurrentDisplayForStaging(metas, inferFilmResolved)
   if (display === 'Multiple') return { kind: 'multiple' }
   if (!display.trim()) return { kind: 'no_data' }
-  if (catalogHasPresetName(catalog.film_values, display)) return { kind: 'matched' }
+  if (catalogCoversExifIdentity(catalog.film_values, catalog.film_identity_by_name, display))
+    return { kind: 'matched' }
   return { kind: 'unmatched', displayName: display, draft: buildFilmPresetDraft(metas[0]!) }
 }
 
@@ -291,6 +314,7 @@ export function matchStateForAuthorCategory(catalog: ConfigCatalog, metas: Recor
   if (u === 'multiple') return { kind: 'multiple' }
   const displayName = ids[0]!.trim()
   if (!displayName) return { kind: 'no_data' }
-  if (catalogHasPresetName(catalog.author_values, displayName)) return { kind: 'matched' }
+  if (catalogCoversExifIdentity(catalog.author_values, catalog.author_identity_by_name, displayName))
+    return { kind: 'matched' }
   return { kind: 'unmatched', displayName, draft: buildAuthorPresetDraft(metas[0]!) }
 }

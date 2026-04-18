@@ -13,6 +13,12 @@ import { migrateLensMountDisplayNames, openDb } from './database.js'
 import { PresetStoreError } from './errors.js'
 import { formatExposureTimeForUi, formatFnumberForUi } from '../../shared/exifDisplayFormat.js'
 import { normalizeFilmPresetPayloadForMerge, stripFilmStockSuffix } from '../../shared/filmKeywords.js'
+import {
+  authorIdentityFromMetadata,
+  cameraDisplayNameForCatalog,
+  filmDisplayCandidateFromMetadata,
+  lensDisplayNameForCatalog
+} from '../../shared/presetDraftFromMetadata.js'
 import { sortedStrings, stripWriteExcludedFields } from './pure.js'
 import type { PersistedDatabase } from './sqlJs.js'
 import { getSqlJs } from './sqlJs.js'
@@ -553,6 +559,10 @@ export async function loadCatalog(paths: DataPaths): Promise<{ catalog: ConfigCa
   const lens_metadata_map: ConfigCatalog['lens_metadata_map'] = {
     None: { lens_mount: null }
   }
+  const camera_identity_by_name: Record<string, string> = { None: '' }
+  const lens_identity_by_name: Record<string, string> = { None: '' }
+  const author_identity_by_name: Record<string, string> = { None: '' }
+  const film_identity_by_name: Record<string, string> = { None: '' }
 
   let rows: {
     id: number
@@ -589,6 +599,7 @@ export async function loadCatalog(paths: DataPaths): Promise<{ catalog: ConfigCa
     if (category === 'camera') {
       camera_options.push(display_name)
       camera_file_map[display_name] = preset_id
+      camera_identity_by_name[display_name] = cameraDisplayNameForCatalog(payload)
       let lens_system = row.lens_system
       if (lens_system !== 'fixed' && lens_system !== 'interchangeable') {
         const hasLensData = Object.keys(payload).some((k) => k.startsWith('Lens'))
@@ -614,13 +625,16 @@ export async function loadCatalog(paths: DataPaths): Promise<{ catalog: ConfigCa
     } else if (category === 'lens') {
       lens_options.push(display_name)
       lens_file_map[display_name] = preset_id
+      lens_identity_by_name[display_name] = lensDisplayNameForCatalog(payload)
       lens_metadata_map[display_name] = { lens_mount: row.lens_mount }
     } else if (category === 'author') {
       author_options.push(display_name)
       author_file_map[display_name] = preset_id
+      author_identity_by_name[display_name] = authorIdentityFromMetadata(payload)
     } else if (category === 'film') {
       film_options.push(display_name)
       film_file_map[display_name] = preset_id
+      film_identity_by_name[display_name] = filmDisplayCandidateFromMetadata(payload)
     }
   }
 
@@ -634,7 +648,11 @@ export async function loadCatalog(paths: DataPaths): Promise<{ catalog: ConfigCa
     author_file_map,
     film_file_map,
     camera_metadata_map,
-    lens_metadata_map
+    lens_metadata_map,
+    camera_identity_by_name,
+    lens_identity_by_name,
+    author_identity_by_name,
+    film_identity_by_name
   }
   return { catalog, loadIssues }
 }
