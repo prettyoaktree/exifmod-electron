@@ -274,4 +274,16 @@ describe('analyzeCameraFirstStaging', () => {
     expect(ids.cameraId).toBe(42)
     expect(ids.lensId).toBe(null)
   })
+
+  it('computeAutoFillPresetIds skips camera analysis when skips.camera; still fills lens for ILC', () => {
+    const ids = computeAutoFillPresetIds(
+      ilcCatalog,
+      { Make: 'Sony', Model: 'Sony A7', LensModel: 'FE 50mm' },
+      '',
+      [],
+      { camera: true }
+    )
+    expect(ids.cameraId).toBe(null)
+    expect(ids.lensId).toBe(99)
+  })
 })

@@ -1,7 +1,9 @@
 /** Infer mapping "current value" hints from exiftool -j metadata (simplified from Qt). */
 
+import { filmCurrentDisplayForStaging, type AutofillSkips } from '@shared/presetDraftFromMetadata.js'
 import { filmStockHintFromExifKeywords, formatKeywordsField } from '@shared/filmKeywords.js'
 import { clampUtf8ByBytes, fitKeywordsForExif } from '@shared/exifLimits.js'
+import type { ConfigCatalog } from '@shared/types.js'
 
 export { formatExposureTimeForUi, formatFnumberForUi } from '@shared/exifDisplayFormat.js'
 
@@ -136,5 +138,29 @@ export function inferCategoryValues(
     Lens: String(lensModelHint),
     Film: filmFromKeywords,
     Author: String(meta['Author Name'] ?? meta['Creator'] ?? meta['Artist'] ?? '')
+  }
+}
+
+/**
+ * When multiple files are staged, skip autofill for categories whose Current column would show “Multiple”
+ * (same rules as the metadata table: inferred Camera/Lens/Author from {@link inferCategoryValues}, Film from
+ * {@link filmCurrentDisplayForStaging}).
+ */
+export function multiSelectAutofillSkips(
+  catalog: ConfigCatalog,
+  paths: string[],
+  metaByPath: Record<string, Record<string, unknown>>
+): AutofillSkips {
+  if (paths.length <= 1) return {}
+  const filmOpts = catalog.film_values
+  const per = paths.map((p) => inferCategoryValues(metaByPath[p] ?? {}, filmOpts))
+  const multi = (vals: string[]) => paths.length > 1 && new Set(vals).size > 1
+  const inferFilms = paths.map((p) => inferCategoryValues(metaByPath[p] ?? {}, filmOpts).Film ?? '')
+  const metas = paths.map((p) => metaByPath[p] ?? {})
+  return {
+    camera: multi(per.map((x) => x.Camera ?? '')),
+    lens: multi(per.map((x) => x.Lens ?? '')),
+    film: filmCurrentDisplayForStaging(metas, inferFilms) === 'Multiple',
+    author: multi(per.map((x) => x.Author ?? ''))
   }
 }
