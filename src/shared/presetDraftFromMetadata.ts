@@ -17,6 +17,8 @@ export type PresetInitialDraft = {
   lens_adaptable?: boolean
   fixed_shutter?: boolean
   fixed_aperture?: boolean
+  /** From file EXIF when creating a Camera preset from metadata; used when user switches to Fixed lens system. */
+  prefillFixedLensIdentity?: { LensMake: string; LensModel: string }
 }
 
 /** Promote legacy EXIF lens tags; same rules as PresetEditor migrateLegacyLensFromPayload. */
@@ -173,13 +175,15 @@ export function catalogCoversExifIdentity(
 
 export function buildCameraPresetDraft(meta: Record<string, unknown>): PresetInitialDraft {
   const { Make, Model } = canonicalCameraMakeModel(meta)
+  const { LensMake, LensModel } = canonicalLensMakeModel(meta)
   return {
     payload: { Make, Model },
     lens_system: 'interchangeable',
     lens_mount: null,
     lens_adaptable: false,
     fixed_shutter: false,
-    fixed_aperture: false
+    fixed_aperture: false,
+    prefillFixedLensIdentity: { LensMake, LensModel }
   }
 }
 

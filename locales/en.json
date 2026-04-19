@@ -262,6 +262,7 @@
     "interchangeable": "Interchangeable",
     "fixedLens": "Fixed Lens",
     "lensMount": "Lens Mount",
+    "lensMountHint": "Select from existing mounts or type a new mount name.",
     "lensAdaptable": "Accepts Adapters",
     "make": "Camera Make",
     "model": "Camera Model",

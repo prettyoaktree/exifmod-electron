@@ -262,6 +262,7 @@
     "interchangeable": "Interchangeable",
     "fixedLens": "Objectif fixe",
     "lensMount": "Monture",
+    "lensMountHint": "Choisissez une monture existante ou saisissez un nouveau nom de monture.",
     "lensAdaptable": "Accepte les adaptateurs",
     "make": "Marque de l’appareil",
     "model": "Modèle de l’appareil",
