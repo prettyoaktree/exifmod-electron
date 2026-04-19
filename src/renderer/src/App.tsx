@@ -332,6 +332,11 @@ export function App(): React.ReactElement {
     cloneFromId?: number | null
     /** Prefill new preset from on-file metadata (Manage Presets / clone do not set this). */
     initialDraft?: PresetInitialDraft | null
+    /**
+     * Staged file paths when the editor was opened. On save, the new preset is applied to these paths
+     * so selection/focus changes while the dialog is open do not redirect the assignment.
+     */
+    targetPaths?: string[]
   } | null>(null)
   const [suggestedLensMountsList, setSuggestedLensMountsList] = useState<string[]>([])
   const [managePresetsOpen, setManagePresetsOpen] = useState(false)
@@ -2013,7 +2018,8 @@ export function App(): React.ReactElement {
                                     category: cat,
                                     editId: null,
                                     cloneFromId: null,
-                                    initialDraft: presetFromFileDraft
+                                    initialDraft: presetFromFileDraft,
+                                    targetPaths: stagingPaths.length ? [...stagingPaths] : undefined
                                   })
                                 }}
                               >
@@ -2926,13 +2932,31 @@ export function App(): React.ReactElement {
           catalog={catalog}
           onClose={() => setManagePresetsOpen(false)}
           onAdd={(cat) => {
-            setPresetEditor({ mode: 'new', category: cat, editId: null, cloneFromId: null })
+            setPresetEditor({
+              mode: 'new',
+              category: cat,
+              editId: null,
+              cloneFromId: null,
+              targetPaths: stagingPaths.length ? [...stagingPaths] : undefined
+            })
           }}
           onEdit={(cat, editId) => {
-            setPresetEditor({ mode: 'edit', category: cat, editId, cloneFromId: null })
+            setPresetEditor({
+              mode: 'edit',
+              category: cat,
+              editId,
+              cloneFromId: null,
+              targetPaths: stagingPaths.length ? [...stagingPaths] : undefined
+            })
           }}
           onClone={(cat, sourceId) => {
-            setPresetEditor({ mode: 'new', category: cat, editId: null, cloneFromId: sourceId })
+            setPresetEditor({
+              mode: 'new',
+              category: cat,
+              editId: null,
+              cloneFromId: sourceId,
+              targetPaths: stagingPaths.length ? [...stagingPaths] : undefined
+            })
           }}
           onDeleteRequest={(cat, presetId, displayName) => {
             setDeletePresetConfirm({ id: presetId, cat, name: displayName })
@@ -2952,7 +2976,11 @@ export function App(): React.ReactElement {
             const cat = payload.category
             const key = idKeyForCategory(cat)
             const clearKey = categoryToClearKey(cat)
-            updatePendingForPaths(stagingPaths, (s) => ({
+            const paths =
+              presetEditor.targetPaths != null && presetEditor.targetPaths.length > 0
+                ? presetEditor.targetPaths
+                : stagingPaths
+            updatePendingForPaths(paths, (s) => ({
               ...s,
               [key]: payload.id,
               [clearKey]: false
