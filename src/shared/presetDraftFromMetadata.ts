@@ -8,7 +8,7 @@ import {
   normalizeFilmPresetPayloadForMerge,
   stripFilmStockSuffix
 } from './filmKeywords.js'
-import type { ConfigCatalog } from './types.js'
+import type { CameraMetadata, ConfigCatalog } from './types.js'
 
 export type PresetInitialDraft = {
   payload: Record<string, unknown>
@@ -317,4 +317,209 @@ export function matchStateForAuthorCategory(catalog: ConfigCatalog, metas: Recor
   if (catalogCoversExifIdentity(catalog.author_values, catalog.author_identity_by_name, displayName))
     return { kind: 'matched' }
   return { kind: 'unmatched', displayName, draft: buildAuthorPresetDraft(metas[0]!) }
+}
+
+/**
+ * Which catalog preset row (display name) covers this EXIF-derived identity string
+ * (same resolution as {@link catalogCoversExifIdentity}).
+ */
+export function resolvePresetNameCoveringIdentity(
+  values: readonly string[],
+  identityByName: Record<string, string> | undefined,
+  exifDerived: string
+): string | null {
+  const x = exifDerived.trim().toLowerCase()
+  if (!x) return null
+  for (const name of values) {
+    if (name === 'None') continue
+    if (name.trim().toLowerCase() === x) return name
+  }
+  if (identityByName) {
+    for (const name of values) {
+      if (name === 'None') continue
+      const id = identityByName[name]?.trim().toLowerCase() ?? ''
+      if (id && id === x) return name
+    }
+  }
+  return null
+}
+
+/**
+ * Compare file lens EXIF (canonical model line) to `fixed_lens_display` from a fixed-lens camera preset
+ * (`LensModel` → `LensMake` → `Lens` in store). Case-insensitive; empty/`None` preset display matches empty file lens.
+ */
+export function integratedLensMatchesFixedLensDisplay(
+  fileMeta: Record<string, unknown>,
+  fixedLensDisplay: string | undefined
+): boolean {
+  const fd = String(fixedLensDisplay ?? '').trim()
+  const fileLens = lensDisplayNameForCatalog(fileMeta).trim()
+  if (!fd || fd === 'None') {
+    return fileLens === ''
+  }
+  return fileLens.toLowerCase() === fd.toLowerCase()
+}
+
+export type CameraFirstStagingSnapshot = {
+  /** Raw camera row state (Make/Model vs catalog). */
+  cameraLine: CategoryMatchState
+  /** When true, do not evaluate Lens presets / Lens + from file metadata (FLC path). */
+  skipLensCatalogMatch: boolean
+  /** Show Camera + beside Current (unmatched body, or FLC body match with lens mismatch). */
+  suggestCameraPresetFromMetadata: boolean
+  /** Catalog camera preset name when body matched; null otherwise. */
+  matchedCameraPresetName: string | null
+  /** Set New → Camera to this id when non-null (ILC matched, or FLC good). */
+  autoCameraId: number | null
+}
+
+/**
+ * Camera-first rules: after a catalog camera body match, fixed-lens presets require file lens EXIF to match
+ * the preset’s integrated lens identity before treating the match as complete.
+ */
+export function analyzeCameraFirstStaging(
+  catalog: ConfigCatalog,
+  metas: Record<string, unknown>[]
+): CameraFirstStagingSnapshot {
+  const cameraLine = matchStateForCameraCategory(catalog, metas)
+
+  if (cameraLine.kind !== 'matched') {
+    return {
+      cameraLine,
+      skipLensCatalogMatch: false,
+      suggestCameraPresetFromMetadata: cameraLine.kind === 'unmatched',
+      matchedCameraPresetName: null,
+      autoCameraId: null
+    }
+  }
+
+  const displayName = cameraDisplayNameForCatalog(metas[0]!).trim()
+  const presetName = resolvePresetNameCoveringIdentity(
+    catalog.camera_values,
+    catalog.camera_identity_by_name,
+    displayName
+  )
+  if (!presetName) {
+    return {
+      cameraLine,
+      skipLensCatalogMatch: false,
+      suggestCameraPresetFromMetadata: false,
+      matchedCameraPresetName: null,
+      autoCameraId: null
+    }
+  }
+
+  const cmeta: CameraMetadata | undefined = catalog.camera_metadata_map[presetName]
+  const isFlc = cmeta?.lens_system === 'fixed' || Boolean(cmeta?.locks_lens)
+
+  if (!isFlc) {
+    const id = catalog.camera_file_map[presetName]
+    return {
+      cameraLine,
+      skipLensCatalogMatch: false,
+      suggestCameraPresetFromMetadata: false,
+      matchedCameraPresetName: presetName,
+      autoCameraId: id ?? null
+    }
+  }
+
+  const lensDisplays = metas.map((m) => lensDisplayNameForCatalog(m).trim())
+  const u = uniformOrMultiple(lensDisplays, (a, b) => a.toLowerCase() === b.toLowerCase())
+  const lensDisagreeAcrossFiles = u === 'multiple'
+
+  let allMatchFixed = true
+  if (!lensDisagreeAcrossFiles) {
+    for (const m of metas) {
+      if (!integratedLensMatchesFixedLensDisplay(m, cmeta?.fixed_lens_display)) {
+        allMatchFixed = false
+        break
+      }
+    }
+  }
+
+  const goodFlc = !lensDisagreeAcrossFiles && allMatchFixed
+  const id = catalog.camera_file_map[presetName]
+
+  if (goodFlc) {
+    return {
+      cameraLine,
+      skipLensCatalogMatch: true,
+      suggestCameraPresetFromMetadata: false,
+      matchedCameraPresetName: presetName,
+      autoCameraId: id ?? null
+    }
+  }
+
+  return {
+    cameraLine,
+    skipLensCatalogMatch: true,
+    suggestCameraPresetFromMetadata: true,
+    matchedCameraPresetName: presetName,
+    autoCameraId: null
+  }
+}
+
+/** Auto-select preset ids from file metadata when rules say “matched” (per single file). */
+export function computeAutoFillPresetIds(
+  catalog: ConfigCatalog,
+  meta: Record<string, unknown>,
+  inferFilmResolved: string,
+  suggestedMounts: readonly string[]
+): {
+  cameraId: number | null
+  lensId: number | null
+  filmId: number | null
+  authorId: number | null
+} {
+  const camFirst = analyzeCameraFirstStaging(catalog, [meta])
+
+  let cameraId: number | null = camFirst.autoCameraId
+  let lensId: number | null = null
+  if (!camFirst.skipLensCatalogMatch) {
+    const lensState = matchStateForLensCategory(catalog, [meta], suggestedMounts)
+    if (lensState.kind === 'matched') {
+      const ld = lensDisplayNameForCatalog(meta).trim()
+      const lensName = resolvePresetNameCoveringIdentity(
+        catalog.lens_values,
+        catalog.lens_identity_by_name,
+        ld
+      )
+      if (lensName) {
+        const lid = catalog.lens_file_map[lensName]
+        lensId = lid ?? null
+      }
+    }
+  }
+
+  const filmState = matchStateForFilmCategory(catalog, [meta], [inferFilmResolved])
+  let filmId: number | null = null
+  if (filmState.kind === 'matched') {
+    const display = filmCurrentDisplayForStaging([meta], [inferFilmResolved]).trim()
+    const filmName = resolvePresetNameCoveringIdentity(
+      catalog.film_values,
+      catalog.film_identity_by_name,
+      display
+    )
+    if (filmName) {
+      const fid = catalog.film_file_map[filmName]
+      filmId = fid ?? null
+    }
+  }
+
+  const authorState = matchStateForAuthorCategory(catalog, [meta])
+  let authorId: number | null = null
+  if (authorState.kind === 'matched') {
+    const aid = authorIdentityFromMetadata(meta).trim()
+    const authorName = resolvePresetNameCoveringIdentity(
+      catalog.author_values,
+      catalog.author_identity_by_name,
+      aid
+    )
+    if (authorName) {
+      const id = catalog.author_file_map[authorName]
+      authorId = id ?? null
+    }
+  }
+
+  return { cameraId, lensId, filmId, authorId }
 }

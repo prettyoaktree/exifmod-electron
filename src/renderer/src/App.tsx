@@ -23,9 +23,11 @@ import { OLLAMA_ERROR_EMPTY_SOFT } from '@shared/ollamaResultCodes.js'
 import type { AiDescribeBusyState, CameraMetadata, ConfigCatalog } from '@shared/types.js'
 import type { PresetInitialDraft } from '@shared/presetDraftFromMetadata.js'
 import {
+  analyzeCameraFirstStaging,
+  buildCameraPresetDraft,
+  computeAutoFillPresetIds,
   filmCurrentDisplayForStaging,
   matchStateForAuthorCategory,
-  matchStateForCameraCategory,
   matchStateForFilmCategory,
   matchStateForLensCategory
 } from '@shared/presetDraftFromMetadata.js'
@@ -790,6 +792,41 @@ export function App(): React.ReactElement {
     }
   }, [stagingKey])
 
+  /** Auto-select New → preset ids when file metadata matches the catalog (camera-first FLC rules). Only fills null ids. */
+  useEffect(() => {
+    if (!catalog || !stagingPaths.length) return
+    const filmOpts = catalog.film_values
+    setPendingByPath((prev) => {
+      const next = { ...prev }
+      let changed = false
+      for (const path of stagingPaths) {
+        const md = metadataByPath[pathKey(path)]
+        if (md == null) continue
+        const inferFilm = inferCategoryValues(md, filmOpts).Film ?? ''
+        const ids = computeAutoFillPresetIds(catalog, md, inferFilm, suggestedLensMountsList)
+        const k = pathKey(path)
+        const row = next[k] ?? emptyPending()
+        const merged: PendingState = {
+          ...row,
+          cameraId: row.cameraId ?? ids.cameraId,
+          lensId: row.lensId ?? ids.lensId,
+          filmId: row.filmId ?? ids.filmId,
+          authorId: row.authorId ?? ids.authorId
+        }
+        if (
+          merged.cameraId !== row.cameraId ||
+          merged.lensId !== row.lensId ||
+          merged.filmId !== row.filmId ||
+          merged.authorId !== row.authorId
+        ) {
+          changed = true
+          next[k] = merged
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [catalog, stagingKey, metadataByPath, stagingPaths, suggestedLensMountsList])
+
   useEffect(() => {
     if (selectedIndices.size > 1) {
       setPreviewDataUrl(null)
@@ -1011,16 +1048,21 @@ export function App(): React.ReactElement {
     const filmOpts = catalog.film_values
     const inferFilms = stagingPaths.map((p) => inferCategoryValues(metadataByPath[p] ?? {}, filmOpts).Film ?? '')
 
-    const cam = matchStateForCameraCategory(catalog, metas)
-    if (cam.kind === 'unmatched') {
+    const camFirst = analyzeCameraFirstStaging(catalog, metas)
+    if (camFirst.cameraLine.kind === 'unmatched') {
       show.Camera = true
-      draft.Camera = cam.draft
+      draft.Camera = camFirst.cameraLine.draft
+    } else if (camFirst.suggestCameraPresetFromMetadata) {
+      show.Camera = true
+      draft.Camera = buildCameraPresetDraft(metas[0]!)
     }
 
-    const lensState = matchStateForLensCategory(catalog, metas, suggestedLensMountsList)
-    if (lensState.kind === 'unmatched' && lensFilter.state !== 'disabled') {
-      show.Lens = true
-      draft.Lens = lensState.draft
+    if (!camFirst.skipLensCatalogMatch) {
+      const lensState = matchStateForLensCategory(catalog, metas, suggestedLensMountsList)
+      if (lensState.kind === 'unmatched' && lensFilter.state !== 'disabled') {
+        show.Lens = true
+        draft.Lens = lensState.draft
+      }
     }
 
     const filmState = matchStateForFilmCategory(catalog, metas, inferFilms)

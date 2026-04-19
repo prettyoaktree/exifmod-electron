@@ -1,14 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import {
+  analyzeCameraFirstStaging,
   buildCameraPresetDraft,
   buildFilmPresetDraft,
   buildLensPresetDraft,
   canonicalCameraMakeModel,
   canonicalLensMakeModel,
   catalogHasPresetName,
+  computeAutoFillPresetIds,
   filmCurrentDisplayForStaging,
   filmDisplayCandidateFromMetadata,
   inferUniqueLensMount,
+  integratedLensMatchesFixedLensDisplay,
   matchStateForAuthorCategory,
   matchStateForCameraCategory,
   matchStateForFilmCategory,
@@ -178,5 +181,97 @@ describe('matchStateForLensCategory', () => {
 describe('filmDisplayCandidateFromMetadata', () => {
   it('returns empty without film marker', () => {
     expect(filmDisplayCandidateFromMetadata({ Keywords: ['sunset'], ISO: 400 })).toBe('')
+  })
+})
+
+describe('integratedLensMatchesFixedLensDisplay', () => {
+  it('matches case-insensitive model to fixed display', () => {
+    expect(integratedLensMatchesFixedLensDisplay({ LensModel: 'Canon 35mm f/2' }, 'Canon 35mm f/2')).toBe(true)
+    expect(integratedLensMatchesFixedLensDisplay({ LensModel: 'canon 35mm f/2' }, 'Canon 35mm f/2')).toBe(true)
+  })
+  it('treats None preset as empty file lens only', () => {
+    expect(integratedLensMatchesFixedLensDisplay({}, 'None')).toBe(true)
+    expect(integratedLensMatchesFixedLensDisplay({ LensModel: 'X' }, 'None')).toBe(false)
+  })
+})
+
+describe('analyzeCameraFirstStaging', () => {
+  const flcCatalog = emptyCatalog({
+    camera_values: ['None', 'Canon P'],
+    camera_file_map: { 'Canon P': 42 },
+    camera_identity_by_name: { 'Canon P': 'Canon P' },
+    camera_metadata_map: {
+      'Canon P': {
+        lens_system: 'fixed',
+        lens_mount: null,
+        lens_adaptable: false,
+        locks_lens: true,
+        fixed_lens_display: 'Canon 35mm f/2'
+      }
+    }
+  })
+
+  it('FLC good: body and integrated lens match', () => {
+    const r = analyzeCameraFirstStaging(flcCatalog, [
+      { Make: 'Canon', Model: 'Canon P', LensModel: 'Canon 35mm f/2' }
+    ])
+    expect(r.skipLensCatalogMatch).toBe(true)
+    expect(r.suggestCameraPresetFromMetadata).toBe(false)
+    expect(r.autoCameraId).toBe(42)
+  })
+
+  it('FLC incomplete: body matches catalog FLC but lens disagrees — suggest Camera +, no auto camera id', () => {
+    const r = analyzeCameraFirstStaging(flcCatalog, [
+      { Make: 'Canon', Model: 'Canon P', LensModel: 'Wrong Lens' }
+    ])
+    expect(r.skipLensCatalogMatch).toBe(true)
+    expect(r.suggestCameraPresetFromMetadata).toBe(true)
+    expect(r.autoCameraId).toBe(null)
+  })
+
+  const ilcCatalog = emptyCatalog({
+    camera_values: ['None', 'Sony A7'],
+    camera_file_map: { 'Sony A7': 7 },
+    camera_identity_by_name: { 'Sony A7': 'Sony A7' },
+    camera_metadata_map: {
+      'Sony A7': {
+        lens_system: 'interchangeable',
+        lens_mount: 'E',
+        lens_adaptable: false,
+        locks_lens: false
+      }
+    },
+    lens_values: ['None', 'FE 50mm'],
+    lens_file_map: { 'FE 50mm': 99 },
+    lens_identity_by_name: { 'FE 50mm': 'FE 50mm' },
+    lens_metadata_map: { 'FE 50mm': { lens_mount: 'E' } }
+  })
+
+  it('ILC: does not skip lens catalog match; auto-fills camera', () => {
+    const r = analyzeCameraFirstStaging(ilcCatalog, [{ Make: 'Sony', Model: 'Sony A7' }])
+    expect(r.skipLensCatalogMatch).toBe(false)
+    expect(r.autoCameraId).toBe(7)
+  })
+
+  it('computeAutoFillPresetIds fills lens when ILC and lens matched', () => {
+    const ids = computeAutoFillPresetIds(
+      ilcCatalog,
+      { Make: 'Sony', Model: 'Sony A7', LensModel: 'FE 50mm' },
+      '',
+      []
+    )
+    expect(ids.cameraId).toBe(7)
+    expect(ids.lensId).toBe(99)
+  })
+
+  it('computeAutoFillPresetIds skips lens id on FLC good path', () => {
+    const ids = computeAutoFillPresetIds(
+      flcCatalog,
+      { Make: 'Canon', Model: 'Canon P', LensModel: 'Canon 35mm f/2' },
+      '',
+      []
+    )
+    expect(ids.cameraId).toBe(42)
+    expect(ids.lensId).toBe(null)
   })
 })
