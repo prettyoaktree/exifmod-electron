@@ -459,23 +459,38 @@ export function analyzeCameraFirstStaging(
   }
 }
 
+/** Skip branches in {@link computeAutoFillPresetIds} (e.g. multi-select when Current would be “Multiple”). */
+export type AutofillSkips = {
+  camera?: boolean
+  lens?: boolean
+  film?: boolean
+  author?: boolean
+}
+
 /** Auto-select preset ids from file metadata when rules say “matched” (per single file). */
 export function computeAutoFillPresetIds(
   catalog: ConfigCatalog,
   meta: Record<string, unknown>,
   inferFilmResolved: string,
-  suggestedMounts: readonly string[]
+  suggestedMounts: readonly string[],
+  skips?: AutofillSkips
 ): {
   cameraId: number | null
   lensId: number | null
   filmId: number | null
   authorId: number | null
 } {
-  const camFirst = analyzeCameraFirstStaging(catalog, [meta])
+  let cameraId: number | null = null
+  let camFirst: CameraFirstStagingSnapshot | undefined
+  if (!skips?.camera) {
+    camFirst = analyzeCameraFirstStaging(catalog, [meta])
+    cameraId = camFirst.autoCameraId
+  }
 
-  let cameraId: number | null = camFirst.autoCameraId
   let lensId: number | null = null
-  if (!camFirst.skipLensCatalogMatch) {
+  const runLens =
+    !skips?.lens && (skips?.camera || !camFirst!.skipLensCatalogMatch)
+  if (runLens) {
     const lensState = matchStateForLensCategory(catalog, [meta], suggestedMounts)
     if (lensState.kind === 'matched') {
       const ld = lensDisplayNameForCatalog(meta).trim()
@@ -491,33 +506,37 @@ export function computeAutoFillPresetIds(
     }
   }
 
-  const filmState = matchStateForFilmCategory(catalog, [meta], [inferFilmResolved])
   let filmId: number | null = null
-  if (filmState.kind === 'matched') {
-    const display = filmCurrentDisplayForStaging([meta], [inferFilmResolved]).trim()
-    const filmName = resolvePresetNameCoveringIdentity(
-      catalog.film_values,
-      catalog.film_identity_by_name,
-      display
-    )
-    if (filmName) {
-      const fid = catalog.film_file_map[filmName]
-      filmId = fid ?? null
+  if (!skips?.film) {
+    const filmState = matchStateForFilmCategory(catalog, [meta], [inferFilmResolved])
+    if (filmState.kind === 'matched') {
+      const display = filmCurrentDisplayForStaging([meta], [inferFilmResolved]).trim()
+      const filmName = resolvePresetNameCoveringIdentity(
+        catalog.film_values,
+        catalog.film_identity_by_name,
+        display
+      )
+      if (filmName) {
+        const fid = catalog.film_file_map[filmName]
+        filmId = fid ?? null
+      }
     }
   }
 
-  const authorState = matchStateForAuthorCategory(catalog, [meta])
   let authorId: number | null = null
-  if (authorState.kind === 'matched') {
-    const aid = authorIdentityFromMetadata(meta).trim()
-    const authorName = resolvePresetNameCoveringIdentity(
-      catalog.author_values,
-      catalog.author_identity_by_name,
-      aid
-    )
-    if (authorName) {
-      const id = catalog.author_file_map[authorName]
-      authorId = id ?? null
+  if (!skips?.author) {
+    const authorState = matchStateForAuthorCategory(catalog, [meta])
+    if (authorState.kind === 'matched') {
+      const aid = authorIdentityFromMetadata(meta).trim()
+      const authorName = resolvePresetNameCoveringIdentity(
+        catalog.author_values,
+        catalog.author_identity_by_name,
+        aid
+      )
+      if (authorName) {
+        const id = catalog.author_file_map[authorName]
+        authorId = id ?? null
+      }
     }
   }
 

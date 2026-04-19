@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { anyStagedClear, mergeRemoveTriState, type RemoveTriState } from './metaRemoveTriState.js'
 import { useTranslation } from 'react-i18next'
 import { withCopyrightAsWrittenToExif } from '@shared/copyrightFormat.js'
@@ -36,6 +36,7 @@ import {
   formatExposureTimeForUi,
   formatFnumberForUi,
   inferCategoryValues,
+  multiSelectAutofillSkips,
   exposureTimeRawFromMetadata,
   fnumberRawFromMetadata,
   imageDescriptionFromMetadata,
@@ -421,6 +422,14 @@ export function App(): React.ReactElement {
   const pendingByPathRef = useRef(pendingByPath)
   pendingByPathRef.current = pendingByPath
 
+  const catalogRef = useRef(catalog)
+  catalogRef.current = catalog
+  const suggestedLensMountsRef = useRef(suggestedLensMountsList)
+  suggestedLensMountsRef.current = suggestedLensMountsList
+
+  /** After `readMetadata` + pending baseline/autofill merge for the current `stagingKey` (avoids flashing "Do Not Modify" before preset match). */
+  const [metadataSyncedStagingKey, setMetadataSyncedStagingKey] = useState<string | null>(null)
+
   const bindMetaRef = useCallback((index: number) => (el: HTMLElement | null) => {
     metaFieldRefs.current[index] = el
   }, [])
@@ -745,6 +754,10 @@ export function App(): React.ReactElement {
 
   const stagingKey = stagingPaths.join('\0')
 
+  /** Hide New preset combobox labels until metadata + catalog are ready and baseline merge has run (matches autofill/layout pass). */
+  const presetNewValueUiReady =
+    stagingPaths.length > 0 && metadataSyncedStagingKey === stagingKey && catalog != null
+
   const updatePendingForPaths = useCallback((paths: string[], updater: (p: PendingState) => PendingState) => {
     setPendingByPath((prev) => {
       const next = { ...prev }
@@ -757,7 +770,10 @@ export function App(): React.ReactElement {
   }, [])
 
   useEffect(() => {
-    if (!stagingPaths.length) return
+    if (!stagingPaths.length) {
+      setMetadataSyncedStagingKey(null)
+      return
+    }
     const api = window.exifmod
     if (!api) return
     let cancelled = false
@@ -771,6 +787,18 @@ export function App(): React.ReactElement {
         }
       }
       if (cancelled) return
+      const cat = catalogRef.current
+      const mounts = suggestedLensMountsRef.current
+      const autofillSkips =
+        cat != null && stagingPaths.length > 1 ? multiSelectAutofillSkips(cat, stagingPaths, meta) : {}
+      const skipAllPresetMatch =
+        stagingPaths.length > 1 &&
+        Boolean(
+          autofillSkips.camera &&
+            autofillSkips.lens &&
+            autofillSkips.film &&
+            autofillSkips.author
+        )
       setMetadataByPath((prev) => ({ ...prev, ...meta }))
       setPendingByPath((prev) => {
         const next = { ...prev }
@@ -782,15 +810,28 @@ export function App(): React.ReactElement {
           const kw = keywordsFieldFromMetadata(md)
           const shouldReseedKeywords =
             row.keywordsText.trim() === '' || descriptiveSlicesEqual(row.keywordsText, row.keywordsBaseline)
-          next[k] = {
+          let merged: PendingState = {
             ...row,
             notesBaseline: desc,
             keywordsBaseline: kw,
             keywordsText: shouldReseedKeywords ? '' : row.keywordsText
           }
+          if (cat != null && !skipAllPresetMatch) {
+            const inferFilm = inferCategoryValues(md, cat.film_values).Film ?? ''
+            const ids = computeAutoFillPresetIds(cat, md, inferFilm, mounts, autofillSkips)
+            merged = {
+              ...merged,
+              cameraId: autofillSkips.camera ? merged.cameraId : (merged.cameraId ?? ids.cameraId),
+              lensId: autofillSkips.lens ? merged.lensId : (merged.lensId ?? ids.lensId),
+              filmId: autofillSkips.film ? merged.filmId : (merged.filmId ?? ids.filmId),
+              authorId: autofillSkips.author ? merged.authorId : (merged.authorId ?? ids.authorId)
+            }
+          }
+          next[k] = merged
         }
         return next
       })
+      setMetadataSyncedStagingKey(stagingKey)
     })()
     return () => {
       cancelled = true
@@ -798,25 +839,36 @@ export function App(): React.ReactElement {
   }, [stagingKey])
 
   /** Auto-select New → preset ids when file metadata matches the catalog (camera-first FLC rules). Only fills null ids. */
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!catalog || !stagingPaths.length) return
     const filmOpts = catalog.film_values
+    const autofillSkips =
+      stagingPaths.length > 1 ? multiSelectAutofillSkips(catalog, stagingPaths, metadataByPath) : {}
+    const skipAllPresetMatch =
+      stagingPaths.length > 1 &&
+      Boolean(
+        autofillSkips.camera &&
+          autofillSkips.lens &&
+          autofillSkips.film &&
+          autofillSkips.author
+      )
     setPendingByPath((prev) => {
+      if (skipAllPresetMatch) return prev
       const next = { ...prev }
       let changed = false
       for (const path of stagingPaths) {
         const md = metadataByPath[pathKey(path)]
         if (md == null) continue
         const inferFilm = inferCategoryValues(md, filmOpts).Film ?? ''
-        const ids = computeAutoFillPresetIds(catalog, md, inferFilm, suggestedLensMountsList)
+        const ids = computeAutoFillPresetIds(catalog, md, inferFilm, suggestedLensMountsList, autofillSkips)
         const k = pathKey(path)
         const row = next[k] ?? emptyPending()
         const merged: PendingState = {
           ...row,
-          cameraId: row.cameraId ?? ids.cameraId,
-          lensId: row.lensId ?? ids.lensId,
-          filmId: row.filmId ?? ids.filmId,
-          authorId: row.authorId ?? ids.authorId
+          cameraId: autofillSkips.camera ? row.cameraId : (row.cameraId ?? ids.cameraId),
+          lensId: autofillSkips.lens ? row.lensId : (row.lensId ?? ids.lensId),
+          filmId: autofillSkips.film ? row.filmId : (row.filmId ?? ids.filmId),
+          authorId: autofillSkips.author ? row.authorId : (row.authorId ?? ids.authorId)
         }
         if (
           merged.cameraId !== row.cameraId ||
@@ -2046,17 +2098,20 @@ export function App(): React.ReactElement {
                             ref={bindMetaRef(idx)}
                             options={options ?? ['None']}
                             valueInternal={name}
-                            valueDisplay={internalToDisplay(name)}
+                            valueDisplay={presetNewValueUiReady ? internalToDisplay(name) : ''}
                             toDisplay={internalToDisplay}
                             onPickDisplay={(display) => setCategoryPreset(cat, display)}
                             disabled={
+                              !presetNewValueUiReady ||
                               !staging.length ||
                               !catalog ||
                               (cat === 'Lens' && lensFilter.state === 'disabled') ||
                               anyClearFlags[ck]
                             }
                             neutralValue={
-                              id == null || (cat === 'Lens' && lensFilter.state === 'disabled')
+                              !presetNewValueUiReady ||
+                              id == null ||
+                              (cat === 'Lens' && lensFilter.state === 'disabled')
                             }
                             pendingHighlight={pendingAttributeHighlights[cat]}
                             onKeyDownTabChain={onMetaFieldTabKeyDown(idx)}
