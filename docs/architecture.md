@@ -34,7 +34,7 @@ Path aliases: `@shared` → `src/shared`, `@renderer` → `src/renderer/src` (se
 
 ## Preload API (summary)
 
-`window.exifmod` covers paths, locale, dialogs, catalog/presets, EXIF read/merge/apply, **batch `HasSettings` probe** (`exif:probeHasSettings`) for the Lightroom Classic write confirmation, optional Ollama helpers, filesystem helpers, and startup paths for cold “Open With” flows. The **Help** menu can install the bundled **Lightroom Classic** plug-in from `[src/main/installLightroomPlugin.ts](../src/main/installLightroomPlugin.ts)`. The authoritative preload list is in `[src/preload/index.ts](../src/preload/index.ts)`.
+`window.exifmod` covers paths, locale, dialogs, catalog/presets, EXIF read (single-file and **folder batch** with progress), merge/apply (raster in-file vs **RAW → XMP sidecar** in main), remembered-dialog preferences (Lightroom snapshot tip, pre-write backup), optional Ollama helpers, filesystem helpers, and startup paths for cold “Open With” flows. The **Help** menu can install the bundled **Lightroom Classic** plug-in from `[src/main/installLightroomPlugin.ts](../src/main/installLightroomPlugin.ts)` and reset remembered prompts. The authoritative preload list is in `[src/preload/index.ts](../src/preload/index.ts)`.
 
 ## Packaging and releases
 

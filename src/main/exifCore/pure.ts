@@ -3,6 +3,7 @@ import {
   LEGACY_LENS_MOUNT_TO_DISPLAY,
   WRITE_EXCLUDED_FIELDS
 } from './constants.js'
+import { sidecarXmpPath } from './imagePaths.js'
 import { clampUtf8ByBytes, utf8ByteLength } from '../../shared/exifLimits.js'
 import { formatCopyrightForExif } from '../../shared/copyrightFormat.js'
 import type { CameraMetadata, ConfigCatalog, LensMetadata } from '../../shared/types.js'
@@ -62,6 +63,35 @@ export function buildApplyCommand(exiftoolPath: string, filePath: string, exifDa
     }
   }
   cmd.push('-DigitalSourceType=', '-DigitalSourceFileType=', filePath)
+  return cmd
+}
+
+/**
+ * Write metadata to an XMP sidecar next to a RAW file — does not rewrite the proprietary container.
+ * Uses `-o` to target `basename.xmp`; source file is last (ExifTool reads context from it).
+ */
+export function buildApplySidecarCommand(
+  exiftoolPath: string,
+  rawFilePath: string,
+  exifData: Record<string, unknown>
+): string[] {
+  const data = sanitizeWritePayload(exifData)
+  const outXmp = sidecarXmpPath(rawFilePath)
+  const cmd = [exiftoolPath, '-P', '-charset', 'EXIF=utf8']
+  for (const [key, value] of Object.entries(data)) {
+    if (Array.isArray(value)) {
+      if (value.length === 0 && key === 'Keywords') {
+        cmd.push(`-${key}=`)
+      } else {
+        for (const item of value) {
+          cmd.push(`-${key}=${item}`)
+        }
+      }
+    } else {
+      cmd.push(`-${key}=${value}`)
+    }
+  }
+  cmd.push('-DigitalSourceType=', '-DigitalSourceFileType=', '-o', outXmp, rawFilePath)
   return cmd
 }
 

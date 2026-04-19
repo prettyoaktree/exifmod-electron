@@ -13,14 +13,20 @@ export interface ExifmodApi {
   validateExiftool: (path?: string) => Promise<string | null>
   loadCatalog: () => Promise<{ catalog: ConfigCatalog; loadIssues: string[] }>
   readMetadata: (filePath: string) => Promise<Record<string, unknown>>
-  probeHasSettings: (filePaths: string[]) => Promise<Record<string, boolean>>
+  readMetadataBatch: (filePaths: string[]) => Promise<Record<string, Record<string, unknown>>>
+  onReadMetadataBatchProgress: (cb: (p: { done: number; total: number }) => void) => () => void
   mergePayloads: (sel: {
     camera?: number | null
     lens?: number | null
     author?: number | null
     film?: number | null
   }) => Promise<Record<string, unknown>>
-  applyExif: (filePath: string, payload: Record<string, unknown>) => Promise<{ ok: boolean }>
+  applyExif: (filePath: string, payload: Record<string, unknown>, opts?: { backupFirst?: boolean }) => Promise<{
+    ok: boolean
+  }>
+  applyExifBatch: (
+    items: Array<{ path: string; payload: Record<string, unknown>; backupFirst?: boolean }>
+  ) => Promise<Array<{ path: string; ok: boolean; error?: string }>>
   createPreset: (input: CreatePresetInput) => Promise<number>
   updatePreset: (input: UpdatePresetInput) => Promise<number>
   deletePreset: (id: number) => Promise<void>
@@ -53,6 +59,10 @@ export interface ExifmodApi {
   getLaunchFromLrc: () => Promise<boolean>
   getLrcSnapshotModalSuppressed: () => Promise<boolean>
   setLrcSnapshotModalSuppressed: () => Promise<void>
+  getPreWriteBackupChoice: () => Promise<'ask' | 'always' | 'never'>
+  setPreWriteBackupChoice: (v: 'ask' | 'always' | 'never') => Promise<void>
+  resetRememberedDialogChoices: () => Promise<void>
+  onRememberedChoicesReset: (cb: () => void) => () => void
   onLaunchFromLrc: (cb: (fromLrc: boolean) => void) => () => void
   onStartupPath: (cb: (p: string) => void) => () => void
   onOllamaLaunching: (cb: () => void) => () => void

@@ -4,7 +4,7 @@ import type { ConfigCatalog, DataPaths, MergeImportResult, MergeImportSkip } fro
 import {
   CONTROL_FIELDS,
   FALLBACK_LENS_MOUNT_NAMES,
-  IMAGE_EXTENSIONS,
+  SUPPORTED_IMAGE_EXTENSIONS,
   LENS_MOUNT_DEFAULTS_FILENAME,
   PRESET_CATALOG_INITIALIZED_FLAG
 } from './constants.js'
@@ -1063,7 +1063,7 @@ export function isSupportedImagePath(filePath: string): boolean {
   const lower = filePath.toLowerCase()
   const dot = lower.lastIndexOf('.')
   if (dot < 0) return false
-  return IMAGE_EXTENSIONS.has(lower.slice(dot))
+  return SUPPORTED_IMAGE_EXTENSIONS.has(lower.slice(dot))
 }
 
 export function normalizePathsDedup(paths: string[], existing?: string[]): string[] {

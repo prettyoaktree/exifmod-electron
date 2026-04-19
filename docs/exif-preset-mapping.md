@@ -194,8 +194,9 @@ The file-list **Pending** badge and metadata-table **pending row styling** use t
 
 ## ExifTool apply argv and Lightroom
 
-- `**buildApplyCommand**` (`src/main/exifCore/pure.ts`) passes `**-overwrite_original**`, `**-P**` (preserve filesystem modification time), `**-charset EXIF=utf8**`, then per-field `-Tag=value` assignments and clears `DigitalSourceType` / `DigitalSourceFileType`.
-- **Write-time warning:** Before applying, the app can batch-query `**HasSettings`** (maps to **XMP-crs:HasSettings**) via `**exiftool -j -HasSettings`** (`probeHasSettingsBatch` in `src/main/exiftoolRunner.ts`) so the write confirmation can mention Lightroom Classic when develop metadata is present. This does not guarantee every future Lightroom or ExifTool version combination behaves identically.
+- **JPEG/TIFF:** `**buildApplyCommand**` (`src/main/exifCore/pure.ts`) passes `**-overwrite_original**`, `**-P**` (preserve filesystem modification time), `**-charset EXIF=utf8**`, then per-field `-Tag=value` assignments and clears `DigitalSourceType` / `DigitalSourceFileType`.
+- **RAW-class files:** `**buildApplySidecarCommand**` writes tags to `**basename.xmp**` via `**-o**` (no `**-overwrite_original**` on the container); the source file path is still the last argument so ExifTool reads context from the RAW.
+- **Read path:** Single-file and folder-batch reads merge a companion `**.xmp**` on top of the RAW container row when present (`readExifMetadataMerged` / `readExifMetadataBatchMerged` in `src/main/exiftoolRunner.ts`).
 - **Lightroom plug-in:** Optional **`EXIFmodOpen.lrplugin`** is kept under **`extras/lightroom-classic-exifmod-open/`** in the repository; the packaged app can copy it via **Help → Install Lightroom Classic Plugin…** (see `src/main/installLightroomPlugin.ts`). An unpacked dev build also installs **`EXIFmodOpenDev.lrplugin`** (not bundled in release DMGs). The plug-ins register **`LrLibraryMenuItems`** only (**Library → Plug-in Extras → Open in EXIFmod** / **Open in EXIFmod Dev**), not **File → Plug-in Extras**.
 
 ---

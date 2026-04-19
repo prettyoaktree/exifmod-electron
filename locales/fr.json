@@ -11,7 +11,8 @@
     "tutorial": "Tutoriel…",
     "importPresetDatabase": "Importer la base de préréglages…",
     "exportPresetDatabase": "Exporter la base de préréglages…",
-    "installLrPlugin": "Installer le plug-in Lightroom Classic…"
+    "installLrPlugin": "Installer le plug-in Lightroom Classic…",
+    "resetRememberedChoices": "Réinitialiser les choix mémorisés…"
   },
   "updater": {
     "updateAvailableDetail": "EXIFmod {{version}} est disponible. Télécharger la mise à jour maintenant ?",
@@ -33,7 +34,7 @@
     "step1Title": "Bienvenue dans EXIFmod",
     "step1Body": "EXIFmod applique des métadonnées cohérentes (appareil, objectif, film, auteur, exposition, description et mots-clés) à vos photos via un catalogue de préréglages, puis écrit ces valeurs dans les fichiers image avec ExifTool. Les modifications restent en attente jusqu’à validation.",
     "step2Title": "Ouvrir un dossier",
-    "step2Body": "Commencez par <blue>{{openFolder}}</blue>. L’application liste les images prises en charge (JPEG et TIFF). Sélectionnez un ou plusieurs fichiers pour charger leurs métadonnées et l’aperçu.",
+    "step2Body": "Commencez par <blue>{{openFolder}}</blue>. L’application liste les images prises en charge (JPEG, TIFF et formats RAW courants). Sélectionnez un ou plusieurs fichiers pour charger leurs métadonnées et l’aperçu.",
     "step3Title": "Préréglages et champs",
     "step3Body": "Appliquez des préréglages et d’autres métadonnées aux fichiers sélectionnés via le volet <green>Métadonnées</green>. Si un serveur Ollama local est disponible, le bouton <icon></icon> IA peut suggérer une <green>Description</green> et des <green>Mots-clés</green>. Toutes vos modifications restent en attente comme <pending>{{pendingBadge}}</pending>.",
     "step4Title": "Aperçu et écriture",
@@ -207,8 +208,11 @@
     "writePendingChanges": "Écrire les modifications en attente",
     "clearPendingChanges": "Effacer les modifications en attente",
     "writeConfirmLead": "Écrire les métadonnées en attente sur {{count}} fichier(s) ?",
-    "writeConfirmDetail": "Les fichiers d’origine seront modifiés.",
-    "writeConfirmLrcDetail": "Au moins un fichier contient des métadonnées Lightroom intégrées à l’image. Envisagez de créer un instantané de développement dans Lightroom avant d’écrire les nouvelles métadonnées (module Développement → Instantanés → +), afin de pouvoir restaurer vos réglages de développement ensuite.",
+    "readingMetadataProgress": "Lecture des métadonnées… ({{current}} / {{total}})",
+    "writeBackupLead": "Les métadonnées seront écrites directement dans les fichiers JPEG et TIFF, et dans des fichiers XMP satellites pour les fichiers RAW. Vous pouvez créer des copies de sauvegarde des fichiers qui seront modifiés directement.",
+    "writeBackupRemember": "Mémoriser mon choix et ne plus demander.",
+    "writeBackupAndWrite": "Sauvegarder et écrire",
+    "writeWithoutBackup": "Écrire sans sauvegarde",
     "lrcSnapshotModalTitle": "Note importante concernant Lightroom Classic",
     "lrcSnapshotModalBody": "Avant d’écrire des métadonnées depuis EXIFmod, envisagez de créer un instantané de développement dans Lightroom Classic (module Développement → Instantanés → +). Cela vous donne un point de restauration si vous utilisez ensuite Métadonnées → Lire les métadonnées depuis le fichier et devez retrouver vos réglages de développement.",
     "lrcSnapshotModalDontShowAgain": "Ne plus afficher lors de l’ouverture depuis Lightroom Classic",

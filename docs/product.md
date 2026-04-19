@@ -15,13 +15,13 @@ The app is built with Electron; metadata read and write use **ExifTool** on the 
 
 ## Core workflow
 
-1. **Open a folder** (or launch from the OS with a supported image — see the README’s macOS notes). The app lists **supported images** in that folder.
+1. **Open a folder** (or launch from the OS with a supported image — see the README’s macOS notes). On a normal launch with no file/folder passed in, EXIFmod **reopens the last folder** you chose via **Open Folder** (stored in app data); if there is none, you see **Open Folder** until you pick one. The app lists **supported images** in that folder.
 2. **Select one or more files** in the list. The main window is split edge-to-edge into **files** (list + preview) and **metadata**; narrow dividers between sections can be dragged to resize. The UI shows a **preview** (when one image is in focus) and a **metadata** area.
 3. Choose **presets** per category and optionally set **shutter speed**, **aperture**, **Description** (EXIF `ImageDescription`), and **Keywords** (merged with preset keywords on write). Edits are **pending** until you commit.
 4. Use **Preview EXIF Changes** to inspect **only the tags that would change** compared to each file’s current metadata (same logic as commit). If nothing would change for any file, the preview stays empty (shows “—”).
 5. **Write Pending Changes** applies metadata only for files that actually differ; **Clear Pending Changes** discards uncommitted edits.
 
-Supported image extensions in the file list and for OS “open with” flows: **.jpg**, **.jpeg**, **.tif**, **.tiff**.
+Supported image extensions in the file list and for OS “open with” flows include **JPEG** and **TIFF**, plus common **camera RAW** formats (see `RAW_IMAGE_EXTENSIONS` in `src/main/exifCore/constants.ts`). For RAW files, EXIFmod **writes metadata to an XMP sidecar** (`basename.xmp` next to the file) and does **not** rewrite the proprietary RAW container. For JPEG/TIFF, metadata is written **into** the file (with an optional backup copy before writing when you choose that in the confirmation dialog).
 
 ---
 
@@ -112,7 +112,9 @@ EXIFmod writes metadata **into** each image file; it does **not** create separat
 
 Before you write from EXIFmod, if you rely on Lightroom’s catalog matching what is on disk, use **Metadata → Save Metadata to File** in Lightroom Classic. After EXIFmod has written tags, use **Metadata → Read Metadata from File** only when you intentionally want Lightroom to **reload metadata from the file** into the catalog—doing so can overwrite or clash with catalog-only state you expected.
 
-When your pending write includes at least one file that still has Camera Raw develop metadata (`HasSettings` in ExifTool terms), the write confirmation dialog reminds you of this, including creating a **Develop Snapshot** in Lightroom first if you plan to use **Read Metadata from File** afterward. Launches from the official **EXIFmod Open** plug-in (with a special session marker) show a one-time **Develop Snapshot** tip after the folder opens and **omit** those extra confirmation paragraphs for that session—the tip already covers the guidance.
+Launches from the official **EXIFmod Open** plug-in (with a special session marker) show a one-time **Develop Snapshot** tip after the folder opens, with an option to stop showing it for future launches from Lightroom.
+
+For JPEG/TIFF in-place writes, you can optionally create a **backup copy** in the same folder before ExifTool runs; the write confirmation dialog can remember that choice. **Help → Reset Remembered Prompts…** clears those choices (and the Lightroom snapshot tip suppression) so dialogs appear again.
 
 **Help → Install Lightroom Classic Plugin…** installs the bundled plug-in into Adobe’s **Modules** folder. In Lightroom use **File → Plug-in Manager** to enable it, then **Library → Plug-in Extras → Open in EXIFmod** to open the selected photo in EXIFmod.
 

@@ -26,16 +26,27 @@ const api = {
   loadCatalog: () =>
     ipcRenderer.invoke('catalog:load') as Promise<{ catalog: ConfigCatalog; loadIssues: string[] }>,
   readMetadata: (filePath: string) => ipcRenderer.invoke('exif:readMetadata', filePath) as Promise<Record<string, unknown>>,
-  probeHasSettings: (filePaths: string[]) =>
-    ipcRenderer.invoke('exif:probeHasSettings', filePaths) as Promise<Record<string, boolean>>,
+  readMetadataBatch: (filePaths: string[]) =>
+    ipcRenderer.invoke('exif:readMetadataBatch', filePaths) as Promise<Record<string, Record<string, unknown>>>,
+  onReadMetadataBatchProgress: (cb: (p: { done: number; total: number }) => void) => {
+    const fn = (_e: unknown, p: { done: number; total: number }): void => cb(p)
+    ipcRenderer.on('exif:readMetadataBatchProgress', fn)
+    return () => ipcRenderer.removeListener('exif:readMetadataBatchProgress', fn)
+  },
   mergePayloads: (sel: {
     camera?: number | null
     lens?: number | null
     author?: number | null
     film?: number | null
   }) => ipcRenderer.invoke('exif:mergePayloads', sel) as Promise<Record<string, unknown>>,
-  applyExif: (filePath: string, payload: Record<string, unknown>) =>
-    ipcRenderer.invoke('exif:apply', filePath, payload) as Promise<{ ok: boolean }>,
+  applyExif: (filePath: string, payload: Record<string, unknown>, opts?: { backupFirst?: boolean }) =>
+    ipcRenderer.invoke('exif:apply', filePath, payload, opts) as Promise<{ ok: boolean }>,
+  applyExifBatch: (
+    items: Array<{ path: string; payload: Record<string, unknown>; backupFirst?: boolean }>
+  ) =>
+    ipcRenderer.invoke('exif:applyBatch', items) as Promise<
+      Array<{ path: string; ok: boolean; error?: string }>
+    >,
   createPreset: (input: CreatePresetInput) => ipcRenderer.invoke('presets:create', input) as Promise<number>,
   updatePreset: (input: UpdatePresetInput) => ipcRenderer.invoke('presets:update', input) as Promise<number>,
   deletePreset: (id: number) => ipcRenderer.invoke('presets:delete', id) as Promise<void>,
@@ -84,6 +95,17 @@ const api = {
     ipcRenderer.invoke('app:getLrcSnapshotModalSuppressed') as Promise<boolean>,
   setLrcSnapshotModalSuppressed: () =>
     ipcRenderer.invoke('app:setLrcSnapshotModalSuppressed') as Promise<void>,
+  getPreWriteBackupChoice: () =>
+    ipcRenderer.invoke('app:getPreWriteBackupChoice') as Promise<'ask' | 'always' | 'never'>,
+  setPreWriteBackupChoice: (v: 'ask' | 'always' | 'never') =>
+    ipcRenderer.invoke('app:setPreWriteBackupChoice', v) as Promise<void>,
+  resetRememberedDialogChoices: () =>
+    ipcRenderer.invoke('app:resetRememberedDialogChoices') as Promise<void>,
+  onRememberedChoicesReset: (cb: () => void) => {
+    const fn = (): void => cb()
+    ipcRenderer.on('session:rememberedChoicesReset', fn)
+    return () => ipcRenderer.removeListener('session:rememberedChoicesReset', fn)
+  },
   onLaunchFromLrc: (cb: (fromLrc: boolean) => void) => {
     const fn = (_e: unknown, v: boolean): void => cb(v)
     ipcRenderer.on('session:launchFromLrc', fn)

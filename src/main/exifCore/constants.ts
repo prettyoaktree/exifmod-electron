@@ -16,7 +16,48 @@ export {
   KEYWORDS_MERGED_SUM_MAX_UTF8_BYTES
 } from '../../shared/exifLimits.js'
 
-export const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.tif', '.tiff'])
+/** JPEG/TIFF — metadata written in-file via ExifTool `-overwrite_original`. */
+export const RASTER_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.tif', '.tiff'])
+
+/**
+ * Camera RAW and similar — metadata writes go to XMP sidecar only (never rewrite the container).
+ * Conservative ExifTool-native set (see ExifTool `-listr` / docs).
+ */
+export const RAW_IMAGE_EXTENSIONS = new Set([
+  '.3fr',
+  '.arw',
+  '.cr2',
+  '.cr3',
+  '.dng',
+  '.erf',
+  '.fff',
+  '.iiq',
+  '.k25',
+  '.kdc',
+  '.mef',
+  '.mos',
+  '.mrw',
+  '.nef',
+  '.nrw',
+  '.orf',
+  '.pef',
+  '.raf',
+  '.raw',
+  '.rw2',
+  '.rwl',
+  '.sr2',
+  '.srf',
+  '.srw',
+  '.x3f'
+])
+
+/** All formats EXIFmod lists, opens, and batch-processes. */
+export const SUPPORTED_IMAGE_EXTENSIONS = new Set([...RASTER_IMAGE_EXTENSIONS, ...RAW_IMAGE_EXTENSIONS])
+
+/** Electron `filters.extensions` entries (no leading dot). */
+export const SUPPORTED_IMAGE_DIALOG_EXTENSIONS: readonly string[] = [...SUPPORTED_IMAGE_EXTENSIONS].map((e) =>
+  e.slice(1)
+)
 
 const EXIFTOOL_CANDIDATES_MAC = [
   '/opt/homebrew/bin/exiftool',

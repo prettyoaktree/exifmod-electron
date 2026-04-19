@@ -11,7 +11,8 @@
     "tutorial": "Tutorial…",
     "importPresetDatabase": "Import Preset Database…",
     "exportPresetDatabase": "Export Preset Database…",
-    "installLrPlugin": "Install Lightroom Classic Plugin…"
+    "installLrPlugin": "Install Lightroom Classic Plugin…",
+    "resetRememberedChoices": "Reset Remembered Prompts…"
   },
   "updater": {
     "updateAvailableDetail": "EXIFmod {{version}} is available. Download the update now?",
@@ -33,7 +34,7 @@
     "step1Title": "Welcome to EXIFmod",
     "step1Body": "EXIFmod helps you apply consistent metadata (camera, lens, film, author, exposure, description, and keywords) across photos using a saved preset catalog, then writes those values into your image files with ExifTool. Edits stay pending until you commit them.",
     "step2Title": "Open a Folder",
-    "step2Body": "Start with <blue>{{openFolder}}</blue>. The app lists supported images in that folder (JPEG and TIFF). Select one or more files to load their current metadata and preview.",
+    "step2Body": "Start with <blue>{{openFolder}}</blue>. The app lists supported images in that folder (JPEG, TIFF, and common camera RAW formats). Select one or more files to load their current metadata and preview.",
     "step3Title": "Presets and Fields",
     "step3Body": "Apply presets and other metadata to selected files using the <green>Metadata</green> pane. If a local Ollama server is available, the <icon></icon> AI button can suggest <green>Description</green> and <green>Keywords</green>. All of your changes will be staged as <pending>{{pendingBadge}}</pending>.",
     "step4Title": "Preview and Write",
@@ -207,8 +208,11 @@
     "writePendingChanges": "Write Pending Changes",
     "clearPendingChanges": "Clear Pending Changes",
     "writeConfirmLead": "Write Pending Metadata to {{count}} File(s)?",
-    "writeConfirmDetail": "This will modify the original files.",
-    "writeConfirmLrcDetail": "At least one file has Lightroom metadata embedded in the image. Consider creating a Develop Snapshot in Lightroom before writing the new metadata (Develop module → Snapshots → +), so you can restore your develop settings afterwards.",
+    "readingMetadataProgress": "Reading metadata… ({{current}} / {{total}})",
+    "writeBackupLead": "Metadata will be written directly to JPEG and TIFF files, and as sidecar XMP files for RAW files. You can create backup copies of files that will be directly modified.",
+    "writeBackupRemember": "Remember my choice and don’t ask again.",
+    "writeBackupAndWrite": "Back Up and Write",
+    "writeWithoutBackup": "Write Without Backup",
     "lrcSnapshotModalTitle": "Important Note Regarding Lightroom Classic",
     "lrcSnapshotModalBody": "Before you write metadata from EXIFmod, consider creating a Develop Snapshot in Lightroom Classic (Develop module → Snapshots → +). That gives you a restore point if you later use Metadata → Read Metadata from File and need to get your develop settings back.",
     "lrcSnapshotModalDontShowAgain": "Do not show this again when opening from Lightroom Classic",

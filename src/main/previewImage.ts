@@ -3,11 +3,13 @@
  */
 import { nativeImage } from 'electron'
 import { i18next } from './i18n.js'
-import { execFile as execFileCb } from 'node:child_process'
+import { execFile as execFileCb, spawn } from 'node:child_process'
 import { extname, join } from 'node:path'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { existsSync, statSync } from 'node:fs'
+import { isRawImagePath } from './exifCore/imagePaths.js'
+import { resolveExiftoolPath } from './exiftoolRunner.js'
 
 /** Max longest edge (pixels). Small preview panel + smaller Ollama payloads vs 2048. */
 export const PREVIEW_MAX_EDGE = 640
@@ -20,6 +22,60 @@ function execFileAsync(command: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     execFileCb(command, args, (err) => (err ? reject(err) : resolve()))
   })
+}
+
+const RAW_PREVIEW_TAGS = ['PreviewImage', 'JpgFromRaw', 'JpgFromRaw2', 'ThumbnailImage', 'PreviewTIFF'] as const
+
+function extractExiftoolBinaryTag(exiftoolPath: string, filePath: string, tag: string): Promise<Buffer | null> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    const child = spawn(exiftoolPath, ['-b', `-${tag}`, filePath], { stdio: ['ignore', 'pipe', 'pipe'] })
+    child.stdout?.on('data', (d) => chunks.push(d))
+    child.stderr?.on('data', () => {
+      /* stderr ignored; exit code drives success */
+    })
+    child.on('error', reject)
+    child.on('close', (code) => {
+      if (code !== 0) {
+        resolve(null)
+        return
+      }
+      const buf = Buffer.concat(chunks)
+      if (buf.length < 32) {
+        resolve(null)
+        return
+      }
+      resolve(buf)
+    })
+  })
+}
+
+async function previewRawWithExiftool(filePath: string): Promise<string | null> {
+  const tool = resolveExiftoolPath()
+  if (!tool) return null
+  for (const tag of RAW_PREVIEW_TAGS) {
+    try {
+      const buf = await extractExiftoolBinaryTag(tool, filePath, tag)
+      if (!buf) continue
+      let image = nativeImage.createFromBuffer(buf)
+      if (image.isEmpty()) continue
+      const { width, height } = image.getSize()
+      const maxEdge = Math.max(width, height)
+      if (maxEdge > PREVIEW_MAX_EDGE) {
+        const scale = PREVIEW_MAX_EDGE / maxEdge
+        image = image.resize({
+          width: Math.max(1, Math.round(width * scale)),
+          height: Math.max(1, Math.round(height * scale)),
+          quality: 'good'
+        })
+      }
+      const jpeg = image.toJPEG(PREVIEW_JPEG_QUALITY)
+      return `data:image/jpeg;base64,${jpeg.toString('base64')}`
+    } catch {
+      /* try next tag */
+    }
+  }
+  return null
 }
 
 async function previewTiffWithSips(filePath: string): Promise<string | null> {
@@ -51,6 +107,11 @@ async function previewTiffWithSips(filePath: string): Promise<string | null> {
 export async function readImagePreviewDataUrl(filePath: string): Promise<string> {
   const ext = extname(filePath).toLowerCase()
   const tiff = ext === '.tif' || ext === '.tiff'
+
+  if (isRawImagePath(filePath)) {
+    const fromExif = await previewRawWithExiftool(filePath)
+    if (fromExif) return fromExif
+  }
 
   if (tiff && process.platform === 'darwin') {
     const fromSips = await previewTiffWithSips(filePath)

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildApplyCommand, filterLensValues, sanitizeWritePayload, stripWriteExcludedFields } from './pure.js'
+import {
+  buildApplyCommand,
+  buildApplySidecarCommand,
+  filterLensValues,
+  sanitizeWritePayload,
+  stripWriteExcludedFields
+} from './pure.js'
 
 describe('sanitizeWritePayload', () => {
   it('removes Film and Film Maker', () => {
@@ -51,6 +57,18 @@ describe('buildApplyCommand', () => {
   it('emits Keywords= when Keywords is an empty array (delete)', () => {
     const cmd = buildApplyCommand('/bin/exiftool', '/tmp/a.jpg', { Keywords: [] })
     expect(cmd).toContain('-Keywords=')
+  })
+})
+
+describe('buildApplySidecarCommand', () => {
+  it('writes to sidecar xmp without overwrite_original', () => {
+    const cmd = buildApplySidecarCommand('/bin/exiftool', '/tmp/raw.nef', { Make: 'Nikon' })
+    expect(cmd[0]).toBe('/bin/exiftool')
+    expect(cmd).not.toContain('-overwrite_original')
+    expect(cmd).toContain('-o')
+    expect(cmd).toContain('/tmp/raw.xmp')
+    expect(cmd[cmd.length - 1]).toBe('/tmp/raw.nef')
+    expect(cmd).toContain('-Make=Nikon')
   })
 })
 

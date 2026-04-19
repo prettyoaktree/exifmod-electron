@@ -124,6 +124,12 @@ function pathKey(p: string): string {
   return p
 }
 
+/** JPEG/TIFF targets where metadata is written in-place (not RAW sidecar). */
+function isRasterWriteInPlacePath(filePath: string): boolean {
+  const lower = filePath.toLowerCase()
+  return /\.(jpe?g|tif|tiff)$/.test(lower)
+}
+
 function fileBaseName(p: string): string {
   const i = Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\'))
   return i < 0 ? p : p.slice(i + 1)
@@ -321,6 +327,8 @@ export function App(): React.ReactElement {
   const [currentIndex, setCurrentIndex] = useState<number | null>(null)
   const [pendingByPath, setPendingByPath] = useState<Record<string, PendingState>>({})
   const [metadataByPath, setMetadataByPath] = useState<Record<string, Record<string, unknown>>>({})
+  const metadataByPathRef = useRef(metadataByPath)
+  metadataByPathRef.current = metadataByPath
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null)
   const [commitModal, setCommitModal] = useState<
     null | { phase: 'writing'; current: number; total: number; fileBase: string } | { phase: 'done'; ok: number; total: number }
@@ -353,8 +361,13 @@ export function App(): React.ReactElement {
   const [writeConfirmTodo, setWriteConfirmTodo] = useState<
     { path: string; payload: Record<string, unknown> }[] | null
   >(null)
-  /** At least one file in the write batch has XMP Camera Raw develop metadata (`HasSettings`). */
-  const [writeConfirmLrcDevelop, setWriteConfirmLrcDevelop] = useState(false)
+  const [preWriteBackupChoice, setPreWriteBackupChoice] = useState<'ask' | 'always' | 'never'>('ask')
+  const [preWriteBackupPrefsLoaded, setPreWriteBackupPrefsLoaded] = useState(false)
+  const [writeBackupRememberCheckbox, setWriteBackupRememberCheckbox] = useState(false)
+  const [metadataFolderReadProgress, setMetadataFolderReadProgress] = useState<{
+    done: number
+    total: number
+  } | null>(null)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
   const [quitConfirmOpen, setQuitConfirmOpen] = useState(false)
   const quitConfirmOpenRef = useRef(false)
@@ -640,10 +653,25 @@ export function App(): React.ReactElement {
   useEffect(() => {
     const api = window.exifmod
     if (!api?.getLaunchFromLrc || !api.getLrcSnapshotModalSuppressed) return
-    void Promise.all([api.getLaunchFromLrc(), api.getLrcSnapshotModalSuppressed()]).then(([fromLrc, suppressed]) => {
+    void Promise.all([
+      api.getLaunchFromLrc(),
+      api.getLrcSnapshotModalSuppressed(),
+      api.getPreWriteBackupChoice?.() ?? Promise.resolve('ask' as const)
+    ]).then(([fromLrc, suppressed, backupPref]) => {
       setSessionFromLrcPlugin(fromLrc)
       setLrcSnapshotModalSuppressedPersisted(suppressed)
       setLrcSnapshotPrefsLoaded(true)
+      setPreWriteBackupChoice(backupPref)
+      setPreWriteBackupPrefsLoaded(true)
+    })
+  }, [])
+
+  useEffect(() => {
+    const api = window.exifmod
+    if (!api?.onRememberedChoicesReset) return
+    return api.onRememberedChoicesReset(() => {
+      void api.getLrcSnapshotModalSuppressed?.().then((v) => setLrcSnapshotModalSuppressedPersisted(v))
+      void api.getPreWriteBackupChoice?.().then((v) => setPreWriteBackupChoice(v))
     })
   }, [])
 
@@ -662,19 +690,21 @@ export function App(): React.ReactElement {
       void (async () => {
         let list: string[]
         let selectIndex = 0
+        let openedFolder: string
 
         if (await api.isFile(p)) {
-          const folder = parentDir(p)
-          list = await api.listImagesInDir(folder)
+          openedFolder = parentDir(p)
+          list = await api.listImagesInDir(openedFolder)
           const idx = list.findIndex((f) => pathsEqualForList(f, p))
           selectIndex = idx >= 0 ? idx : 0
         } else {
           list = await api.resolveImageList(p)
           selectIndex = 0
+          /** Directory with no images: keep `p` as the session folder (not its parent). */
+          openedFolder = list.length > 0 ? parentDir(list[0]!) : p
         }
 
-        const folder = list.length > 0 ? parentDir(list[0]!) : parentDir(p)
-        setOpenedFolderPath(folder)
+        setOpenedFolderPath(openedFolder)
         setFiles(list)
         setSelectedIndices(list.length ? new Set([selectIndex]) : new Set())
         setCurrentIndex(list.length ? selectIndex : null)
@@ -684,6 +714,43 @@ export function App(): React.ReactElement {
       })()
     })
   }, [])
+
+  const filesSessionKey =
+    openedFolderPath != null && files.length > 0 ? `${openedFolderPath}\n${files.join('\n')}` : ''
+
+  /** Prefetch metadata for every file in the open folder (chunked ExifTool in main). */
+  useEffect(() => {
+    if (!filesSessionKey) {
+      setMetadataFolderReadProgress(null)
+      return
+    }
+    const api = window.exifmod
+    if (!api?.readMetadataBatch) return
+    let cancelled = false
+    const list = files
+    setMetadataFolderReadProgress({ done: 0, total: list.length })
+    const off = api.onReadMetadataBatchProgress?.((p) => {
+      if (!cancelled) setMetadataFolderReadProgress({ done: p.done, total: p.total })
+    })
+    void api.readMetadataBatch(list).then((map) => {
+      if (cancelled) return
+      setMetadataByPath((prev) => {
+        const next = { ...prev }
+        for (const p of list) {
+          const k = pathKey(p)
+          next[k] = map[p] ?? {}
+        }
+        return next
+      })
+      setMetadataFolderReadProgress(null)
+    }).catch(() => {
+      if (!cancelled) setMetadataFolderReadProgress(null)
+    })
+    return () => {
+      cancelled = true
+      off?.()
+    }
+  }, [filesSessionKey])
 
   /** When a folder session starts, focus the file list so arrows / Space work without tabbing. */
   useEffect(() => {
@@ -780,6 +847,11 @@ export function App(): React.ReactElement {
     void (async () => {
       const meta: Record<string, Record<string, unknown>> = {}
       for (const path of stagingPaths) {
+        const pk = pathKey(path)
+        if (Object.prototype.hasOwnProperty.call(metadataByPathRef.current, pk)) {
+          meta[path] = metadataByPathRef.current[pk] ?? {}
+          continue
+        }
         try {
           meta[path] = await api.readMetadata(path)
         } catch {
@@ -1369,9 +1441,12 @@ export function App(): React.ReactElement {
   )
 
   const runWritePending = useCallback(
-    async (todo: { path: string; payload: Record<string, unknown> }[]) => {
+    async (
+      todo: { path: string; payload: Record<string, unknown> }[],
+      backupRaster: boolean
+    ) => {
       setWriteConfirmTodo(null)
-      setWriteConfirmLrcDevelop(false)
+      setWriteBackupRememberCheckbox(false)
       const api = window.exifmod
       if (!api) {
         alert(t('ui.preloadUnavailable'))
@@ -1380,22 +1455,30 @@ export function App(): React.ReactElement {
       const total = todo.length
       const successfulPaths: string[] = []
       let ok = 0
-      for (let i = 0; i < todo.length; i++) {
-        const { path, payload } = todo[i]!
-        const fileBase = path.split(/[/\\]/).pop() ?? path
-        setCommitModal({ phase: 'writing', current: i + 1, total, fileBase })
-        try {
-          await api.applyExif(path, payload)
-          ok++
-          successfulPaths.push(path)
-        } catch (e) {
-          alert(
-            t('ui.applyError', {
-              path,
-              message: unwrapIpcErrorMessage(e)
-            })
-          )
+      const items = todo.map(({ path, payload }) => ({
+        path,
+        payload,
+        backupFirst: backupRaster && isRasterWriteInPlacePath(path)
+      }))
+      const firstBase = todo[0] ? todo[0].path.split(/[/\\]/).pop() ?? todo[0].path : ''
+      setCommitModal({ phase: 'writing', current: 1, total, fileBase: firstBase })
+      try {
+        const results = await api.applyExifBatch(items)
+        for (const r of results) {
+          if (r.ok) {
+            ok++
+            successfulPaths.push(r.path)
+          } else {
+            alert(
+              t('ui.applyError', {
+                path: r.path,
+                message: r.error ?? 'unknown'
+              })
+            )
+          }
         }
+      } catch (e) {
+        alert(unwrapIpcErrorMessage(e))
       }
       if (successfulPaths.length > 0) {
         const metaUpdates: Record<string, Record<string, unknown>> = {}
@@ -1453,19 +1536,16 @@ export function App(): React.ReactElement {
       alert(t('ui.noStagedChanges'))
       return
     }
-    let lrcDevelop = false
-    if (!sessionFromLrcPlugin && todo.length > 0) {
+    if (api.getPreWriteBackupChoice) {
       try {
-        const paths = todo.map((x) => x.path)
-        const probe = await api.probeHasSettings(paths)
-        lrcDevelop = paths.some((p) => probe[p] === true)
+        setPreWriteBackupChoice(await api.getPreWriteBackupChoice())
       } catch {
-        /* ignore probe failure; write confirm still proceeds */
+        /* keep current */
       }
     }
-    setWriteConfirmLrcDevelop(lrcDevelop)
+    setWriteBackupRememberCheckbox(false)
     setWriteConfirmTodo(todo)
-  }, [files, pendingByPath, metadataByPath, buildMergedPayloadForState, sessionFromLrcPlugin, t])
+  }, [files, pendingByPath, metadataByPath, buildMergedPayloadForState, t])
 
   const onClearPending = useCallback(() => {
     setPendingByPath((prev) => {
@@ -1766,6 +1846,30 @@ export function App(): React.ReactElement {
     if (new Set(vals).size > 1) return t('ui.multiple')
     return vals[0] ?? ''
   }, [stagingPaths, metadataByPath, t])
+
+  const writeModalHasRaster = useMemo(
+    () =>
+      writeConfirmTodo != null &&
+      writeConfirmTodo.some((x) => isRasterWriteInPlacePath(x.path)),
+    [writeConfirmTodo]
+  )
+
+  const writeModalShowBackupAsk = Boolean(
+    writeConfirmTodo &&
+      writeModalHasRaster &&
+      (!preWriteBackupPrefsLoaded || preWriteBackupChoice === 'ask')
+  )
+
+  const persistPreWriteBackupChoiceIfNeeded = useCallback(
+    async (choice: 'always' | 'never') => {
+      const api = window.exifmod
+      if (!writeBackupRememberCheckbox || !api?.setPreWriteBackupChoice) return
+      await api.setPreWriteBackupChoice(choice)
+      setPreWriteBackupChoice(choice)
+    },
+    [writeBackupRememberCheckbox]
+  )
+
   const canCopyNotesCurrent =
     stagingPaths.length > 0 && notesCurrentLine !== t('ui.multiple') && notesCurrentLine.trim().length > 0
   const canCopyKeywordsCurrent =
@@ -1861,7 +1965,16 @@ export function App(): React.ReactElement {
                   <span className="panel-pane-title file-panel-folder-name" title={openedFolderPath}>
                     {truncateMiddle(folderTitle, 36)}
                   </span>
-                  <p className="panel-pane-shortcut-hint">{fileListShortcutHint}</p>
+                  {metadataFolderReadProgress ? (
+                    <p className="panel-pane-shortcut-hint" aria-live="polite">
+                      {t('ui.readingMetadataProgress', {
+                        current: metadataFolderReadProgress.done,
+                        total: metadataFolderReadProgress.total
+                      })}
+                    </p>
+                  ) : (
+                    <p className="panel-pane-shortcut-hint">{fileListShortcutHint}</p>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -2613,12 +2726,12 @@ export function App(): React.ReactElement {
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) {
               setWriteConfirmTodo(null)
-              setWriteConfirmLrcDevelop(false)
+              setWriteBackupRememberCheckbox(false)
             }
           }}
         >
           <div
-            className="modal modal-dialog-confirm"
+            className={`modal modal-dialog-confirm${writeModalShowBackupAsk ? ' modal-write-confirm-backup' : ''}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="write-confirm-title"
@@ -2627,25 +2740,88 @@ export function App(): React.ReactElement {
             <h3 id="write-confirm-title" className="modal-confirm-heading">
               {t('ui.writeConfirmLead', { count: writeConfirmTodo.length })}
             </h3>
-            <p className="modal-confirm-detail">{t('ui.writeConfirmDetail')}</p>
-            {writeConfirmLrcDevelop && !sessionFromLrcPlugin ? (
-              <p className="modal-confirm-detail">{t('ui.writeConfirmLrcDetail')}</p>
+            {writeModalShowBackupAsk ? (
+              <p className="modal-confirm-detail">{t('ui.writeBackupLead')}</p>
             ) : null}
-            <div className="modal-confirm-actions">
-              <button
-                type="button"
-                className="btn"
-                onClick={() => {
-                  setWriteConfirmTodo(null)
-                  setWriteConfirmLrcDevelop(false)
-                }}
-              >
-                {t('dialog.buttonCancel')}
-              </button>
-              <button type="button" className="btn btn-primary" onClick={() => void runWritePending(writeConfirmTodo)}>
-                {t('ui.writePendingChanges')}
-              </button>
-            </div>
+            {writeModalShowBackupAsk ? (
+              <div className="lrc-snapshot-modal-options">
+                <label
+                  className="lrc-snapshot-dont-show-label write-backup-remember-label"
+                  htmlFor="write-backup-remember"
+                >
+                  <input
+                    id="write-backup-remember"
+                    type="checkbox"
+                    checked={writeBackupRememberCheckbox}
+                    onChange={(e) => setWriteBackupRememberCheckbox(e.target.checked)}
+                  />
+                  <span>{t('ui.writeBackupRemember')}</span>
+                </label>
+              </div>
+            ) : null}
+            {writeModalShowBackupAsk ? (
+              <div className="modal-confirm-actions modal-confirm-actions-row">
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    setWriteConfirmTodo(null)
+                    setWriteBackupRememberCheckbox(false)
+                  }}
+                >
+                  {t('dialog.buttonCancel')}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => {
+                    void (async () => {
+                      await persistPreWriteBackupChoiceIfNeeded('never')
+                      await runWritePending(writeConfirmTodo, false)
+                    })()
+                  }}
+                >
+                  {t('ui.writeWithoutBackup')}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    void (async () => {
+                      await persistPreWriteBackupChoiceIfNeeded('always')
+                      await runWritePending(writeConfirmTodo, true)
+                    })()
+                  }}
+                >
+                  {t('ui.writeBackupAndWrite')}
+                </button>
+              </div>
+            ) : (
+              <div className="modal-confirm-actions">
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    setWriteConfirmTodo(null)
+                    setWriteBackupRememberCheckbox(false)
+                  }}
+                >
+                  {t('dialog.buttonCancel')}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() =>
+                    void runWritePending(
+                      writeConfirmTodo,
+                      writeModalHasRaster && preWriteBackupChoice === 'always'
+                    )
+                  }
+                >
+                  {t('ui.writePendingChanges')}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       ) : null}

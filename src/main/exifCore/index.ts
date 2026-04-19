@@ -22,19 +22,16 @@ export {
 } from './store.js'
 export {
   buildApplyCommand,
+  buildApplySidecarCommand,
   sanitizeWritePayload,
   filterLensValues,
   utf8ByteLength,
   clampUtf8ByBytes,
   validateImageDescriptionForExif
 } from './pure.js'
+export { isRawImagePath, isRasterInFileWritePath, sidecarXmpPath } from './imagePaths.js'
 export { PresetStoreError } from './errors.js'
-export {
-  resolveExiftoolPath,
-  validateExiftool,
-  readExifMetadata,
-  probeHasSettingsBatch
-} from '../exiftoolRunner.js'
+export { resolveExiftoolPath, validateExiftool, readExifMetadata } from '../exiftoolRunner.js'
 export { setSqlWasmPath } from './sqlJs.js'
 export type { DataPaths } from '../../shared/types.js'
 export type {

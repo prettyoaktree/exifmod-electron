@@ -18,8 +18,10 @@ import {
   exportPresetDatabaseFile,
   preflightIssues,
   loadCatalog,
-  readExifMetadata,
   buildApplyCommand,
+  buildApplySidecarCommand,
+  isRawImagePath,
+  isRasterInFileWritePath,
   resolveExiftoolPath,
   validateExiftool,
   ensureDatabaseInitialized,
@@ -34,7 +36,17 @@ import {
   setSqlWasmPath,
   isSupportedImagePath
 } from './exifCore/index.js'
-import { probeHasSettingsBatch, spawnExiftool } from './exiftoolRunner.js'
+import { readExifMetadataMerged, readExifMetadataBatchMerged, spawnExiftool } from './exiftoolRunner.js'
+import { SUPPORTED_IMAGE_DIALOG_EXTENSIONS } from './exifCore/constants.js'
+import {
+  getPreWriteBackupChoice,
+  isLrcSnapshotModalSuppressed,
+  resetAllRememberedDialogChoices,
+  setLrcSnapshotModalSuppressedChoice,
+  setPreWriteBackupChoice,
+  type PreWriteBackupChoice
+} from './rememberedChoices.js'
+import { createPreWriteBackupCopy } from './backupOriginal.js'
 import { ollamaDescribeImage } from './ollamaDescribe.js'
 import {
   checkOllamaAvailability,
@@ -292,11 +304,17 @@ function processLaunchPathsFromArgvAndPreReady(): void {
 
   const combined = [...new Set([...fromArgv, ...fromPre])]
   const picked = pickLaunchPathFromCandidates(combined)
-  if (picked == null) return
+  if (picked != null) {
+    suppressOpenFileDuplicatePath = resolvePath(picked)
+    suppressOpenFileDuplicateUntil = Date.now() + 2000
+    deliverOpenPathToRenderer(picked)
+    return
+  }
 
-  suppressOpenFileDuplicatePath = resolvePath(picked)
-  suppressOpenFileDuplicateUntil = Date.now() + 2000
-  deliverOpenPathToRenderer(picked)
+  const lastFolder = getLastImageFolderForDialog()
+  if (lastFolder != null) {
+    deliverOpenPathToRenderer(lastFolder)
+  }
 }
 
 if (process.platform === 'darwin') {
@@ -320,26 +338,6 @@ const LAST_IMAGE_FOLDER_FILE = 'last-image-folder.txt'
 
 /** Written when the user finishes or dismisses the onboarding tutorial (not written when using `--simulate-first-run`). */
 const TUTORIAL_ONBOARDING_SEEN_FILE = 'tutorial-onboarding-seen.txt'
-
-/** Written when the user dismisses the LRC Develop Snapshot tip with “Do not show this again”. */
-const LRC_SNAPSHOT_MODAL_SUPPRESSED_FILE = 'lrc-snapshot-modal-suppressed.txt'
-
-function isLrcSnapshotModalSuppressed(): boolean {
-  try {
-    return existsSync(join(app.getPath('userData'), LRC_SNAPSHOT_MODAL_SUPPRESSED_FILE))
-  } catch {
-    return false
-  }
-}
-
-function setLrcSnapshotModalSuppressed(): void {
-  try {
-    mkdirSync(app.getPath('userData'), { recursive: true })
-    writeFileSync(join(app.getPath('userData'), LRC_SNAPSHOT_MODAL_SUPPRESSED_FILE), '1\n', 'utf8')
-  } catch {
-    /* ignore */
-  }
-}
 
 /**
  * Development / QA: show the first-run tutorial on launch without persisting completion.
@@ -501,6 +499,14 @@ function createWindow(): void {
           label: i18next.t('menu.tutorial'),
           click: () => deliverTutorialStart({ firstRun: false })
         },
+        {
+          label: i18next.t('menu.resetRememberedChoices'),
+          click: () => {
+            resetAllRememberedDialogChoices(app)
+            const w = BrowserWindow.getFocusedWindow() ?? mainWindow
+            w?.webContents.send('session:rememberedChoicesReset')
+          }
+        },
         ...helpMenuExtras
       ]
     }
@@ -617,10 +623,20 @@ function setupIpc(): void {
 
   ipcMain.handle('app:getLaunchFromLrc', () => launchFromLrcPlugin)
 
-  ipcMain.handle('app:getLrcSnapshotModalSuppressed', () => isLrcSnapshotModalSuppressed())
+  ipcMain.handle('app:getLrcSnapshotModalSuppressed', () => isLrcSnapshotModalSuppressed(app))
 
   ipcMain.handle('app:setLrcSnapshotModalSuppressed', () => {
-    setLrcSnapshotModalSuppressed()
+    setLrcSnapshotModalSuppressedChoice(app)
+  })
+
+  ipcMain.handle('app:getPreWriteBackupChoice', () => getPreWriteBackupChoice(app))
+
+  ipcMain.handle('app:setPreWriteBackupChoice', (_e, v: PreWriteBackupChoice) => {
+    setPreWriteBackupChoice(app, v)
+  })
+
+  ipcMain.handle('app:resetRememberedDialogChoices', () => {
+    resetAllRememberedDialogChoices(app)
   })
 
   ipcMain.handle('app:markTutorialOnboardingSeen', () => {
@@ -670,7 +686,7 @@ function setupIpc(): void {
       filters: [
         {
           name: i18next.t('dialog.imagesFilter'),
-          extensions: ['jpg', 'jpeg', 'tif', 'tiff', 'JPG', 'JPEG', 'TIF', 'TIFF']
+          extensions: [...SUPPORTED_IMAGE_DIALOG_EXTENSIONS]
         }
       ]
     })
@@ -695,13 +711,16 @@ function setupIpc(): void {
   ipcMain.handle('exif:readMetadata', async (_e, filePath: string) => {
     const tool = resolveExiftoolPath()
     if (!tool) throw new Error(i18next.t('ipc.exiftoolNotFound'))
-    return readExifMetadata(tool, filePath)
+    return readExifMetadataMerged(tool, filePath)
   })
 
-  ipcMain.handle('exif:probeHasSettings', async (_e, filePaths: string[]) => {
+  ipcMain.handle('exif:readMetadataBatch', async (event, filePaths: string[]) => {
     const tool = resolveExiftoolPath()
     if (!tool) throw new Error(i18next.t('ipc.exiftoolNotFound'))
-    return probeHasSettingsBatch(tool, filePaths)
+    const wc = event.sender
+    return readExifMetadataBatchMerged(tool, filePaths, (done, total) => {
+      wc.send('exif:readMetadataBatchProgress', { done, total })
+    })
   })
 
   ipcMain.handle(
@@ -716,14 +735,62 @@ function setupIpc(): void {
     }
   )
 
-  ipcMain.handle('exif:apply', async (_e, filePath: string, payload: Record<string, unknown>) => {
-    const tool = resolveExiftoolPath()
-    if (!tool) throw new Error(i18next.t('ipc.exiftoolNotFound'))
-    const args = buildApplyCommand(tool, filePath, payload)
-    const { stderr, code } = await spawnExiftool(args, { timeoutMs: 120_000 })
-    if (code !== 0) throw new Error(stderr || i18next.t('ipc.exiftoolExit', { code }))
-    return { ok: true }
-  })
+  ipcMain.handle(
+    'exif:apply',
+    async (_e, filePath: string, payload: Record<string, unknown>, opts?: { backupFirst?: boolean }) => {
+      const tool = resolveExiftoolPath()
+      if (!tool) throw new Error(i18next.t('ipc.exiftoolNotFound'))
+      if (opts?.backupFirst && isRasterInFileWritePath(filePath)) {
+        const b = createPreWriteBackupCopy(filePath)
+        if (!b.ok) throw new Error(b.error)
+      }
+      const args = isRawImagePath(filePath)
+        ? buildApplySidecarCommand(tool, filePath, payload)
+        : buildApplyCommand(tool, filePath, payload)
+      const { stderr, code } = await spawnExiftool(args, { timeoutMs: 120_000 })
+      if (code !== 0) throw new Error(stderr || i18next.t('ipc.exiftoolExit', { code }))
+      return { ok: true }
+    }
+  )
+
+  ipcMain.handle(
+    'exif:applyBatch',
+    async (
+      _e,
+      items: Array<{ path: string; payload: Record<string, unknown>; backupFirst?: boolean }>
+    ) => {
+      const tool = resolveExiftoolPath()
+      if (!tool) throw new Error(i18next.t('ipc.exiftoolNotFound'))
+      const results: Array<{ path: string; ok: boolean; error?: string }> = []
+      for (const it of items) {
+        try {
+          if (it.backupFirst && isRasterInFileWritePath(it.path)) {
+            const b = createPreWriteBackupCopy(it.path)
+            if (!b.ok) {
+              results.push({ path: it.path, ok: false, error: b.error })
+              continue
+            }
+          }
+          const args = isRawImagePath(it.path)
+            ? buildApplySidecarCommand(tool, it.path, it.payload)
+            : buildApplyCommand(tool, it.path, it.payload)
+          const { stderr, code } = await spawnExiftool(args, { timeoutMs: 120_000 })
+          if (code !== 0) {
+            results.push({ path: it.path, ok: false, error: stderr || i18next.t('ipc.exiftoolExit', { code }) })
+          } else {
+            results.push({ path: it.path, ok: true })
+          }
+        } catch (e) {
+          results.push({
+            path: it.path,
+            ok: false,
+            error: e instanceof Error ? e.message : String(e)
+          })
+        }
+      }
+      return results
+    }
+  )
 
   ipcMain.handle('presets:create', async (_e, input: CreatePresetInput) => {
     const paths = getDataPaths()
