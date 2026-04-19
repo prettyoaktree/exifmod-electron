@@ -739,8 +739,17 @@ export async function createPreset(
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [normalized_category, normalized_name, payload_json, ls, lm, la, fs, fa]
       )
-      const row = db.get('SELECT last_insert_rowid() AS id')!
-      return Number(row['id'])
+      /* sql.js: last_insert_rowid() via prepare/get can return 0 incorrectly; UNIQUE(category,name) identifies the row. */
+      const row = db.get(`SELECT id FROM presets WHERE category = ? AND name = ?`, [
+        normalized_category,
+        normalized_name
+      ])
+      if (!row) throw new PresetStoreError('Failed to read new preset id after insert.')
+      const newId = Number(row['id'])
+      if (!Number.isFinite(newId) || newId < 1) {
+        throw new PresetStoreError(`Invalid preset id after insert: ${String(row['id'])}`)
+      }
+      return newId
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       if (msg.includes('UNIQUE constraint failed')) {
