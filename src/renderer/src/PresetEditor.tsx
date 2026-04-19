@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatCopyrightForExif } from '@shared/copyrightFormat.js'
 import { validateExposureTimeForExif, validateFnumberForExif } from './exif/validate.js'
@@ -201,6 +201,8 @@ export function PresetEditorModal(props: {
   const [fixedAperture, setFixedAperture] = useState(false)
   const [mounts, setMounts] = useState<string[]>([])
   const [err, setErr] = useState<string | null>(null)
+  /** New Camera preset from file metadata: lens identity to apply when user switches to Fixed. */
+  const prefillFixedLensIdentityRef = useRef<{ LensMake: string; LensModel: string } | null>(null)
 
   useEffect(() => {
     void (async () => {
@@ -211,6 +213,7 @@ export function PresetEditorModal(props: {
 
   useEffect(() => {
     void (async () => {
+      prefillFixedLensIdentityRef.current = null
       const applyRecord = (rec: PresetRecord, nameForForm: string): void => {
         setName(nameForForm)
         let pl = { ...rec.payload }
@@ -266,6 +269,7 @@ export function PresetEditorModal(props: {
           setLensAdaptable(Boolean(initialDraft.lens_adaptable))
           setFixedShutter(initialDraft.fixed_shutter === true)
           setFixedAperture(initialDraft.fixed_aperture === true)
+          prefillFixedLensIdentityRef.current = initialDraft.prefillFixedLensIdentity ?? null
         } else if (category === 'Lens') {
           setLensSystem('interchangeable')
           setLensMount(initialDraft.lens_mount ?? '')
@@ -387,6 +391,27 @@ export function PresetEditorModal(props: {
     setPayload((p) => ({ ...p, [k]: v }))
   }
 
+  const onLensSystemChange = (next: 'fixed' | 'interchangeable') => {
+    if (next === lensSystem) return
+    setLensSystem(next)
+    if (next === 'fixed') {
+      setLensMount('')
+      setLensAdaptable(false)
+      const snap = prefillFixedLensIdentityRef.current
+      if (snap) {
+        const mk = String(snap.LensMake ?? '').trim()
+        const md = String(snap.LensModel ?? '').trim()
+        if (mk || md) {
+          setPayload((p) => ({
+            ...p,
+            ...(mk ? { LensMake: mk } : {}),
+            ...(md ? { LensModel: md } : {})
+          }))
+        }
+      }
+    }
+  }
+
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal modal-preset-editor" onMouseDown={(e) => e.stopPropagation()}>
@@ -421,45 +446,67 @@ export function PresetEditorModal(props: {
                     <input className="input" value={String(payload['Model'] ?? '')} onChange={(e) => setField('Model', e.target.value)} />
                   </PresetFieldRow>
                   <PresetFieldRow label={t('presetEditor.lensSystem')}>
-                    <select
-                      className="input"
-                      value={lensSystem}
-                      onChange={(e) => {
-                        const v = e.target.value as 'fixed' | 'interchangeable'
-                        setLensSystem(v)
-                        if (v === 'fixed') {
-                          setLensMount('')
-                          setLensAdaptable(false)
-                        }
-                      }}
+                    <div
+                      className="preset-editor-lens-system-toggle"
+                      role="radiogroup"
+                      aria-label={t('presetEditor.lensSystem')}
                     >
-                      <option value="interchangeable">{t('presetEditor.interchangeable')}</option>
-                      <option value="fixed">{t('presetEditor.fixedLens')}</option>
-                    </select>
+                      <button
+                        type="button"
+                        role="radio"
+                        className={[
+                          'preset-editor-lens-system-option',
+                          lensSystem === 'interchangeable' ? 'preset-editor-lens-system-option--selected' : ''
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        aria-checked={lensSystem === 'interchangeable'}
+                        onClick={() => onLensSystemChange('interchangeable')}
+                      >
+                        {t('presetEditor.interchangeable')}
+                      </button>
+                      <button
+                        type="button"
+                        role="radio"
+                        className={[
+                          'preset-editor-lens-system-option',
+                          lensSystem === 'fixed' ? 'preset-editor-lens-system-option--selected' : ''
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        aria-checked={lensSystem === 'fixed'}
+                        onClick={() => onLensSystemChange('fixed')}
+                      >
+                        {t('presetEditor.fixedLens')}
+                      </button>
+                    </div>
                   </PresetFieldRow>
                   {lensSystem === 'interchangeable' && (
                     <PresetFieldRow label={t('presetEditor.lensMount')}>
-                      <div className="modal-preset-editor-mount-row">
-                        <input
-                          className="input modal-preset-editor-mount-input"
-                          list="mount-list"
-                          value={lensMount}
-                          onChange={(e) => setLensMount(e.target.value)}
-                        />
-                        <label className="form-label-inline modal-preset-editor-adapters-label">
+                      <>
+                        <div className="modal-preset-editor-mount-row">
                           <input
-                            type="checkbox"
-                            checked={lensAdaptable}
-                            onChange={(e) => setLensAdaptable(e.target.checked)}
+                            className="input modal-preset-editor-mount-input"
+                            list="mount-list"
+                            value={lensMount}
+                            onChange={(e) => setLensMount(e.target.value)}
                           />
-                          <span>{t('presetEditor.lensAdaptable')}</span>
-                        </label>
-                      </div>
-                      <datalist id="mount-list">
-                        {mounts.map((m) => (
-                          <option key={m} value={m} />
-                        ))}
-                      </datalist>
+                          <label className="form-label-inline modal-preset-editor-adapters-label">
+                            <input
+                              type="checkbox"
+                              checked={lensAdaptable}
+                              onChange={(e) => setLensAdaptable(e.target.checked)}
+                            />
+                            <span>{t('presetEditor.lensAdaptable')}</span>
+                          </label>
+                        </div>
+                        <datalist id="mount-list">
+                          {mounts.map((m) => (
+                            <option key={m} value={m} />
+                          ))}
+                        </datalist>
+                        <p className="preset-editor-hint">{t('presetEditor.lensMountHint')}</p>
+                      </>
                     </PresetFieldRow>
                   )}
                   {lensSystem === 'fixed' && (
@@ -548,6 +595,7 @@ export function PresetEditorModal(props: {
                           <option key={m} value={m} />
                         ))}
                       </datalist>
+                      <p className="preset-editor-hint">{t('presetEditor.lensMountHint')}</p>
                     </>
                   </PresetFieldRow>
                   <PresetFieldRow label={t('presetEditor.lens')}>

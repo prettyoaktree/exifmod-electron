@@ -109,6 +109,47 @@ describe('matchStateForCameraCategory', () => {
   })
 })
 
+describe('buildCameraPresetDraft', () => {
+  it('includes empty prefillFixedLensIdentity when EXIF has no lens tags', () => {
+    expect(buildCameraPresetDraft({ Make: 'FED', Model: 'FED 1' })).toEqual({
+      payload: { Make: 'FED', Model: 'FED 1' },
+      lens_system: 'interchangeable',
+      lens_mount: null,
+      lens_adaptable: false,
+      fixed_shutter: false,
+      fixed_aperture: false,
+      prefillFixedLensIdentity: { LensMake: '', LensModel: '' }
+    })
+  })
+
+  it('sets prefillFixedLensIdentity from lens EXIF (same derivation as lens presets)', () => {
+    const d = buildCameraPresetDraft({
+      Make: 'Canon',
+      Model: 'Canon P',
+      LensMake: 'Canon',
+      LensModel: 'Canon 35mm f/2'
+    })
+    expect(d.payload).toEqual({ Make: 'Canon', Model: 'Canon P' })
+    expect(d.prefillFixedLensIdentity).toEqual({
+      LensMake: 'Canon',
+      LensModel: 'Canon 35mm f/2'
+    })
+  })
+
+  it('merges legacy Lens tag into prefillFixedLensIdentity', () => {
+    const d = buildCameraPresetDraft({
+      Make: 'Minolta',
+      Model: 'X-700',
+      Lens: 'Minolta',
+      LensModel: 'Minolta Rokkor MD 50mm f/2'
+    })
+    expect(d.prefillFixedLensIdentity).toEqual({
+      LensMake: 'Minolta',
+      LensModel: 'Minolta Rokkor MD 50mm f/2'
+    })
+  })
+})
+
 describe('matchStateForFilmCategory', () => {
   const cat = emptyCatalog({ film_values: ['None', 'Kodak Gold 200 (ISO 200)'] })
   it('uses infer string when present', () => {

@@ -1817,6 +1817,50 @@ table.mapping.preset-modal-mapping .preset-modal-stack {
   word-break: break-word;
 }
 
+.preset-editor-lens-system-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.preset-editor-lens-system-option {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.45rem 0.65rem;
+  font: inherit;
+  font-size: 0.875rem;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.preset-editor-lens-system-option + .preset-editor-lens-system-option {
+  border-left: 1px solid var(--border);
+}
+
+.preset-editor-lens-system-option:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.preset-editor-lens-system-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.preset-editor-lens-system-option--selected {
+  background: rgba(var(--accent-rgb), 0.12);
+  font-weight: 500;
+}
+
 .modal-preset-editor-combo-row {
   display: flex;
   align-items: center;
