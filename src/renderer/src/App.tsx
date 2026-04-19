@@ -2948,7 +2948,17 @@ export function App(): React.ReactElement {
           cloneFromId={presetEditor.mode === 'new' ? presetEditor.cloneFromId ?? null : null}
           initialDraft={presetEditor.mode === 'new' ? presetEditor.initialDraft ?? null : null}
           onClose={() => setPresetEditor(null)}
-          onSaved={() => void reloadCatalog()}
+          onSaved={(payload) => {
+            const cat = payload.category
+            const key = idKeyForCategory(cat)
+            const clearKey = categoryToClearKey(cat)
+            updatePendingForPaths(stagingPaths, (s) => ({
+              ...s,
+              [key]: payload.id,
+              [clearKey]: false
+            }))
+            void reloadCatalog()
+          }}
         />
       )}
       <TutorialModal open={tutorialOpen} firstRun={tutorialFirstRun} onRequestClose={closeTutorial} />

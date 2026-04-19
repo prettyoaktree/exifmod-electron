@@ -186,7 +186,8 @@ export function PresetEditorModal(props: {
   /** New preset: prefill payload and controls from file metadata (name stays empty). */
   initialDraft?: PresetInitialDraft | null
   onClose: () => void
-  onSaved: () => void
+  /** Fired after a successful save with the catalog row id so the main window can select it. */
+  onSaved: (payload: { id: number; category: Cat }) => void
 }): React.ReactElement {
   const { t } = useTranslation()
   const { mode, category, editId, cloneFromId = null, initialDraft = null, onClose, onSaved } = props
@@ -340,7 +341,7 @@ export function PresetEditorModal(props: {
         toSave = normalizeAuthorPayloadForSave(toSave)
       }
       if (mode === 'new') {
-        await window.exifmod.createPreset({
+        const newId = await window.exifmod.createPreset({
           category: cat,
           name,
           payload: toSave,
@@ -355,6 +356,7 @@ export function PresetEditorModal(props: {
           fixed_shutter: category === 'Camera' ? fixedShutter : undefined,
           fixed_aperture: category === 'Camera' ? fixedAperture : undefined
         })
+        onSaved({ id: newId, category })
       } else if (editId != null) {
         await window.exifmod.updatePreset({
           id: editId,
@@ -371,8 +373,10 @@ export function PresetEditorModal(props: {
           fixed_shutter: category === 'Camera' ? fixedShutter : undefined,
           fixed_aperture: category === 'Camera' ? fixedAperture : undefined
         })
+        onSaved({ id: editId, category })
+      } else {
+        return
       }
-      onSaved()
       onClose()
     } catch (e) {
       setErr(unwrapIpcErrorMessage(e))
