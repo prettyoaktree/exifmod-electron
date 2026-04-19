@@ -655,13 +655,9 @@ table.mapping col.mapping-col-remove {
   width: 4.5rem;
 }
 
+/* Main + Description/Keywords tables share five columns: Attribute | Current | Action (copy / create preset) | New | Remove */
 table.mapping col.mapping-col-current,
 table.mapping col.mapping-col-new {
-  width: calc((100% - 6.43rem - 4.5rem) / 2);
-}
-
-table.mapping.mapping-desc-kw col.mapping-col-current,
-table.mapping.mapping-desc-kw col.mapping-col-new {
   width: calc((100% - 6.43rem - 2.6rem - 4.5rem) / 2);
 }
 
@@ -702,26 +698,9 @@ table.mapping td:first-child {
 }
 
 table.mapping td:nth-child(2),
-table.mapping td:nth-child(3) {
+table.mapping td:nth-child(4) {
   overflow-wrap: anywhere;
   word-break: break-word;
-}
-
-table.mapping.mapping-desc-kw td:nth-child(4) {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.meta-current-value-with-action {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-width: 0;
-}
-
-.meta-current-value-with-action > span {
-  flex: 1;
-  min-width: 0;
 }
 
 table.mapping th:last-child,

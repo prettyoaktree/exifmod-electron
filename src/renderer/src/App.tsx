@@ -2007,6 +2007,7 @@ export function App(): React.ReactElement {
                 <colgroup>
                   <col className="mapping-col-attribute" />
                   <col className="mapping-col-current" />
+                  <col className="mapping-col-copy" />
                   <col className="mapping-col-new" />
                   <col className="mapping-col-remove" />
                 </colgroup>
@@ -2014,6 +2015,7 @@ export function App(): React.ReactElement {
                   <tr>
                     <th>{t('ui.attribute')}</th>
                     <th>{t('ui.currentValue')}</th>
+                    <th className="mapping-col-copy-head" aria-hidden="true" />
                     <th>{t('ui.newValue')}</th>
                     <th className="mapping-col-remove-head">{t('ui.removeColumn')}</th>
                   </tr>
@@ -2045,53 +2047,53 @@ export function App(): React.ReactElement {
                       <tr key={cat}>
                         <td>{catLabel(cat)}</td>
                         <td>
-                          <div className="meta-current-value-with-action">
-                            <span
-                              className={
-                                currentValueText === 'Multiple' || !String(currentValueText ?? '').trim()
-                                  ? 'meta-current-value-muted'
-                                  : undefined
-                              }
+                          <span
+                            className={
+                              currentValueText === 'Multiple' || !String(currentValueText ?? '').trim()
+                                ? 'meta-current-value-muted'
+                                : undefined
+                            }
+                          >
+                            {currentValueText === 'Multiple'
+                              ? t('ui.multiple')
+                              : String(currentValueText ?? '').trim() || emptyCurrentDisplay}
+                          </span>
+                        </td>
+                        <td className="mapping-col-copy-cell">
+                          {metadataPresetFromFile.show[cat] && presetFromFileDraft ? (
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              className="meta-inline-icon-btn meta-create-preset-from-exif-btn"
+                              title={t('ui.createPresetFromMetadataTitle')}
+                              aria-label={t('ui.createPresetFromMetadataAria')}
+                              onClick={() => {
+                                setPresetEditor({
+                                  mode: 'new',
+                                  category: cat,
+                                  editId: null,
+                                  cloneFromId: null,
+                                  initialDraft: presetFromFileDraft,
+                                  targetPaths: stagingPaths.length ? [...stagingPaths] : undefined
+                                })
+                              }}
                             >
-                              {currentValueText === 'Multiple'
-                                ? t('ui.multiple')
-                                : String(currentValueText ?? '').trim() || emptyCurrentDisplay}
-                            </span>
-                            {metadataPresetFromFile.show[cat] && presetFromFileDraft ? (
-                              <button
-                                type="button"
-                                tabIndex={-1}
-                                className="meta-inline-icon-btn meta-create-preset-from-exif-btn"
-                                title={t('ui.createPresetFromMetadataTitle')}
-                                aria-label={t('ui.createPresetFromMetadataAria')}
-                                onClick={() => {
-                                  setPresetEditor({
-                                    mode: 'new',
-                                    category: cat,
-                                    editId: null,
-                                    cloneFromId: null,
-                                    initialDraft: presetFromFileDraft,
-                                    targetPaths: stagingPaths.length ? [...stagingPaths] : undefined
-                                  })
-                                }}
+                              <svg
+                                className="meta-create-preset-from-exif-icon"
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                aria-hidden
+                                focusable="false"
                               >
-                                <svg
-                                  className="meta-create-preset-from-exif-icon"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  viewBox="0 0 20 20"
-                                  fill="currentColor"
-                                  aria-hidden
-                                  focusable="false"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
-                              </button>
-                            ) : null}
-                          </div>
+                                <path
+                                  fillRule="evenodd"
+                                  d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </button>
+                          ) : null}
                         </td>
                         <td className="mapping-col-new-combo-cell">
                           <MetadataPresetCombo
@@ -2147,6 +2149,7 @@ export function App(): React.ReactElement {
                           : exposureCurrentDisplay || emptyCurrentDisplay}
                       </span>
                     </td>
+                    <td className="mapping-col-copy-cell" />
                     <td>
                       <input
                         ref={bindMetaRef(4)}
@@ -2197,6 +2200,7 @@ export function App(): React.ReactElement {
                           : fnCurrentDisplay || emptyCurrentDisplay}
                       </span>
                     </td>
+                    <td className="mapping-col-copy-cell" />
                     <td>
                       <input
                         ref={bindMetaRef(5)}
