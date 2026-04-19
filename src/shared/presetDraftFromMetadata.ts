@@ -3,12 +3,16 @@
  * Naming aligns with bundled seeds and {@link displayNameForRecord} in the main-process store.
  */
 
+import { authorIdentityFromMetadata } from './authorIdentity.js'
 import {
   filmStockKeywordFromDisplayName,
   normalizeFilmPresetPayloadForMerge,
   stripFilmStockSuffix
 } from './filmKeywords.js'
+import { presetPayloadSatisfiedByFileMetadata } from './exifPayloadDiff.js'
 import type { CameraMetadata, ConfigCatalog } from './types.js'
+
+export { authorIdentityFromMetadata } from './authorIdentity.js'
 
 export type PresetInitialDraft = {
   payload: Record<string, unknown>
@@ -131,10 +135,6 @@ export function filmDisplayCandidateFromMetadata(meta: Record<string, unknown>):
   return display
 }
 
-export function authorIdentityFromMetadata(meta: Record<string, unknown>): string {
-  return String(meta['Author Name'] ?? meta['Creator'] ?? meta['Artist'] ?? '').trim()
-}
-
 /**
  * `mount.toLowerCase().includes(lensMake.toLowerCase())` — returns the mount iff exactly one match.
  */
@@ -254,8 +254,17 @@ export function matchStateForCameraCategory(
   if (u === 'multiple') return { kind: 'multiple' }
   const displayName = displays[0]!.trim()
   if (!displayName) return { kind: 'no_data' }
-  if (catalogCoversExifIdentity(catalog.camera_values, catalog.camera_identity_by_name, displayName))
+  const cameraName = resolvePresetNameCoveringIdentity(
+    catalog.camera_values,
+    catalog.camera_identity_by_name,
+    displayName
+  )
+  if (
+    cameraName &&
+    presetPayloadSatisfiedByFileMetadata('camera', catalog.camera_payload_by_name[cameraName] ?? {}, metas[0]!)
+  ) {
     return { kind: 'matched' }
+  }
   return { kind: 'unmatched', displayName, draft: buildCameraPresetDraft(metas[0]!) }
 }
 
@@ -270,8 +279,17 @@ export function matchStateForLensCategory(
   if (u === 'multiple') return { kind: 'multiple' }
   const displayName = displays[0]!.trim()
   if (!displayName) return { kind: 'no_data' }
-  if (catalogCoversExifIdentity(catalog.lens_values, catalog.lens_identity_by_name, displayName))
+  const lensName = resolvePresetNameCoveringIdentity(
+    catalog.lens_values,
+    catalog.lens_identity_by_name,
+    displayName
+  )
+  if (
+    lensName &&
+    presetPayloadSatisfiedByFileMetadata('lens', catalog.lens_payload_by_name[lensName] ?? {}, metas[0]!)
+  ) {
     return { kind: 'matched' }
+  }
   return { kind: 'unmatched', displayName, draft: buildLensPresetDraft(metas[0]!, suggestedMounts) }
 }
 
@@ -306,8 +324,17 @@ export function matchStateForFilmCategory(
   const display = filmCurrentDisplayForStaging(metas, inferFilmResolved)
   if (display === 'Multiple') return { kind: 'multiple' }
   if (!display.trim()) return { kind: 'no_data' }
-  if (catalogCoversExifIdentity(catalog.film_values, catalog.film_identity_by_name, display))
+  const filmName = resolvePresetNameCoveringIdentity(
+    catalog.film_values,
+    catalog.film_identity_by_name,
+    display
+  )
+  if (
+    filmName &&
+    presetPayloadSatisfiedByFileMetadata('film', catalog.film_payload_by_name[filmName] ?? {}, metas[0]!)
+  ) {
     return { kind: 'matched' }
+  }
   return { kind: 'unmatched', displayName: display, draft: buildFilmPresetDraft(metas[0]!) }
 }
 
@@ -318,8 +345,17 @@ export function matchStateForAuthorCategory(catalog: ConfigCatalog, metas: Recor
   if (u === 'multiple') return { kind: 'multiple' }
   const displayName = ids[0]!.trim()
   if (!displayName) return { kind: 'no_data' }
-  if (catalogCoversExifIdentity(catalog.author_values, catalog.author_identity_by_name, displayName))
+  const authorName = resolvePresetNameCoveringIdentity(
+    catalog.author_values,
+    catalog.author_identity_by_name,
+    displayName
+  )
+  if (
+    authorName &&
+    presetPayloadSatisfiedByFileMetadata('author', catalog.author_payload_by_name[authorName] ?? {}, metas[0]!)
+  ) {
     return { kind: 'matched' }
+  }
   return { kind: 'unmatched', displayName, draft: buildAuthorPresetDraft(metas[0]!) }
 }
 

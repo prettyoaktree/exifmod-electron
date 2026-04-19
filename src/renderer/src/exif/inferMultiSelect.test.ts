@@ -18,6 +18,10 @@ function catalog(over: Partial<ConfigCatalog> = {}): ConfigCatalog {
     lens_identity_by_name: {},
     author_identity_by_name: {},
     film_identity_by_name: {},
+    camera_payload_by_name: { None: {} },
+    lens_payload_by_name: { None: {} },
+    author_payload_by_name: { None: {} },
+    film_payload_by_name: { None: {} },
     ...over
   }
 }

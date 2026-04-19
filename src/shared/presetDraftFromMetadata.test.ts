@@ -18,6 +18,7 @@ import {
   matchStateForLensCategory
 } from './presetDraftFromMetadata.js'
 import type { ConfigCatalog } from './types.js'
+import { normalizeFilmPresetPayloadForMerge } from './filmKeywords.js'
 
 function emptyCatalog(over: Partial<ConfigCatalog> = {}): ConfigCatalog {
   return {
@@ -35,6 +36,10 @@ function emptyCatalog(over: Partial<ConfigCatalog> = {}): ConfigCatalog {
     lens_identity_by_name: {},
     author_identity_by_name: {},
     film_identity_by_name: {},
+    camera_payload_by_name: { None: {} },
+    lens_payload_by_name: { None: {} },
+    author_payload_by_name: { None: {} },
+    film_payload_by_name: { None: {} },
     ...over
   }
 }
@@ -88,14 +93,19 @@ describe('catalogHasPresetName', () => {
 })
 
 describe('matchStateForCameraCategory', () => {
-  const cat = emptyCatalog({ camera_values: ['None', 'Canon P'] })
+  const cat = emptyCatalog({
+    camera_values: ['None', 'Canon P'],
+    camera_identity_by_name: { 'Canon P': 'Canon P' },
+    camera_payload_by_name: { None: {}, 'Canon P': { Make: 'Canon', Model: 'Canon P' } }
+  })
   it('matches existing preset', () => {
     expect(matchStateForCameraCategory(cat, [{ Make: 'Canon', Model: 'Canon P' }])).toEqual({ kind: 'matched' })
   })
   it('matches when preset display name differs but payload identity matches EXIF', () => {
     const renamed = emptyCatalog({
       camera_values: ['None', 'My preset'],
-      camera_identity_by_name: { 'My preset': 'Canon P' }
+      camera_identity_by_name: { 'My preset': 'Canon P' },
+      camera_payload_by_name: { None: {}, 'My preset': { Make: 'Canon', Model: 'Canon P' } }
     })
     expect(matchStateForCameraCategory(renamed, [{ Make: 'Canon', Model: 'Canon P' }])).toEqual({ kind: 'matched' })
   })
@@ -151,7 +161,15 @@ describe('buildCameraPresetDraft', () => {
 })
 
 describe('matchStateForFilmCategory', () => {
-  const cat = emptyCatalog({ film_values: ['None', 'Kodak Gold 200 (ISO 200)'] })
+  const filmPayload = normalizeFilmPresetPayloadForMerge({
+    Keywords: ['film', 'Kodak Gold 200 Film Stock'],
+    ISO: 200
+  })
+  const cat = emptyCatalog({
+    film_values: ['None', 'Kodak Gold 200 (ISO 200)'],
+    film_identity_by_name: { 'Kodak Gold 200 (ISO 200)': 'Kodak Gold 200 (ISO 200)' },
+    film_payload_by_name: { None: {}, 'Kodak Gold 200 (ISO 200)': filmPayload }
+  })
   it('uses infer string when present', () => {
     expect(
       matchStateForFilmCategory(cat, [{ Keywords: ['film', 'Kodak Gold 200 Film Stock'], ISO: 200 }], [
@@ -181,19 +199,37 @@ describe('filmCurrentDisplayForStaging', () => {
 })
 
 describe('matchStateForAuthorCategory', () => {
-  const cat = emptyCatalog({ author_values: ['None', 'Jane Doe'] })
+  const cat = emptyCatalog({
+    author_values: ['None', 'Jane Doe'],
+    author_identity_by_name: { 'Jane Doe': 'Jane Doe' },
+    author_payload_by_name: {
+      None: {},
+      'Jane Doe': { Author: 'Person', Artist: 'Jane Doe', Creator: 'Jane Doe' }
+    }
+  })
   it('matches', () => {
     expect(matchStateForAuthorCategory(cat, [{ Artist: 'Jane Doe' }])).toEqual({ kind: 'matched' })
   })
 })
 
 describe('matchStateForLensCategory', () => {
-  const cat = emptyCatalog({ lens_values: ['None', 'Minolta Rokkor MD 50mm f/2'] })
+  const cat = emptyCatalog({
+    lens_values: ['None', 'Minolta Rokkor MD 50mm f/2'],
+    lens_identity_by_name: { 'Minolta Rokkor MD 50mm f/2': 'Minolta Rokkor MD 50mm f/2' },
+    lens_payload_by_name: {
+      None: {},
+      'Minolta Rokkor MD 50mm f/2': { LensMake: 'Minolta', LensModel: 'Minolta Rokkor MD 50mm f/2' }
+    }
+  })
   const mounts = ['Minolta MD']
   it('matches when preset display name differs but payload identity matches EXIF', () => {
     const renamed = emptyCatalog({
       lens_values: ['None', 'My lens'],
-      lens_identity_by_name: { 'My lens': 'Minolta Rokkor MD 50mm f/2' }
+      lens_identity_by_name: { 'My lens': 'Minolta Rokkor MD 50mm f/2' },
+      lens_payload_by_name: {
+        None: {},
+        'My lens': { LensMake: 'Minolta', LensModel: 'Minolta Rokkor MD 50mm f/2' }
+      }
     })
     expect(
       matchStateForLensCategory(
@@ -241,6 +277,14 @@ describe('analyzeCameraFirstStaging', () => {
     camera_values: ['None', 'Canon P'],
     camera_file_map: { 'Canon P': 42 },
     camera_identity_by_name: { 'Canon P': 'Canon P' },
+    camera_payload_by_name: {
+      None: {},
+      'Canon P': {
+        Make: 'Canon',
+        Model: 'Canon P',
+        LensModel: 'Canon 35mm f/2'
+      }
+    },
     camera_metadata_map: {
       'Canon P': {
         lens_system: 'fixed',
@@ -261,19 +305,22 @@ describe('analyzeCameraFirstStaging', () => {
     expect(r.autoCameraId).toBe(42)
   })
 
-  it('FLC incomplete: body matches catalog FLC but lens disagrees — suggest Camera +, no auto camera id', () => {
+  it('FLC incomplete: integrated lens in preset does not match file — strict match fails; suggest new camera preset', () => {
     const r = analyzeCameraFirstStaging(flcCatalog, [
       { Make: 'Canon', Model: 'Canon P', LensModel: 'Wrong Lens' }
     ])
-    expect(r.skipLensCatalogMatch).toBe(true)
+    expect(r.cameraLine.kind).toBe('unmatched')
+    expect(r.skipLensCatalogMatch).toBe(false)
     expect(r.suggestCameraPresetFromMetadata).toBe(true)
     expect(r.autoCameraId).toBe(null)
+    expect(r.matchedCameraPresetName).toBe(null)
   })
 
   const ilcCatalog = emptyCatalog({
     camera_values: ['None', 'Sony A7'],
     camera_file_map: { 'Sony A7': 7 },
     camera_identity_by_name: { 'Sony A7': 'Sony A7' },
+    camera_payload_by_name: { None: {}, 'Sony A7': { Make: 'Sony', Model: 'Sony A7' } },
     camera_metadata_map: {
       'Sony A7': {
         lens_system: 'interchangeable',
@@ -285,6 +332,7 @@ describe('analyzeCameraFirstStaging', () => {
     lens_values: ['None', 'FE 50mm'],
     lens_file_map: { 'FE 50mm': 99 },
     lens_identity_by_name: { 'FE 50mm': 'FE 50mm' },
+    lens_payload_by_name: { None: {}, 'FE 50mm': { LensModel: 'FE 50mm' } },
     lens_metadata_map: { 'FE 50mm': { lens_mount: 'E' } }
   })
 

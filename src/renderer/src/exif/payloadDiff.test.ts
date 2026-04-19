@@ -58,6 +58,53 @@ describe('diffWritePayloadFromMetadata', () => {
     const meta = { Make: 'Nikon', Model: '5D' }
     expect(diffWritePayloadFromMetadata(proposed, meta)).toEqual({ Make: 'Canon' })
   })
+
+  it('treats merged author preset as no-op when XMP Creator holds identity (no EXIF Author)', () => {
+    const proposed = {
+      Author: 'Person',
+      Creator: 'Alon Yaffe',
+      Copyright: '© 2026 Alon Yaffe. All rights reserved.'
+    }
+    const meta = {
+      'XMP:Creator': ['Alon Yaffe'],
+      Copyright: '© 2026 Alon Yaffe. All rights reserved.'
+    }
+    expect(writePayloadMatchesFile(proposed, meta)).toBe(true)
+  })
+
+  it('matches Creator when ExifTool returns XMP dc:creator lang-alt objects (Lightroom)', () => {
+    const proposed = { Creator: 'Alon Yaffe' }
+    const meta = {
+      'XMP:Creator': [{ lang: 'x-default', value: 'Alon Yaffe' }]
+    }
+    expect(writePayloadMatchesFile(proposed, meta)).toBe(true)
+  })
+
+  it('matches Copyright when Rights is only in XMP:Rights as lang-alt struct', () => {
+    const proposed = { Copyright: '© 2026 Alon Yaffe. All rights reserved.' }
+    const meta = {
+      'XMP:Rights': [{ lang: 'x-default', value: '© 2026 Alon Yaffe. All rights reserved.' }]
+    }
+    expect(writePayloadMatchesFile(proposed, meta)).toBe(true)
+  })
+
+  it('matches Copyright when file uses IPTC:Copyright and preset uses formatted notice', () => {
+    const proposed = { Copyright: '© 2026 Alon Yaffe. All rights reserved.' }
+    const meta = { 'IPTC:Copyright': '© 2026 Alon Yaffe. All rights reserved.' }
+    expect(writePayloadMatchesFile(proposed, meta)).toBe(true)
+  })
+
+  it('treats thin EXIF Copyright (photographer name only) as matching full formatted notice', () => {
+    const proposed = { Copyright: '© 2026 Alon Yaffe. All rights reserved.' }
+    const meta = { Copyright: 'Alon Yaffe' }
+    expect(writePayloadMatchesFile(proposed, meta)).toBe(true)
+  })
+
+  it('matches Creator when identity exists only as thin Copyright line', () => {
+    const proposed = { Creator: 'Alon Yaffe' }
+    const meta = { Copyright: 'Alon Yaffe' }
+    expect(writePayloadMatchesFile(proposed, meta)).toBe(true)
+  })
 })
 
 describe('diffToAttributeHighlights', () => {

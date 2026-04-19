@@ -38,6 +38,14 @@ export interface ConfigCatalog {
   lens_identity_by_name: Record<string, string>
   author_identity_by_name: Record<string, string>
   film_identity_by_name: Record<string, string>
+  /**
+   * Saved preset JSON by display name (for strict “preset matches file” checks).
+   * Populated in `loadCatalog`; `None` maps to `{}`.
+   */
+  camera_payload_by_name: Record<string, Record<string, unknown>>
+  lens_payload_by_name: Record<string, Record<string, unknown>>
+  author_payload_by_name: Record<string, Record<string, unknown>>
+  film_payload_by_name: Record<string, Record<string, unknown>>
 }
 
 export interface PresetRecord {
