@@ -16,6 +16,10 @@
 #   APP_REPO         — default: prettyoaktree/exifmod-electron
 #   DRY_RUN=1        — print actions only (no git/gh changes)
 #   SKIP_SHA_REFRESH=1 — copy YAML as-is (do not patch InstallerSha256; not recommended)
+#
+# The script removes all `.DS_Store` under WINGET_PKGS_DIR before checking for a clean tree.
+# (Upstream’s `!manifests/**` keeps `manifests/**/.DS_Store` from being ignored, so they show as
+# untracked; macOS recreates them when you browse in Finder.)
 
 set -euo pipefail
 
@@ -57,6 +61,13 @@ if [[ ! -d "${WINGET_PKGS_DIR}/.git" ]]; then
   echo "error: WINGET_PKGS_DIR must be a git clone (missing .git under ${WINGET_PKGS_DIR})" >&2
   exit 1
 fi
+
+_ds_store="$(find "${WINGET_PKGS_DIR}" -name '.DS_Store' -type f 2>/dev/null || true)"
+if [[ -n "${_ds_store}" ]]; then
+  echo "Removing .DS_Store file(s) under WINGET_PKGS_DIR (untracked; see script header)…"
+  find "${WINGET_PKGS_DIR}" -name '.DS_Store' -type f -delete
+fi
+unset _ds_store
 
 if [[ -n "$(git -C "${WINGET_PKGS_DIR}" status --porcelain 2>/dev/null)" ]]; then
   echo "error: winget-pkgs clone has uncommitted changes: ${WINGET_PKGS_DIR}" >&2
