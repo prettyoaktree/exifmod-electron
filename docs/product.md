@@ -57,7 +57,7 @@ Tag merge order and field behavior (for reference): **[exif-preset-mapping.md](e
 
 ## Editing metadata
 
-For the current selection, the app shows two metadata tables. The first table uses four columns: **Attribute**, **Current Value**, **New Value**, and **Remove** (Camera, Lens, Film, Author, Shutter Speed, Aperture). A subsection **Description and keywords** contains the AI control, followed by a second table with five columns: **Attribute**, **Current Value**, **Copy**, **New Value**, and **Remove**. **Start Ollama** and related hints live in the **Ollama** area of the bottom status bar (see **Status bar** below).
+For the current selection, the app shows two metadata tables. The first table uses four columns: **Attribute**, **Current Value**, **New Value**, and **Remove** (Camera, Lens, Film, Author, Shutter Speed, Aperture). A subsection **Description and keywords** contains the AI control, followed by a second table with five columns: **Attribute**, **Current Value**, **Copy**, **New Value**, and **Remove**. **Start Ollama** and related hints live in the **Generative AI** segment of the bottom status bar (see **Status bar** below).
 
 ### Presets and fields
 
@@ -84,9 +84,13 @@ When multiple files are selected, the UI can show **Multiple** where values diff
 
 ## Optional local AI (Ollama)
 
-EXIFmod can use a **local Ollama** server to suggest **Description** and **Keywords** from a downscaled image preview (smaller than the main preview so less data is sent to the model). You need **Ollama** with at least one **vision** model. By default the app uses the model tag **gemma4**; you can point to another model with the **EXIFMOD_OLLAMA_MODEL** environment variable. The **Generative AI (Ollama)** area in the **status bar** can show and **edit** the **system prompt** (saved on this computer). The prompt must include a special placeholder the app uses for the description size limit; the default text includes it—only change it if you know you need a custom instruction. You can set **EXIFMOD_OLLAMA_HOST** (local server only; default is **[http://127.0.0.1:11434](http://127.0.0.1:11434)**). On startup the app checks whether Ollama is reachable; if it is not running, use the **Ollama** segment in the **status bar** to start the server when prompted. When a describe run **finishes**, a short **completion line** can appear in that panel; the panel does **not** open automatically.
+EXIFmod can use a **local Ollama** server to suggest **Description** and **Keywords** from a downscaled JPEG of the image (smaller than the on-screen preview so less data is sent to the model). You need **Ollama** with at least one **vision** model. By default the app uses the model tag **gemma4**; override with **EXIFMOD_OLLAMA_MODEL**. The server address must be loopback-only; default base URL is **[http://127.0.0.1:11434](http://127.0.0.1:11434)** (**EXIFMOD_OLLAMA_HOST**).
 
-For one selected file, AI runs immediately; for several files, the app asks for confirmation, then processes sequentially. Per-file failures do not stop the batch. When you quit EXIFmod: if Ollama **was already running** when the app started, EXIFmod **does not** stop it; if EXIFmod **started** `**ollama serve`** after you opted in, it **terminates** that process on quit.
+In the **status bar**, the **Generative AI (Ollama)** panel can show and **edit** the describe **instructions** (the UI label is “system prompt”; text is saved on this computer). The template **must** include the literal token `{{MAX_DESC_BYTES}}`, which the app replaces with the per-file UTF-8 byte cap for the description string. The built-in default describes the required JSON shape in prose only—**avoid pasting long sample JSON or fixed example sentences** into a custom prompt, or some models will echo them instead of describing your photo. If the model returns a known template echo, the app refuses to apply it and shows an error so you can retry or edit the prompt.
+
+On startup the app checks whether Ollama is reachable; if the server is not running, use the same status segment to start it when prompted. When a describe run **finishes**, a short **completion line** can appear in that panel; the panel does **not** open automatically.
+
+For one selected file, AI runs immediately; for several files, the app asks for confirmation, then processes sequentially. Per-file failures do not stop the batch. When you quit EXIFmod: if Ollama **was already running** when the app started, EXIFmod **does not** stop it; if EXIFmod **started** `ollama serve` after you opted in, it **terminates** that process on quit.
 
 If you try to close the app while there are **pending metadata changes** that would alter files on write, EXIFmod shows a confirmation dialog.
 
@@ -141,7 +145,7 @@ From the **File** menu:
 
 ## Status bar
 
-Along the bottom of the main window, **Application** (readiness, ExifTool, preset catalog), optional **Ollama**, and—on packaged macOS and Windows—**Updates** each show a **status indicator**, a short label, and an optional **detail panel** for explanations and actions (for example starting Ollama or downloading an update). On launch, blocking problems (such as missing ExifTool) can open the Application detail automatically.
+Along the bottom of the main window, **Application** (readiness, ExifTool, preset catalog), optional **Generative AI** (Ollama), and—on packaged macOS and Windows—**Updates** each show a **status indicator**, a short label, and an optional **detail panel** for explanations and actions (for example starting Ollama or downloading an update). On launch, blocking problems (such as missing ExifTool) can open the Application detail automatically.
 
 **Full reference** (all states and messages): **[status-footer.md](status-footer.md)**.
 
