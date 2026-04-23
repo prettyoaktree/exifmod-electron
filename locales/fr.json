@@ -185,8 +185,8 @@
     "ollamaSystemPromptTextareaLabel": "Rôle (prompt) système Ollama",
     "ollamaSystemPromptMissingPlaceholder": "Le texte doit contenir exactement {{ph}} pour que l’appli puisse insérer la limite d’octets.",
     "metadata": "Métadonnées",
-    "metadataOneFileSelected": "Métadonnées — 1 fichier sélectionné",
-    "metadataFilesSelected": "Métadonnées — {{count}} fichiers sélectionnés",
+    "metadataMoreFiles": "+ {{count}} de plus",
+    "metadataCompactSelection": "Métadonnées — {{count}} fichiers",
     "managePresets": "Gérer les préréglages",
     "managePresetsCategory": {
       "camera": "Appareils photo",

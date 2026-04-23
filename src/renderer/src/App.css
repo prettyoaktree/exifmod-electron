@@ -103,6 +103,15 @@ body {
   text-transform: none;
   letter-spacing: -0.01em;
   color: var(--text);
+  width: 100%;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.panel-pane-title-stack .panel-pane-title .panel-pane-title-files,
+.panel-pane-title-stack .panel-pane-title .panel-pane-title-compact {
+  font-weight: 400;
+  font-size: 0.875rem;
 }
 
 .panel-pane-shortcut-hint {

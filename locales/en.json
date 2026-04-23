@@ -185,8 +185,8 @@
     "ollamaEmptySoftFailure": "The model returned no description or keywords. Try again.",
     "ollamaEchoTemplateFailure": "The model returned sample text from the describe prompt instead of the image. Try again, or shorten or edit the system prompt (Generative AI).",
     "metadata": "Metadata",
-    "metadataOneFileSelected": "Metadata - 1 File Selected",
-    "metadataFilesSelected": "Metadata - {{count}} Files Selected",
+    "metadataMoreFiles": "+ {{count}} more",
+    "metadataCompactSelection": "Metadata — {{count}} files",
     "managePresets": "Manage Presets",
     "managePresetsCategory": {
       "camera": "Cameras",

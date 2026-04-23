@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode
+} from 'react'
 import { anyStagedClear, mergeRemoveTriState, type RemoveTriState } from './metaRemoveTriState.js'
 import { useTranslation } from 'react-i18next'
 import { withCopyrightAsWrittenToExif } from '@shared/copyrightFormat.js'
@@ -63,6 +72,7 @@ import { unwrapIpcErrorMessage } from './ipcError.js'
 import { truncateMiddle } from './format/truncateMiddle.js'
 import { StatusFooter, type ApplicationPhase } from './StatusFooter.js'
 import type { UpdaterUiPayload } from '@shared/updaterUi.js'
+import { measureTextWidthCanvas, pickMetadataHeadingText } from './metadataHeading.js'
 
 const CATS: Cat[] = ['Camera', 'Lens', 'Film', 'Author']
 
@@ -324,6 +334,7 @@ export function App(): React.ReactElement {
   /** `null` = user has not chosen a folder yet; non-null = folder session (list may be empty). */
   const [openedFolderPath, setOpenedFolderPath] = useState<string | null>(null)
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set())
+  const [metadataHeadingFit, setMetadataHeadingFit] = useState('')
   const [currentIndex, setCurrentIndex] = useState<number | null>(null)
   const [pendingByPath, setPendingByPath] = useState<Record<string, PendingState>>({})
   const [metadataByPath, setMetadataByPath] = useState<Record<string, Record<string, unknown>>>({})
@@ -428,6 +439,8 @@ export function App(): React.ReactElement {
   const clearPendingButtonRef = useRef<HTMLButtonElement>(null)
   const commitButtonRef = useRef<HTMLButtonElement>(null)
   const metaRovingBlockRef = useRef<HTMLDivElement>(null)
+  const metaPaneTitleStackRef = useRef<HTMLDivElement>(null)
+  const metaPaneTitleH2Ref = useRef<HTMLHeadingElement>(null)
   const openFolderPrimaryRef = useRef<HTMLButtonElement>(null)
   const rowRefs = useRef<(HTMLLIElement | null)[]>([])
   const selectionAnchorRef = useRef<number | null>(null)
@@ -763,6 +776,71 @@ export function App(): React.ReactElement {
     () => getStagingPaths(files, selectedIndices, currentIndex),
     [files, selectedIndices, currentIndex]
   )
+
+  const selectedBaseNames = useMemo(() => {
+    const n = files.length
+    return [...selectedIndices]
+      .sort((a, b) => a - b)
+      .filter((i) => i >= 0 && i < n)
+      .map((i) => fileBaseName(files[i]!))
+  }, [files, selectedIndices])
+
+  const metadataHeadingUncropped = useMemo(() => {
+    if (selectedBaseNames.length === 0) return ''
+    const prefix = `${t('ui.metadata')}: `
+    if (selectedBaseNames.length === 1) return prefix + selectedBaseNames[0]!
+    return prefix + selectedBaseNames.join(', ')
+  }, [selectedBaseNames, t])
+
+  const metadataPaneTitleWhenSelected = useMemo((): ReactNode => {
+    if (selectedBaseNames.length === 0) return null
+    const fit = metadataHeadingFit || metadataHeadingUncropped
+    const prefixWithSpace = `${t('ui.metadata')}: `
+    const compact = t('ui.metadataCompactSelection', { count: selectedBaseNames.length })
+    if (fit === compact) {
+      return <span className="panel-pane-title-compact">{fit}</span>
+    }
+    const rest = fit.startsWith(prefixWithSpace) ? fit.slice(prefixWithSpace.length) : fit
+    return (
+      <>
+        <span className="panel-pane-title-prefix">{t('ui.metadata')}:</span>
+        {' '}
+        <span className="panel-pane-title-files">{rest}</span>
+      </>
+    )
+  }, [metadataHeadingFit, metadataHeadingUncropped, selectedBaseNames, t])
+
+  useLayoutEffect(() => {
+    if (selectedBaseNames.length === 0) {
+      setMetadataHeadingFit('')
+      return
+    }
+    const stack = metaPaneTitleStackRef.current
+    const h2 = metaPaneTitleH2Ref.current
+    if (!stack || !h2) return
+
+    const apply = (): void => {
+      const w = stack.clientWidth
+      const font = getComputedStyle(h2).font
+      const available = w > 0 ? Math.max(0, w - 3) : Number.POSITIVE_INFINITY
+      const measure = (s: string) => measureTextWidthCanvas(s, font)
+      const fits = (line: string) => measure(line) <= available
+      const prefix = `${t('ui.metadata')}: `
+      setMetadataHeadingFit(
+        pickMetadataHeadingText(selectedBaseNames, {
+          prefix,
+          moreLabel: (r) => ` ${t('ui.metadataMoreFiles', { count: r })}`,
+          fits,
+          compactFallback: (c) => t('ui.metadataCompactSelection', { count: c })
+        })
+      )
+    }
+
+    apply()
+    const ro = new ResizeObserver(apply)
+    ro.observe(stack)
+    return () => ro.disconnect()
+  }, [selectedBaseNames, t])
 
   const pendingAttributeHighlights = useMemo(() => {
     let acc = emptyDiffAttributeHighlights()
@@ -2088,13 +2166,13 @@ export function App(): React.ReactElement {
         <div className="meta-panel">
           <div className="meta-section">
             <div className="meta-section-head">
-              <div className="panel-pane-title-stack">
-                <h2 className="panel-pane-title">
-                  {selectedIndices.size > 0
-                    ? selectedIndices.size === 1
-                      ? t('ui.metadataOneFileSelected')
-                      : t('ui.metadataFilesSelected', { count: selectedIndices.size })
-                    : t('ui.metadata')}
+              <div ref={metaPaneTitleStackRef} className="panel-pane-title-stack">
+                <h2
+                  ref={metaPaneTitleH2Ref}
+                  className="panel-pane-title"
+                  title={selectedBaseNames.length ? selectedBaseNames.join('\n') : undefined}
+                >
+                  {selectedBaseNames.length === 0 ? t('ui.metadata') : metadataPaneTitleWhenSelected}
                 </h2>
                 <p className="panel-pane-shortcut-hint">{metadataShortcutHint}</p>
               </div>
