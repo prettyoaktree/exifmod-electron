@@ -278,8 +278,8 @@ button.btn-sm {
 
 .file-list-row.current {
   box-shadow:
-    inset 4px 0 0 var(--accent),
-    inset 0 0 0 1px rgba(var(--accent-rgb), 0.28);
+    inset 5px 0 0 var(--accent),
+    inset 0 0 0 2px rgba(var(--accent-rgb), 0.32);
 }
 
 .file-list-name {
