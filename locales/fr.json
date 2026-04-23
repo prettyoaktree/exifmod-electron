@@ -170,6 +170,7 @@
     "aiDescribeSelectFilesTooltip": "Sélectionnez un ou plusieurs fichiers pour utiliser l’IA.",
     "aiDescribeNoRoomTooltip": "Plus d’espace dans Description (limite 999 octets UTF-8).",
     "ollamaEmptySoftFailure": "Le modèle n’a renvoyé ni description ni mots-clés. Réessayez.",
+    "ollamaEchoTemplateFailure": "Le modèle a renvoyé l’exemple de texte du prompt au lieu d’écrire pour l’image. Réessayez ou modifiez le rôle (prompt) système (Ollama).",
     "ollamaError": "Erreur IA : {{message}}",
     "ollamaShowSystemPrompt": "Afficher le rôle (prompt) du système",
     "ollamaHideSystemPrompt": "Masquer",

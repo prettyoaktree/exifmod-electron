@@ -19,7 +19,7 @@ import {
   remainingUtf8BytesForAiDescription
 } from '@shared/exifLimits.js'
 import { isOllamaTransportFailureError } from '@shared/ollamaNetErrors.js'
-import { OLLAMA_ERROR_EMPTY_SOFT } from '@shared/ollamaResultCodes.js'
+import { OLLAMA_ERROR_ECHO_TEMPLATE, OLLAMA_ERROR_EMPTY_SOFT } from '@shared/ollamaResultCodes.js'
 import type { AiDescribeBusyState, CameraMetadata, ConfigCatalog } from '@shared/types.js'
 import type { PresetInitialDraft } from '@shared/presetDraftFromMetadata.js'
 import {
@@ -1627,12 +1627,20 @@ export function App(): React.ReactElement {
     try {
       const r = await api.ollamaDescribeImage(path, { maxDescriptionUtf8Bytes })
       if (!r.ok) {
-        if (r.error !== OLLAMA_ERROR_EMPTY_SOFT && isOllamaTransportFailureError(r.error)) {
+        if (
+          r.error !== OLLAMA_ERROR_EMPTY_SOFT &&
+          r.error !== OLLAMA_ERROR_ECHO_TEMPLATE &&
+          isOllamaTransportFailureError(r.error)
+        ) {
           const handled = await handleOllamaDescribeTransportFailure()
           if (handled) return
         }
         const message =
-          r.error === OLLAMA_ERROR_EMPTY_SOFT ? t('ui.ollamaEmptySoftFailure') : r.error
+          r.error === OLLAMA_ERROR_EMPTY_SOFT
+            ? t('ui.ollamaEmptySoftFailure')
+            : r.error === OLLAMA_ERROR_ECHO_TEMPLATE
+              ? t('ui.ollamaEchoTemplateFailure')
+              : r.error
         alert(t('ui.ollamaError', { message }))
         return
       }
@@ -1666,12 +1674,20 @@ export function App(): React.ReactElement {
           if (maxDescriptionUtf8Bytes <= 0) continue
           const r = await api.ollamaDescribeImage(path, { maxDescriptionUtf8Bytes })
           if (!r.ok) {
-            if (r.error !== OLLAMA_ERROR_EMPTY_SOFT && isOllamaTransportFailureError(r.error)) {
+            if (
+              r.error !== OLLAMA_ERROR_EMPTY_SOFT &&
+              r.error !== OLLAMA_ERROR_ECHO_TEMPLATE &&
+              isOllamaTransportFailureError(r.error)
+            ) {
               const handled = await handleOllamaDescribeTransportFailure()
               if (handled) break
             }
             const message =
-              r.error === OLLAMA_ERROR_EMPTY_SOFT ? t('ui.ollamaEmptySoftFailure') : r.error
+              r.error === OLLAMA_ERROR_EMPTY_SOFT
+                ? t('ui.ollamaEmptySoftFailure')
+                : r.error === OLLAMA_ERROR_ECHO_TEMPLATE
+                  ? t('ui.ollamaEchoTemplateFailure')
+                  : r.error
             failures.push({ path, message })
             continue
           }

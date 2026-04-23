@@ -3,7 +3,7 @@ import {
   fitKeywordsForExif,
   IMAGEDESCRIPTION_MAX_UTF8_BYTES
 } from '../shared/exifLimits.js'
-import { OLLAMA_ERROR_EMPTY_SOFT } from '../shared/ollamaResultCodes.js'
+import { OLLAMA_ERROR_ECHO_TEMPLATE, OLLAMA_ERROR_EMPTY_SOFT } from '../shared/ollamaResultCodes.js'
 import {
   assertLoopbackOllamaBaseUrl,
   buildOllamaChatOptions,
@@ -21,9 +21,29 @@ export { assertLoopbackOllamaBaseUrl, DEFAULT_OLLAMA_BASE, DEFAULT_OLLAMA_MODEL 
 /** Substitute per request so the model sees the real EXIF byte cap. */
 export const DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER = '{{MAX_DESC_BYTES}}'
 
-export const DEFAULT_DESCRIBE_SYSTEM_PROMPT_TEMPLATE = `You label a photograph for EXIF ImageDescription: high-level scene and main subjects only—setting, time of day, and obvious activity when clear. Reply with ONLY valid JSON, no markdown, no other text.
-Shape: {"description":"Downtown at night, wet street; shop lights.","keywords":["downtown","night","street","urban","wet","lights"]}
-Hard limit: the "description" string must be at most ${DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER} UTF-8 bytes (bytes, not characters). Use far less—leave headroom.`
+export const DEFAULT_DESCRIBE_SYSTEM_PROMPT_TEMPLATE = `You label a photograph for EXIF ImageDescription: high-level scene and main subjects only—setting, time of day, and obvious activity when clear.
+
+Reply with ONLY one JSON object, no markdown, no other text. The object must have exactly:
+- "description": a string in English, one short telegraphic line about the attached image (not the instructions). Do not paste sample descriptions.
+- "keywords": an array of short strings, about 5-20 items (place, light, main subject). No film stock tokens; do not use the exact phrase "Film Stock".
+
+The "description" string must be at most ${DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER} UTF-8 bytes (bytes, not characters). Use far less—leave headroom.`
+
+/** Known outputs from default/custom prompts that models often echo instead of writing for the image. */
+const DESCRIBE_ECHO_DESCRIPTION_NORMALIZED: readonly string[] = [
+  'downtown at night, wet street; shop lights.',
+  'english; must match the for description rules (edit this sample and those rules together if you change style).'
+]
+
+function looksLikeDescribePromptEcho(description: string): boolean {
+  const t = description.trim()
+  if (t.includes('{{MAX_DESC_BYTES}}')) return true
+  const norm = t.toLowerCase()
+  for (const p of DESCRIBE_ECHO_DESCRIPTION_NORMALIZED) {
+    if (norm === p) return true
+  }
+  return false
+}
 
 const CHAT_TIMEOUT_MS = 180_000
 /** Text-only warmup to verify the configured model responds (startup / availability). */
@@ -215,6 +235,9 @@ export async function ollamaDescribeImage(
     const parsed = parseAssistantJson(content)
     if (!parsed) {
       return { ok: false, error: 'Could not parse JSON from model response' }
+    }
+    if (looksLikeDescribePromptEcho(parsed.description)) {
+      return { ok: false, error: OLLAMA_ERROR_ECHO_TEMPLATE }
     }
     const description = clampUtf8ByBytes(parsed.description.trim(), maxDescBytes)
     const keywords = fitKeywordsForExif(parsed.keywords)

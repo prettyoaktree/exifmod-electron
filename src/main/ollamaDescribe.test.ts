@@ -14,6 +14,7 @@ import {
   getCustomDescribeSystemPromptTemplate,
   setCustomDescribeSystemPromptTemplate
 } from './ollamaDescribePromptPrefs.js'
+import { OLLAMA_ERROR_ECHO_TEMPLATE } from '../shared/ollamaResultCodes.js'
 import {
   DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER,
   formatDescribeSystemPromptTemplate,
@@ -135,6 +136,26 @@ describe('ollamaDescribeImage', () => {
       top_p: expect.any(Number)
     })
     expect(String(body.messages[0].content)).toContain(String(IMAGEDESCRIPTION_MAX_UTF8_BYTES))
+  })
+
+  it('rejects a response that only echoes a known default sample description', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          message: {
+            content:
+              '{"description":"Downtown at night, wet street; shop lights.","keywords":["a","b"]}'
+          }
+        })
+      })
+    )
+    const r = await ollamaDescribeImage('/tmp/fake.jpg', { model: 'm1' })
+    expect(r.ok).toBe(false)
+    if (!r.ok) {
+      expect(r.error).toBe(OLLAMA_ERROR_ECHO_TEMPLATE)
+    }
   })
 
   it('sends the user-stored system prompt in message content, not the built-in default', async () => {
