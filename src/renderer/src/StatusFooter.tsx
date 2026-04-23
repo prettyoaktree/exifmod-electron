@@ -206,6 +206,21 @@ export type StatusFooterProps = {
   onUpdaterLater: () => void
   /** Help → Check for Updates and in-panel “Check” use the same IPC path when updates are supported. */
   onUpdaterCheck?: () => void
+  /**
+   * When the Generative AI panel is shown (`openSegment === 'ollama'`), e.g. to refresh the model list.
+   * Fires when the user opens that segment (not on every re-render while it stays open).
+   */
+  onOllamaPanelOpened?: () => void
+  /** Ollama vision model picker; only when session is `ready` and the describe API exists. */
+  ollamaModelUi?: {
+    models: string[]
+    effectiveModel: string
+    envLocked: boolean
+    listLoading: boolean
+    listError: string | null
+    onModelChange: (name: string) => void
+    onRefreshList: () => void
+  } | null
 }
 
 export function StatusFooter({
@@ -223,10 +238,13 @@ export function StatusFooter({
   onUpdaterDownload,
   onUpdaterRestart,
   onUpdaterLater,
-  onUpdaterCheck
+  onUpdaterCheck,
+  onOllamaPanelOpened,
+  ollamaModelUi
 }: StatusFooterProps): React.ReactElement {
   const { t } = useTranslation()
   const [openSegment, setOpenSegment] = useState<SegmentId | null>(null)
+  const prevOpenSegmentOllamaRef = useRef(false)
   const applicationPanelRef = useRef<HTMLDivElement>(null)
   const prevPhaseRef = useRef<ApplicationPhase>(applicationPhase)
   const prevOpenSegmentRef = useRef<SegmentId | null>(null)
@@ -325,6 +343,14 @@ export function StatusFooter({
     prevOpenSegmentRef.current = openSegment
   }, [openSegment, onOllamaPanelDismiss])
 
+  useEffect(() => {
+    const nowOllama = openSegment === 'ollama'
+    if (nowOllama && !prevOpenSegmentOllamaRef.current) {
+      onOllamaPanelOpened?.()
+    }
+    prevOpenSegmentOllamaRef.current = nowOllama
+  }, [openSegment, onOllamaPanelOpened])
+
   /** After successful AI describe, surface completion in the Ollama panel (cannot steal focus from forced Application error panel). */
   useEffect(() => {
     if (!ollamaGenerationCompleteMessage) return
@@ -417,6 +443,61 @@ export function StatusFooter({
     return <p className="status-footer-panel-message">{t('ui.aiDescribeOllamaUnavailable')}</p>
   })()
 
+  const ollamaModelBlock =
+    ollamaSession === 'ready' && ollamaModelUi && !aiDescribeBusy ? (
+      <div className="status-footer-ollama-model" data-ollama-model>
+        {ollamaModelUi.envLocked ? (
+          <p className="status-footer-panel-message">
+            {t('ui.ollamaModelEnvLocked', { model: ollamaModelUi.effectiveModel })}
+          </p>
+        ) : (
+          <>
+            <div className="status-footer-ollama-model-row">
+              <label className="status-footer-ollama-model-label" htmlFor="ollama-model-select">
+                {t('ui.ollamaModelLabel')}
+              </label>
+              <div className="status-footer-ollama-model-controls">
+                <select
+                  id="ollama-model-select"
+                  className="status-footer-ollama-select"
+                  value={ollamaModelUi.effectiveModel}
+                  disabled={ollamaModelUi.listLoading}
+                  onChange={(e) => ollamaModelUi.onModelChange(e.target.value)}
+                >
+                  {(() => {
+                    const m = ollamaModelUi.models
+                    const eff = ollamaModelUi.effectiveModel
+                    const withEff = m.includes(eff) ? m : [eff, ...m]
+                    return withEff.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))
+                  })()}
+                </select>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={ollamaModelUi.listLoading}
+                  onClick={() => ollamaModelUi.onRefreshList()}
+                >
+                  {ollamaModelUi.listLoading ? t('ui.ollamaModelLoading') : t('ui.ollamaModelRefresh')}
+                </button>
+              </div>
+            </div>
+            {ollamaModelUi.listError ? (
+              <p className="status-footer-panel-message status-footer-panel-message--error" title={ollamaModelUi.listError}>
+                {t('ui.ollamaModelListError', { message: ollamaModelUi.listError })}
+              </p>
+            ) : null}
+            {!ollamaModelUi.listLoading && ollamaModelUi.models.length === 0 && !ollamaModelUi.listError ? (
+              <p className="status-footer-panel-message">{t('ui.ollamaModelNoVision')}</p>
+            ) : null}
+          </>
+        )}
+      </div>
+    ) : null
+
   const ollamaBody = aiDescribeBusy ? (
     <p className="status-footer-panel-message">
       {aiDescribeBusy.mode === 'batch'
@@ -431,6 +512,7 @@ export function StatusFooter({
       {ollamaGenerationCompleteMessage ? (
         <p className="status-footer-panel-message">{ollamaGenerationCompleteMessage}</p>
       ) : null}
+      {ollamaModelBlock}
       {ollamaBodyDefault}
     </>
   )

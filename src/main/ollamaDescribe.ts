@@ -4,37 +4,20 @@ import {
   IMAGEDESCRIPTION_MAX_UTF8_BYTES
 } from '../shared/exifLimits.js'
 import { OLLAMA_ERROR_EMPTY_SOFT } from '../shared/ollamaResultCodes.js'
-import { readImagePreviewJpegBase64 } from './previewImage.js'
+import { assertLoopbackOllamaBaseUrl, buildOllamaChatOptions, getOllamaBaseUrlString } from './ollamaConfig.js'
+import { resolveOllamaModelName } from './ollamaPrefs.js'
+import { readImagePreviewJpegBase64Ollama } from './previewImage.js'
 
-export const DEFAULT_OLLAMA_BASE = 'http://127.0.0.1:11434'
-export const DEFAULT_OLLAMA_MODEL = 'gemma4'
+export { assertLoopbackOllamaBaseUrl, DEFAULT_OLLAMA_BASE, DEFAULT_OLLAMA_MODEL } from './ollamaConfig.js'
+
 const CHAT_TIMEOUT_MS = 180_000
 /** Text-only warmup to verify the configured model responds (startup / availability). */
 const WARMUP_TIMEOUT_MS = 30_000
 
-/** Allow only loopback — reject LAN/public hosts. */
-export function assertLoopbackOllamaBaseUrl(urlString: string): URL {
-  let u: URL
-  try {
-    u = new URL(urlString)
-  } catch {
-    throw new Error('Invalid Ollama URL')
-  }
-  if (u.protocol !== 'http:' && u.protocol !== 'https:') {
-    throw new Error('Ollama URL must use http or https')
-  }
-  const h = u.hostname
-  const hl = h.toLowerCase()
-  if (hl === '127.0.0.1' || hl === 'localhost' || hl === '::1' || h === '[::1]') {
-    return u
-  }
-  throw new Error('Ollama URL must use a loopback host (127.0.0.1, localhost, or ::1)')
-}
-
 /** Resolved loopback API base URL and model (same env defaults as describe). */
 export function resolveOllamaConnection(options?: { baseUrl?: string; model?: string }): { api: URL; model: string } {
-  const baseUrl = options?.baseUrl ?? process.env.EXIFMOD_OLLAMA_HOST ?? DEFAULT_OLLAMA_BASE
-  const model = options?.model ?? process.env.EXIFMOD_OLLAMA_MODEL ?? DEFAULT_OLLAMA_MODEL
+  const baseUrl = options?.baseUrl ?? getOllamaBaseUrlString()
+  const model = options?.model ?? resolveOllamaModelName()
   const api = assertLoopbackOllamaBaseUrl(baseUrl)
   return { api, model }
 }
@@ -46,6 +29,7 @@ export function resolveOllamaConnection(options?: { baseUrl?: string; model?: st
 export async function ollamaWarmup(options?: { baseUrl?: string; model?: string }): Promise<{ ok: boolean }> {
   let api: URL
   let model: string
+  const opts = buildOllamaChatOptions()
   try {
     ;({ api, model } = resolveOllamaConnection(options))
   } catch {
@@ -56,7 +40,14 @@ export async function ollamaWarmup(options?: { baseUrl?: string; model?: string 
   const body = JSON.stringify({
     model,
     stream: false,
-    messages: [{ role: 'user', content: 'ping' }]
+    think: false,
+    messages: [{ role: 'user', content: 'ping' }],
+    options: {
+      temperature: opts.temperature,
+      top_p: opts.top_p,
+      num_predict: 32,
+      num_ctx: opts.num_ctx
+    }
   })
 
   try {
@@ -77,20 +68,16 @@ export async function ollamaWarmup(options?: { baseUrl?: string; model?: string 
 }
 
 function buildSystemPrompt(maxDescriptionUtf8Bytes: number): string {
-  return `You describe a photograph for EXIF ImageDescription metadata (a short file label, not a caption essay). Reply with ONLY valid JSON, no markdown, no other text.
+  return `You label a photograph for EXIF ImageDescription: high-level scene and main subjects only—setting, time of day, and obvious activity when clear. Reply with ONLY valid JSON, no markdown, no other text.
 Shape: {"description":"one terse line in English","keywords":["short","tokens","lowercase ok"]}
-Hard limit: the "description" string must be at most ${maxDescriptionUtf8Bytes} UTF-8 bytes (bytes, not characters). Aim to use far less—leave headroom. If you are near the limit, you are writing too much.
+Hard limit: the "description" string must be at most ${maxDescriptionUtf8Bytes} UTF-8 bytes (bytes, not characters). Use far less—leave headroom.
 
-For "description" follow ALL of these:
-- Prefer exactly ONE short sentence. Two sentences only if one cannot list the essentials; never write three or more.
-- Keep it under ~35 words and ~220 characters as a soft target (still respect the UTF-8 byte limit above).
-- Telegraphic catalog style: main subject, setting, one or two concrete facts. Example tone: "City street at night; wet pavement; neon signs." Not a scenic paragraph.
-- Minimal adjectives. No stacked clauses, no comma chains that read like a tour of the frame.
-- No hedging or guesswork phrasing: avoid "likely", "probably", "appears to", "suggesting", "creating a sense of".
-- No mood-atmosphere essays: do not narrate sky, water, reflections, and season in separate phrases unless one short phrase suffices.
-- No poetry, marketing, or filler words ("breathtaking", "calm reflective", "muted", "prominent" unless necessary).
+For "description":
+- One short telegraphic line (e.g. "Downtown at night, wet street; shop lights.").
+- **Do not** list fine details: textures, small objects, background clutter, or minor props unless they define the scene. Skip exact counts, tiny text, and small background figures.
+- No mood essays, no poetry, no marketing words. No hedging ("appears to", "likely", "suggesting").
 
-Keywords: 5–20 short tokens (subjects, setting, objects). Do not repeat film stock tokens or the word "Film Stock" in keywords.`
+Keywords: 5–20 broad tokens: place type, time/light, main subject type. Skip pixel-level or niche detail. Do not use film stock tokens or the exact phrase "Film Stock".`
 }
 
 function parseAssistantJson(content: string): { description: string; keywords: string[] } | null {
@@ -120,8 +107,8 @@ export async function ollamaDescribeImage(
   filePath: string,
   options?: { baseUrl?: string; model?: string; maxDescriptionUtf8Bytes?: number }
 ): Promise<OllamaDescribeResult> {
-  const baseUrl = options?.baseUrl ?? process.env.EXIFMOD_OLLAMA_HOST ?? DEFAULT_OLLAMA_BASE
-  const model = options?.model ?? process.env.EXIFMOD_OLLAMA_MODEL ?? DEFAULT_OLLAMA_MODEL
+  const model = options?.model ?? resolveOllamaModelName()
+  const baseUrl = options?.baseUrl ?? getOllamaBaseUrlString()
   const rawCap = options?.maxDescriptionUtf8Bytes
   const maxDescBytes =
     rawCap == null || !Number.isFinite(rawCap)
@@ -139,22 +126,25 @@ export async function ollamaDescribeImage(
 
   let imageBase64: string
   try {
-    imageBase64 = await readImagePreviewJpegBase64(filePath)
+    imageBase64 = await readImagePreviewJpegBase64Ollama(filePath)
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }
 
   const chatUrl = new URL('/api/chat', api).href
+  const oOpts = buildOllamaChatOptions()
   const body = JSON.stringify({
     model,
     stream: false,
+    think: false,
     messages: [
       {
         role: 'user',
         content: buildSystemPrompt(maxDescBytes),
         images: [imageBase64]
       }
-    ]
+    ],
+    options: oOpts
   })
 
   try {

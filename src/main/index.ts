@@ -48,6 +48,12 @@ import {
 } from './rememberedChoices.js'
 import { createPreWriteBackupCopy } from './backupOriginal.js'
 import { ollamaDescribeImage } from './ollamaDescribe.js'
+import { ollamaListVisionModelNamesWithCache } from './ollamaListVision.js'
+import {
+  getOllamaModelSelectionInfo,
+  isOllamaModelSetByEnv,
+  setSavedOllamaModelName
+} from './ollamaPrefs.js'
 import {
   checkOllamaAvailability,
   ollamaTryStartServer,
@@ -914,6 +920,24 @@ function setupIpc(): void {
     async (_e, filePath: string, opts?: { maxDescriptionUtf8Bytes?: number }) =>
       ollamaDescribeImage(filePath, opts)
   )
+
+  ipcMain.handle('ollama:listVisionModels', async (_e, forceRefresh?: boolean) =>
+    ollamaListVisionModelNamesWithCache({ forceRefresh: Boolean(forceRefresh) })
+  )
+
+  ipcMain.handle('ollama:getModelSelection', () => getOllamaModelSelectionInfo())
+
+  ipcMain.handle('ollama:setModel', (_e, name: string) => {
+    if (isOllamaModelSetByEnv()) {
+      return { ok: false as const, error: 'env' }
+    }
+    const s = String(name).trim()
+    if (!s) {
+      return { ok: false as const, error: 'empty' }
+    }
+    setSavedOllamaModelName(s)
+    return { ok: true as const }
+  })
 
   ipcMain.handle('ollama:startupFlow', async () => {
     const win = mainWindow ?? BrowserWindow.getFocusedWindow()

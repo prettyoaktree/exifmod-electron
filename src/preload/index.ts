@@ -79,6 +79,21 @@ const api = {
     >,
   ollamaTryStartServer: () =>
     ipcRenderer.invoke('ollama:tryStartServer') as Promise<{ ok: true } | { ok: false; error: string }>,
+  ollamaListVisionModels: (forceRefresh?: boolean) =>
+    ipcRenderer.invoke('ollama:listVisionModels', forceRefresh) as Promise<
+      { ok: true; models: string[] } | { ok: false; error: string }
+    >,
+  ollamaGetModelSelection: () =>
+    ipcRenderer.invoke('ollama:getModelSelection') as Promise<{
+      effectiveModel: string
+      envLocked: boolean
+      savedModel: string | null
+      source: 'env' | 'saved' | 'default'
+    }>,
+  ollamaSetModel: (name: string) =>
+    ipcRenderer.invoke('ollama:setModel', name) as Promise<
+      { ok: true } | { ok: false; error: 'env' | 'empty' }
+    >,
   onPresetsImported: (cb: () => void) => {
     const fn = (): void => cb()
     ipcRenderer.on('presets:imported', fn)

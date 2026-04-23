@@ -3,7 +3,7 @@
 Desktop app for editing image metadata using a preset catalog. 
 
 - Metadata read/write uses **ExifTool** on your machine.
-- The optional generative AI feature for creating image descriptions and keywords requires **Ollama** with a vision-capable model. By default, the app uses `gemma4`.
+- The optional generative AI feature for creating image descriptions and keywords requires **Ollama** with a **vision**-capable model. The app lists only vision models from your local Ollama install; the default name is `gemma4` (change it in the **Generative AI** status bar panel, or set **`EXIFMOD_OLLAMA_MODEL`**, which overrides the panel). Optional env: **`EXIFMOD_OLLAMA_HOST`** (default `http://127.0.0.1:11434`, loopback only), **`EXIFMOD_OLLAMA_NUM_CTX`**, **`EXIFMOD_OLLAMA_NUM_PREDICT`**, **`EXIFMOD_OLLAMA_TEMPERATURE`** (describe tuning; see `src/main/ollamaConfig.ts`).
 
 ## Usage
 

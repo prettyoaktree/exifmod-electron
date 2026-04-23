@@ -376,6 +376,15 @@ export function App(): React.ReactElement {
   const [ollamaSession, setOllamaSession] = useState<OllamaSession>('checking')
   /** Shown next to the inline Start control when `ollamaTryStartServer` fails (user can retry). */
   const [ollamaStartError, setOllamaStartError] = useState<string | null>(null)
+  const [ollamaModelSelection, setOllamaModelSelection] = useState<{
+    effectiveModel: string
+    envLocked: boolean
+    savedModel: string | null
+    source: 'env' | 'saved' | 'default'
+  } | null>(null)
+  const [ollamaVisionModels, setOllamaVisionModels] = useState<string[]>([])
+  const [ollamaModelsLoading, setOllamaModelsLoading] = useState(false)
+  const [ollamaModelsListError, setOllamaModelsListError] = useState<string | null>(null)
   const [updaterSupported, setUpdaterSupported] = useState(false)
   const [updaterState, setUpdaterState] = useState<UpdaterUiPayload>({ kind: 'idle' })
   const [aiBatchConfirmPaths, setAiBatchConfirmPaths] = useState<string[] | null>(null)
@@ -1731,6 +1740,80 @@ export function App(): React.ReactElement {
     setOllamaGenerationCompleteMessage(null)
   }, [])
 
+  const loadOllamaModelPanelData = useCallback(async (forceRefresh: boolean) => {
+    const api = window.exifmod
+    if (!api?.ollamaListVisionModels || !api.ollamaGetModelSelection) return
+    setOllamaModelsLoading(true)
+    setOllamaModelsListError(null)
+    try {
+      const sel = await api.ollamaGetModelSelection()
+      setOllamaModelSelection(sel)
+      const r = await api.ollamaListVisionModels(forceRefresh)
+      if (r.ok) {
+        setOllamaVisionModels(r.models)
+      } else {
+        setOllamaModelsListError(r.error)
+      }
+    } catch (e) {
+      setOllamaModelsListError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setOllamaModelsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (ollamaSession !== 'ready') {
+      setOllamaModelSelection(null)
+      setOllamaVisionModels([])
+      setOllamaModelsListError(null)
+      setOllamaModelsLoading(false)
+      return
+    }
+    void loadOllamaModelPanelData(false)
+  }, [ollamaSession, loadOllamaModelPanelData])
+
+  const onOllamaModelChange = useCallback(async (name: string) => {
+    const api = window.exifmod
+    if (!api?.ollamaSetModel) return
+    const r = await api.ollamaSetModel(name)
+    if (r.ok) {
+      const sel = await api.ollamaGetModelSelection()
+      setOllamaModelSelection(sel)
+    }
+  }, [])
+
+  const onOllamaPanelOpened = useCallback(() => {
+    void loadOllamaModelPanelData(false)
+  }, [loadOllamaModelPanelData])
+
+  const onOllamaRefreshModelsList = useCallback(() => {
+    void loadOllamaModelPanelData(true)
+  }, [loadOllamaModelPanelData])
+
+  const ollamaModelUi = useMemo(() => {
+    if (preloadMissing || ollamaSession !== 'ready') return null
+    if (!window.exifmod?.ollamaGetModelSelection) return null
+    if (ollamaModelSelection == null) return null
+    return {
+      models: ollamaVisionModels,
+      effectiveModel: ollamaModelSelection.effectiveModel,
+      envLocked: ollamaModelSelection.envLocked,
+      listLoading: ollamaModelsLoading,
+      listError: ollamaModelsListError,
+      onModelChange: onOllamaModelChange,
+      onRefreshList: onOllamaRefreshModelsList
+    }
+  }, [
+    preloadMissing,
+    ollamaSession,
+    ollamaModelSelection,
+    ollamaVisionModels,
+    ollamaModelsLoading,
+    ollamaModelsListError,
+    onOllamaModelChange,
+    onOllamaRefreshModelsList
+  ])
+
   const onUpdaterDownload = useCallback(async () => {
     const api = window.exifmod
     if (!api?.updaterDownload) return
@@ -2680,6 +2763,8 @@ export function App(): React.ReactElement {
         onUpdaterRestart={onUpdaterRestart}
         onUpdaterLater={onUpdaterLater}
         onUpdaterCheck={updaterSupported ? () => void onUpdaterCheck() : undefined}
+        onOllamaPanelOpened={onOllamaPanelOpened}
+        ollamaModelUi={ollamaModelUi}
       />
       {showLrcDevelopSnapshotModal ? (
         <div

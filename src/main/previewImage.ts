@@ -1,5 +1,5 @@
 /**
- * Downscaled JPEG preview for the file list panel and Ollama vision input (same pipeline).
+ * Downscaled JPEG preview for the file list panel. Ollama uses a smaller max edge for speed.
  */
 import { nativeImage } from 'electron'
 import { i18next } from './i18n.js'
@@ -11,8 +11,10 @@ import { existsSync, statSync } from 'node:fs'
 import { isRawImagePath } from './exifCore/imagePaths.js'
 import { resolveExiftoolPath } from './exiftoolRunner.js'
 
-/** Max longest edge (pixels). Small preview panel + smaller Ollama payloads vs 2048. */
+/** Max longest edge (pixels) for the file list and metadata preview panel. */
 export const PREVIEW_MAX_EDGE = 640
+/** Smaller max edge for Ollama vision requests (faster, fewer image tokens). */
+export const OLLAMA_PREVIEW_MAX_EDGE = 384
 const PREVIEW_JPEG_QUALITY = 82
 const LEGACY_PREVIEW_MAX_BYTES = 48 * 1024 * 1024
 
@@ -50,7 +52,10 @@ function extractExiftoolBinaryTag(exiftoolPath: string, filePath: string, tag: s
   })
 }
 
-async function previewRawWithExiftool(filePath: string): Promise<string | null> {
+async function previewRawWithExiftool(
+  filePath: string,
+  maxEdge: number
+): Promise<string | null> {
   const tool = resolveExiftoolPath()
   if (!tool) return null
   for (const tag of RAW_PREVIEW_TAGS) {
@@ -60,9 +65,9 @@ async function previewRawWithExiftool(filePath: string): Promise<string | null> 
       let image = nativeImage.createFromBuffer(buf)
       if (image.isEmpty()) continue
       const { width, height } = image.getSize()
-      const maxEdge = Math.max(width, height)
-      if (maxEdge > PREVIEW_MAX_EDGE) {
-        const scale = PREVIEW_MAX_EDGE / maxEdge
+      const maxE = Math.max(width, height)
+      if (maxE > maxEdge) {
+        const scale = maxEdge / maxE
         image = image.resize({
           width: Math.max(1, Math.round(width * scale)),
           height: Math.max(1, Math.round(height * scale)),
@@ -78,12 +83,15 @@ async function previewRawWithExiftool(filePath: string): Promise<string | null> 
   return null
 }
 
-async function previewTiffWithSips(filePath: string): Promise<string | null> {
+async function previewTiffWithSips(
+  filePath: string,
+  maxEdge: number
+): Promise<string | null> {
   let dir: string | undefined
   try {
     dir = await mkdtemp(join(tmpdir(), 'exifmod-preview-'))
     const outJpg = join(dir, 'preview.jpg')
-    await execFileAsync('sips', ['-s', 'format', 'jpeg', '-Z', String(PREVIEW_MAX_EDGE), filePath, '--out', outJpg])
+    await execFileAsync('sips', ['-s', 'format', 'jpeg', '-Z', String(maxEdge), filePath, '--out', outJpg])
     const buf = await readFile(outJpg)
     if (buf.length < 32) return null
     return `data:image/jpeg;base64,${buf.toString('base64')}`
@@ -101,20 +109,22 @@ async function previewTiffWithSips(filePath: string): Promise<string | null> {
 }
 
 /**
- * Build a JPEG data URL the renderer can always show. Chromium does not decode TIFF in img tags;
- * use NativeImage / platform tools.
+ * Build a JPEG data URL. `maxLongestEdge` caps the longest image dimension in pixels.
  */
-export async function readImagePreviewDataUrl(filePath: string): Promise<string> {
+export async function readImagePreviewDataUrlForMaxEdge(
+  filePath: string,
+  maxLongestEdge: number
+): Promise<string> {
   const ext = extname(filePath).toLowerCase()
   const tiff = ext === '.tif' || ext === '.tiff'
 
   if (isRawImagePath(filePath)) {
-    const fromExif = await previewRawWithExiftool(filePath)
+    const fromExif = await previewRawWithExiftool(filePath, maxLongestEdge)
     if (fromExif) return fromExif
   }
 
   if (tiff && process.platform === 'darwin') {
-    const fromSips = await previewTiffWithSips(filePath)
+    const fromSips = await previewTiffWithSips(filePath, maxLongestEdge)
     if (fromSips) return fromSips
   }
 
@@ -122,8 +132,8 @@ export async function readImagePreviewDataUrl(filePath: string): Promise<string>
   if (!skipQuickLookThumb && (process.platform === 'darwin' || process.platform === 'win32')) {
     try {
       const thumb = await nativeImage.createThumbnailFromPath(filePath, {
-        width: PREVIEW_MAX_EDGE,
-        height: PREVIEW_MAX_EDGE
+        width: maxLongestEdge,
+        height: maxLongestEdge
       })
       if (!thumb.isEmpty()) {
         const buf = thumb.toJPEG(PREVIEW_JPEG_QUALITY)
@@ -137,9 +147,9 @@ export async function readImagePreviewDataUrl(filePath: string): Promise<string>
   let image = nativeImage.createFromPath(filePath)
   if (!image.isEmpty()) {
     const { width, height } = image.getSize()
-    const maxEdge = Math.max(width, height)
-    if (maxEdge > PREVIEW_MAX_EDGE) {
-      const scale = PREVIEW_MAX_EDGE / maxEdge
+    const maxE = Math.max(width, height)
+    if (maxE > maxLongestEdge) {
+      const scale = maxLongestEdge / maxE
       image = image.resize({
         width: Math.max(1, Math.round(width * scale)),
         height: Math.max(1, Math.round(height * scale)),
@@ -163,9 +173,26 @@ export async function readImagePreviewDataUrl(filePath: string): Promise<string>
   return `data:${mime};base64,${buf.toString('base64')}`
 }
 
-/** Raw base64 for Ollama `images` (no `data:` prefix). */
+/**
+ * Build a JPEG data URL the renderer can always show. Chromium does not decode TIFF in img tags;
+ * use NativeImage / platform tools.
+ */
+export async function readImagePreviewDataUrl(filePath: string): Promise<string> {
+  return readImagePreviewDataUrlForMaxEdge(filePath, PREVIEW_MAX_EDGE)
+}
+
+/** Raw base64 for Ollama `images` (no `data:` prefix) — file list / UI preview size. */
 export async function readImagePreviewJpegBase64(filePath: string): Promise<string> {
   const dataUrl = await readImagePreviewDataUrl(filePath)
+  const marker = 'base64,'
+  const i = dataUrl.indexOf(marker)
+  if (i === -1) throw new Error(i18next.t('preview.decodeFailed'))
+  return dataUrl.slice(i + marker.length)
+}
+
+/** Raw base64 for Ollama (smaller max edge than the list panel for faster requests). */
+export async function readImagePreviewJpegBase64Ollama(filePath: string): Promise<string> {
+  const dataUrl = await readImagePreviewDataUrlForMaxEdge(filePath, OLLAMA_PREVIEW_MAX_EDGE)
   const marker = 'base64,'
   const i = dataUrl.indexOf(marker)
   if (i === -1) throw new Error(i18next.t('preview.decodeFailed'))
