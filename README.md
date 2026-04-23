@@ -3,7 +3,7 @@
 Desktop app for editing image metadata using a preset catalog. 
 
 - Metadata read/write uses **ExifTool** on your machine.
-- The optional generative AI feature for creating image descriptions and keywords requires **Ollama** with a **vision**-capable model. The default model name is **`gemma4`**; set **`EXIFMOD_OLLAMA_MODEL`** to use a different tag. Optional env: **`EXIFMOD_OLLAMA_HOST`** (default `http://127.0.0.1:11434`, loopback only), **`EXIFMOD_OLLAMA_NUM_CTX`**, **`EXIFMOD_OLLAMA_NUM_PREDICT`**, **`EXIFMOD_OLLAMA_TEMPERATURE`** (describe tuning; see `src/main/ollamaConfig.ts`). The **Generative AI** status bar panel can **show and edit the system prompt** (with `{{MAX_DESC_BYTES}}` in the text); changes are saved for the app install.
+- The optional generative AI feature uses a local **Ollama** server and a **vision**-capable model (default model tag **gemma4**). You can change the model, server address, and other options via **environment variables**—see **Optional local AI (Ollama)** in **[docs/product.md](docs/product.md)**. The status bar can show and edit the system prompt; those settings are saved for this install.
 
 ## Usage
 
@@ -70,4 +70,4 @@ npm run dev
 
 ## Localization
 
-Strings live under `locales/` (`en.json`, `fr.json`, …). New locales: register the base language code in `src/shared/i18n/resolveLocale.ts`.
+The app includes **English** and **French**. More languages can be added by contributing translation files; they are stored in the `locales/` directory in the source repository.
