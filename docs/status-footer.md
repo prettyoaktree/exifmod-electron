@@ -112,7 +112,7 @@ Implementation today uses `OllamaSession` in [`App.tsx`](../src/renderer/src/App
 | ------------------- | ----- | ------------- | ----------- | ---------------------------- | ------- |
 | `checking` | **Blue / pulse** | Closed | Yes | Explains AI availability is being checked. | None |
 | `launching` | **Blue / pulse** | Optional: auto-open **not** required; user already chose Start | Yes | “Starting Ollama…” | None (wait) |
-| `ready` | **Green** | Closed | Yes | AI available for describe when selection allows. The panel can include **Show system prompt** (editable; must include `{{MAX_DESC_BYTES}}`; saved via main). | — |
+| `ready` | **Green** | Closed | Yes | AI available for describe when selection allows. The panel can include **Show system prompt** (editable describe instructions; must include `{{MAX_DESC_BYTES}}`; saved via main). A short hint explains the placeholder; keep custom text free of long sample JSON models might copy verbatim. | — |
 | `server_down` | **Amber** | Closed (unless user opened) | Yes | Ollama CLI may exist but server not responding; explain **Start Ollama** / Terminal. | **Start Ollama** (dismiss the panel to defer—no separate “Not now” control) |
 | `no_install` | **Amber** | Closed | Yes | Ollama not installed; link or text to install. | Optional: “Learn more” |
 | `declined` | **Amber** or **Green** (product: “user skipped”) | Closed | Yes | User chose not to start server this session. | Optional: “Try again” → back to `server_down` flow |
@@ -171,7 +171,7 @@ When you add a feature that touches runtime health, updates, or AI:
 
 | Area | Files (typical) |
 | ---- | ----------------- |
-| Footer UI | [`src/renderer/src/StatusFooter.tsx`](../src/renderer/src/StatusFooter.tsx) (when added), [`App.tsx`](../src/renderer/src/App.tsx), [`App.css`](../src/renderer/src/App.css) |
+| Footer UI | [`src/renderer/src/StatusFooter.tsx`](../src/renderer/src/StatusFooter.tsx), [`App.tsx`](../src/renderer/src/App.tsx), [`App.css`](../src/renderer/src/App.css) |
 | Preload | [`src/preload/index.ts`](../src/preload/index.ts), [`vite-env.d.ts`](../src/renderer/src/vite-env.d.ts) |
 | Application health | [`src/main/index.ts`](../src/main/index.ts), [`src/main/exifCore/index.ts`](../src/main/exifCore/index.ts), [`localizePreflight.ts`](../src/main/localizePreflight.ts) |
 | Ollama | [`src/main/ollamaLifecycle.ts`](../src/main/ollamaLifecycle.ts), [`ollamaDescribe.ts`](../src/main/ollamaDescribe.ts), [`ollamaConfig.ts`](../src/main/ollamaConfig.ts) |

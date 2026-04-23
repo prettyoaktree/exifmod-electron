@@ -34,7 +34,7 @@ Path aliases: `@shared` → `src/shared`, `@renderer` → `src/renderer/src` (se
 
 ## Preload API (summary)
 
-`window.exifmod` covers paths, locale, dialogs, catalog/presets, EXIF read (single-file and **folder batch** with progress), merge/apply (raster in-file vs **RAW → XMP sidecar** in main), remembered-dialog preferences (Lightroom snapshot tip, pre-write backup), optional Ollama helpers (describe, `**ollamaGetDescribeSystemPrompt**`, `**ollamaGetDescribeSystemPromptState**`, `**ollamaSetDescribeSystemPrompt**`), filesystem helpers, and startup paths for cold “Open With” flows. The **Help** menu can install the bundled **Lightroom Classic** plug-in from `[src/main/installLightroomPlugin.ts](../src/main/installLightroomPlugin.ts)` and reset remembered prompts. The authoritative preload list is in `[src/preload/index.ts](../src/preload/index.ts)`.
+`window.exifmod` covers paths, locale, dialogs, catalog/presets, EXIF read (single-file and **folder batch** with progress), merge/apply (raster in-file vs **RAW → XMP sidecar** in main), remembered-dialog preferences (Lightroom snapshot tip, pre-write backup), optional Ollama helpers (`ollamaDescribeImage`, `ollamaGetDescribeSystemPrompt`, `ollamaGetDescribeSystemPromptState`, `ollamaSetDescribeSystemPrompt`), filesystem helpers, and startup paths for cold “Open With” flows. The **Help** menu can install the bundled **Lightroom Classic** plug-in from `[src/main/installLightroomPlugin.ts](../src/main/installLightroomPlugin.ts)` and reset remembered prompts. The authoritative preload list is in `[src/preload/index.ts](../src/preload/index.ts)`.
 
 ## Packaging and releases
 
@@ -73,5 +73,5 @@ User-facing behavior is in [`docs/product.md`](product.md). This section covers 
 | Document                                                | Contents                                                  |
 | ------------------------------------------------------- | --------------------------------------------------------- |
 | `[docs/product.md](product.md)`                         | User-visible behavior and workflows                       |
-| `[docs/status-footer.md](status-footer.md)`             | Status footer: conditions → lights → copy → actions (keep in sync when adding features) |
+| `[docs/status-footer.md](status-footer.md)`             | Status footer: conditions → lights → chevron → panel (keep in sync when adding features) |
 | `[docs/exif-preset-mapping.md](exif-preset-mapping.md)` | EXIF tags, preset merge order, Film/Keywords, AI behavior |

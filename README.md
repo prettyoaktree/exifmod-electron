@@ -3,7 +3,7 @@
 Desktop app for editing image metadata using a preset catalog. 
 
 - Metadata read/write uses **ExifTool** on your machine.
-- The optional generative AI feature uses a local **Ollama** server and a **vision**-capable model (default model tag **gemma4**). You can change the model, server address, and other options via **environment variables**—see **Optional local AI (Ollama)** in **[docs/product.md](docs/product.md)**. The status bar can show and edit the system prompt; those settings are saved for this install.
+- The optional generative AI feature uses a local **Ollama** server and a **vision**-capable model (default model tag **gemma4**). You can change the model, server address, and other options via **environment variables**—see **Optional local AI (Ollama)** in **[docs/product.md](docs/product.md)**. The **Generative AI** segment in the status bar can show and edit the describe instructions (“system prompt” in the UI); those settings are saved for this install.
 
 ## Usage
 
@@ -64,7 +64,7 @@ npm run dev
 | [docs/product.md](docs/product.md)                         | Product behavior and workflows                                                  |
 | [docs/architecture.md](docs/architecture.md)               | Technical layout, IPC, packaging, contributor notes                             |
 | [docs/exif-preset-mapping.md](docs/exif-preset-mapping.md) | EXIF tags, merge rules, implementation pointers                                 |
-| [docs/status-footer.md](docs/status-footer.md)             | Status bar: conditions, lights, messages, actions (keep in sync when extending) |
+| [docs/status-footer.md](docs/status-footer.md)             | Status bar: lights, panels, copy, and actions (keep in sync when extending) |
 | [AGENTS.md](AGENTS.md)                                     | Guidance for AI coding agents working in this repo                              |
 
 
