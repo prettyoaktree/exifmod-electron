@@ -173,7 +173,7 @@
     "ollamaError": "Erreur IA : {{message}}",
     "ollamaShowSystemPrompt": "Afficher le rôle (prompt) du système",
     "ollamaHideSystemPrompt": "Masquer",
-    "ollamaSystemPromptHint": "Texte d’instruction envoyé avec l’aperçu réduit. Il doit contenir exactement le marqueur {{ph}} (remplacé par la limite d’octets pour chaque fichier). Si vous modifiez longueur ou style (p. ex. plus d’une phrase), mettez en cohérence tout endroit qui impose encore « une seule ligne », surtout l’exemple JSON sur la ligne Shape: — le modèle s’y fie beaucoup. Modifiez ci-dessous, puis enregistrez.",
+    "ollamaSystemPromptHint": "Texte d’instruction envoyé avec l’image réduite. Il doit contenir exactement le marqueur {{ph}}; l’appli le remplace par la limite d’octets UTF-8 par fichier pour le champ « description ». Modifiez ci-dessous, puis enregistrez.",
     "ollamaSystemPromptLoading": "Chargement…",
     "ollamaSystemPromptError": "Chargement du rôle impossible : {{message}}",
     "ollamaSystemPromptPreloadError": "Le rôle système n’est pas disponible dans cette build.",

@@ -172,7 +172,7 @@
     "ollamaError": "AI Error: {{message}}",
     "ollamaShowSystemPrompt": "Show system prompt",
     "ollamaHideSystemPrompt": "Hide",
-    "ollamaSystemPromptHint": "Instruction text sent with the downscaled preview. It must include the exact placeholder {{ph}} (replaced with the per-file description byte cap). If you change length or style (e.g. more than one sentence), update every place that still says “one line”—especially the JSON Shape: example; models follow that line strongly. Edit below, then save.",
+    "ollamaSystemPromptHint": "This text is sent with the downscaled image preview. It must include the exact token {{ph}}; the app replaces it with the per-file UTF-8 byte cap for the “description” field. Edit below, then save.",
     "ollamaSystemPromptLoading": "Loading…",
     "ollamaSystemPromptError": "Could not load prompt: {{message}}",
     "ollamaSystemPromptPreloadError": "Ollama prompt is unavailable in this build.",

@@ -22,15 +22,8 @@ export { assertLoopbackOllamaBaseUrl, DEFAULT_OLLAMA_BASE, DEFAULT_OLLAMA_MODEL 
 export const DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER = '{{MAX_DESC_BYTES}}'
 
 export const DEFAULT_DESCRIBE_SYSTEM_PROMPT_TEMPLATE = `You label a photograph for EXIF ImageDescription: high-level scene and main subjects only—setting, time of day, and obvious activity when clear. Reply with ONLY valid JSON, no markdown, no other text.
-Shape: {"description":"English; must match the For description rules (edit this sample and those rules together if you change style).","keywords":["short","tokens","lowercase ok"]}
-Hard limit: the "description" string must be at most ${DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER} UTF-8 bytes (bytes, not characters). Use far less—leave headroom.
-
-For "description":
-- One short telegraphic line (e.g. "Downtown at night, wet street; shop lights."). If you want more than one sentence, change this bullet and the Shape line above to match—models weight the example JSON highly.
-- **Do not** list fine details: textures, small objects, background clutter, or minor props unless they define the scene. Skip exact counts, tiny text, and small background figures.
-- No mood essays, no poetry, no marketing words. No hedging ("appears to", "likely", "suggesting").
-
-Keywords: 5–20 broad tokens: place type, time/light, main subject type. Skip pixel-level or niche detail. Do not use film stock tokens or the exact phrase "Film Stock".`
+Shape: {"description":"Downtown at night, wet street; shop lights.","keywords":["downtown","night","street","urban","wet","lights"]}
+Hard limit: the "description" string must be at most ${DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER} UTF-8 bytes (bytes, not characters). Use far less—leave headroom.`
 
 const CHAT_TIMEOUT_MS = 180_000
 /** Text-only warmup to verify the configured model responds (startup / availability). */
