@@ -72,6 +72,7 @@ import { unwrapIpcErrorMessage } from './ipcError.js'
 import { truncateMiddle } from './format/truncateMiddle.js'
 import { StatusFooter, type ApplicationPhase } from './StatusFooter.js'
 import type { UpdaterUiPayload } from '@shared/updaterUi.js'
+import { getStagingPaths } from '@shared/stagingPaths.js'
 import { measureTextWidthCanvas, pickMetadataHeadingText } from './metadataHeading.js'
 
 const CATS: Cat[] = ['Camera', 'Lens', 'Film', 'Author']
@@ -176,22 +177,6 @@ function cameraMetaForPending(catalog: ConfigCatalog | null, cameraId: number | 
   const name = presetNameForId(catalog, 'Camera', cameraId)
   if (name === 'None') return null
   return catalog.camera_metadata_map[name] ?? null
-}
-
-function getStagingPaths(files: string[], selectedIndices: Set<number>, currentIndex: number | null): string[] {
-  const n = files.length
-  const rows = [...selectedIndices].sort((a, b) => a - b)
-  if (rows.length > 1) {
-    return rows.filter((r) => r >= 0 && r < n).map((r) => files[r]!)
-  }
-  if (currentIndex != null && currentIndex >= 0 && currentIndex < n) {
-    return [files[currentIndex]!]
-  }
-  if (rows.length === 1) {
-    const r = rows[0]!
-    if (r >= 0 && r < n) return [files[r]!]
-  }
-  return []
 }
 
 function idKeyForCategory(cat: Cat): keyof PendingState {
@@ -719,7 +704,7 @@ export function App(): React.ReactElement {
 
         setOpenedFolderPath(openedFolder)
         setFiles(list)
-        setSelectedIndices(list.length ? new Set([selectIndex]) : new Set())
+        setSelectedIndices(new Set())
         setCurrentIndex(list.length ? selectIndex : null)
         setMetadataByPath({})
         setPendingByPath({})
@@ -777,26 +762,20 @@ export function App(): React.ReactElement {
     [files, selectedIndices, currentIndex]
   )
 
-  const selectedBaseNames = useMemo(() => {
-    const n = files.length
-    return [...selectedIndices]
-      .sort((a, b) => a - b)
-      .filter((i) => i >= 0 && i < n)
-      .map((i) => fileBaseName(files[i]!))
-  }, [files, selectedIndices])
+  const stagingHeadingBaseNames = useMemo(() => stagingPaths.map((p) => fileBaseName(p)), [stagingPaths])
 
   const metadataHeadingUncropped = useMemo(() => {
-    if (selectedBaseNames.length === 0) return ''
+    if (stagingHeadingBaseNames.length === 0) return ''
     const prefix = `${t('ui.metadata')}: `
-    if (selectedBaseNames.length === 1) return prefix + selectedBaseNames[0]!
-    return prefix + selectedBaseNames.join(', ')
-  }, [selectedBaseNames, t])
+    if (stagingHeadingBaseNames.length === 1) return prefix + stagingHeadingBaseNames[0]!
+    return prefix + stagingHeadingBaseNames.join(', ')
+  }, [stagingHeadingBaseNames, t])
 
   const metadataPaneTitleWhenSelected = useMemo((): ReactNode => {
-    if (selectedBaseNames.length === 0) return null
+    if (stagingHeadingBaseNames.length === 0) return null
     const fit = metadataHeadingFit || metadataHeadingUncropped
     const prefixWithSpace = `${t('ui.metadata')}: `
-    const compact = t('ui.metadataCompactSelection', { count: selectedBaseNames.length })
+    const compact = t('ui.metadataCompactSelection', { count: stagingHeadingBaseNames.length })
     if (fit === compact) {
       return <span className="panel-pane-title-compact">{fit}</span>
     }
@@ -808,10 +787,10 @@ export function App(): React.ReactElement {
         <span className="panel-pane-title-files">{rest}</span>
       </>
     )
-  }, [metadataHeadingFit, metadataHeadingUncropped, selectedBaseNames, t])
+  }, [metadataHeadingFit, metadataHeadingUncropped, stagingHeadingBaseNames, t])
 
   useLayoutEffect(() => {
-    if (selectedBaseNames.length === 0) {
+    if (stagingHeadingBaseNames.length === 0) {
       setMetadataHeadingFit('')
       return
     }
@@ -827,7 +806,7 @@ export function App(): React.ReactElement {
       const fits = (line: string) => measure(line) <= available
       const prefix = `${t('ui.metadata')}: `
       setMetadataHeadingFit(
-        pickMetadataHeadingText(selectedBaseNames, {
+        pickMetadataHeadingText(stagingHeadingBaseNames, {
           prefix,
           moreLabel: (r) => ` ${t('ui.metadataMoreFiles', { count: r })}`,
           fits,
@@ -840,7 +819,7 @@ export function App(): React.ReactElement {
     const ro = new ResizeObserver(apply)
     ro.observe(stack)
     return () => ro.disconnect()
-  }, [selectedBaseNames, t])
+  }, [stagingHeadingBaseNames, t])
 
   const pendingAttributeHighlights = useMemo(() => {
     let acc = emptyDiffAttributeHighlights()
@@ -1039,7 +1018,7 @@ export function App(): React.ReactElement {
       setPreviewDataUrl(null)
       return
     }
-    const path = currentIndex != null && files[currentIndex!] != null ? files[currentIndex!] : stagingPaths[0]
+    const path = stagingPaths[0]
     if (!path) {
       setPreviewDataUrl(null)
       return
@@ -1053,7 +1032,7 @@ export function App(): React.ReactElement {
         setPreviewDataUrl(null)
       }
     })()
-  }, [currentIndex, files, stagingPaths, selectedIndices])
+  }, [stagingPaths, selectedIndices])
 
   const buildMergedPayloadForState = useCallback(
     async (st: PendingState): Promise<{ payload: Record<string, unknown> | null; err: string | null }> => {
@@ -2170,9 +2149,9 @@ export function App(): React.ReactElement {
                 <h2
                   ref={metaPaneTitleH2Ref}
                   className="panel-pane-title"
-                  title={selectedBaseNames.length ? selectedBaseNames.join('\n') : undefined}
+                  title={stagingHeadingBaseNames.length ? stagingHeadingBaseNames.join('\n') : undefined}
                 >
-                  {selectedBaseNames.length === 0 ? t('ui.metadata') : metadataPaneTitleWhenSelected}
+                  {stagingHeadingBaseNames.length === 0 ? t('ui.metadata') : metadataPaneTitleWhenSelected}
                 </h2>
                 <p className="panel-pane-shortcut-hint">{metadataShortcutHint}</p>
               </div>
