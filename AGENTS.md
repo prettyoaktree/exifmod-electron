@@ -6,7 +6,7 @@ Concise instructions for AI coding agents and automated assistants working in th
 
 **EXIFmod** is an **Electron** desktop app for editing **EXIF** metadata using a **preset catalog** stored in **SQLite** (via **sql.js**). The main process runs **ExifTool** for read/write. The renderer is **React** (Vite) with **i18next**; strings live in `**locales/`**.
 
-Optional **Ollama** integration calls a **local** HTTP server (`ollamaDescribeImage`, `ollama:listVisionModels` / `ollama:getModelSelection` / `ollama:setModel`, cached startup warmup, uncached `**ollamaCheckAvailability`** after describe transport failures, inline `**ollamaTryStartServer`** when the user starts `**ollama serve`** from the UI); EXIFmod does **not** bundle Ollama.
+Optional **Ollama** integration calls a **local** HTTP server (`ollamaDescribeImage`, `ollama:getDescribeSystemPrompt` / get/set system prompt for the status panel, cached startup warmup, uncached `**ollamaCheckAvailability`** after describe transport failures, inline `**ollamaTryStartServer`** when the user starts `**ollama serve`** from the UI); EXIFmod does **not** bundle Ollama.
 
 ## Authoritative docs (read before risky changes)
 

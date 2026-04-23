@@ -4,11 +4,33 @@ import {
   IMAGEDESCRIPTION_MAX_UTF8_BYTES
 } from '../shared/exifLimits.js'
 import { OLLAMA_ERROR_EMPTY_SOFT } from '../shared/ollamaResultCodes.js'
-import { assertLoopbackOllamaBaseUrl, buildOllamaChatOptions, getOllamaBaseUrlString } from './ollamaConfig.js'
-import { resolveOllamaModelName } from './ollamaPrefs.js'
+import {
+  assertLoopbackOllamaBaseUrl,
+  buildOllamaChatOptions,
+  getOllamaBaseUrlString,
+  resolveOllamaModelName
+} from './ollamaConfig.js'
+import {
+  getCustomDescribeSystemPromptTemplate,
+  setCustomDescribeSystemPromptTemplate
+} from './ollamaDescribePromptPrefs.js'
 import { readImagePreviewJpegBase64Ollama } from './previewImage.js'
 
 export { assertLoopbackOllamaBaseUrl, DEFAULT_OLLAMA_BASE, DEFAULT_OLLAMA_MODEL } from './ollamaConfig.js'
+
+/** Substitute per request so the model sees the real EXIF byte cap. */
+export const DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER = '{{MAX_DESC_BYTES}}'
+
+export const DEFAULT_DESCRIBE_SYSTEM_PROMPT_TEMPLATE = `You label a photograph for EXIF ImageDescription: high-level scene and main subjects only—setting, time of day, and obvious activity when clear. Reply with ONLY valid JSON, no markdown, no other text.
+Shape: {"description":"English; must match the For description rules (edit this sample and those rules together if you change style).","keywords":["short","tokens","lowercase ok"]}
+Hard limit: the "description" string must be at most ${DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER} UTF-8 bytes (bytes, not characters). Use far less—leave headroom.
+
+For "description":
+- One short telegraphic line (e.g. "Downtown at night, wet street; shop lights."). If you want more than one sentence, change this bullet and the Shape line above to match—models weight the example JSON highly.
+- **Do not** list fine details: textures, small objects, background clutter, or minor props unless they define the scene. Skip exact counts, tiny text, and small background figures.
+- No mood essays, no poetry, no marketing words. No hedging ("appears to", "likely", "suggesting").
+
+Keywords: 5–20 broad tokens: place type, time/light, main subject type. Skip pixel-level or niche detail. Do not use film stock tokens or the exact phrase "Film Stock".`
 
 const CHAT_TIMEOUT_MS = 180_000
 /** Text-only warmup to verify the configured model responds (startup / availability). */
@@ -67,17 +89,51 @@ export async function ollamaWarmup(options?: { baseUrl?: string; model?: string 
   }
 }
 
-function buildSystemPrompt(maxDescriptionUtf8Bytes: number): string {
-  return `You label a photograph for EXIF ImageDescription: high-level scene and main subjects only—setting, time of day, and obvious activity when clear. Reply with ONLY valid JSON, no markdown, no other text.
-Shape: {"description":"one terse line in English","keywords":["short","tokens","lowercase ok"]}
-Hard limit: the "description" string must be at most ${maxDescriptionUtf8Bytes} UTF-8 bytes (bytes, not characters). Use far less—leave headroom.
+export function formatDescribeSystemPromptTemplate(
+  template: string,
+  maxDescriptionUtf8Bytes: number
+): string {
+  return template.split(DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER).join(String(maxDescriptionUtf8Bytes))
+}
 
-For "description":
-- One short telegraphic line (e.g. "Downtown at night, wet street; shop lights.").
-- **Do not** list fine details: textures, small objects, background clutter, or minor props unless they define the scene. Skip exact counts, tiny text, and small background figures.
-- No mood essays, no poetry, no marketing words. No hedging ("appears to", "likely", "suggesting").
+function resolveDescribeSystemPromptForRequest(maxDescriptionUtf8Bytes: number): string {
+  const custom = getCustomDescribeSystemPromptTemplate()
+  const base =
+    custom != null && custom.trim().length > 0 ? custom : DEFAULT_DESCRIBE_SYSTEM_PROMPT_TEMPLATE
+  return formatDescribeSystemPromptTemplate(base, maxDescriptionUtf8Bytes)
+}
 
-Keywords: 5–20 broad tokens: place type, time/light, main subject type. Skip pixel-level or niche detail. Do not use film stock tokens or the exact phrase "Film Stock".`
+export function getDescribeSystemPrompt(maxDescriptionUtf8Bytes?: number): string {
+  const rawCap = maxDescriptionUtf8Bytes
+  const maxDescBytes =
+    rawCap == null || !Number.isFinite(rawCap)
+      ? IMAGEDESCRIPTION_MAX_UTF8_BYTES
+      : Math.min(IMAGEDESCRIPTION_MAX_UTF8_BYTES, Math.max(0, Math.floor(rawCap)))
+  const cap = maxDescBytes <= 0 ? 1 : maxDescBytes
+  return resolveDescribeSystemPromptForRequest(cap)
+}
+
+export function getDescribeSystemPromptState(): { isCustom: boolean; template: string } {
+  const c = getCustomDescribeSystemPromptTemplate()
+  if (c != null && c.trim().length > 0) {
+    return { isCustom: true, template: c }
+  }
+  return { isCustom: false, template: DEFAULT_DESCRIBE_SYSTEM_PROMPT_TEMPLATE }
+}
+
+export function setDescribeSystemPromptFromUser(
+  template: string | null | undefined
+): { ok: true } | { ok: false; error: 'missing_placeholder' } {
+  if (template == null || !String(template).trim()) {
+    setCustomDescribeSystemPromptTemplate(null)
+    return { ok: true }
+  }
+  const t = String(template)
+  if (!t.includes(DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER)) {
+    return { ok: false, error: 'missing_placeholder' }
+  }
+  setCustomDescribeSystemPromptTemplate(t)
+  return { ok: true }
 }
 
 function parseAssistantJson(content: string): { description: string; keywords: string[] } | null {
@@ -140,7 +196,7 @@ export async function ollamaDescribeImage(
     messages: [
       {
         role: 'user',
-        content: buildSystemPrompt(maxDescBytes),
+        content: resolveDescribeSystemPromptForRequest(maxDescBytes),
         images: [imageBase64]
       }
     ],

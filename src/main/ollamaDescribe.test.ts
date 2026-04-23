@@ -4,7 +4,23 @@ vi.mock('./previewImage.js', () => ({
   readImagePreviewJpegBase64Ollama: async () => 'dGVzdA=='
 }))
 
-import { ollamaDescribeImage, ollamaWarmup } from './ollamaDescribe.js'
+vi.mock('./ollamaDescribePromptPrefs.js', () => ({
+  getCustomDescribeSystemPromptTemplate: vi.fn(() => null),
+  setCustomDescribeSystemPromptTemplate: vi.fn()
+}))
+
+import { IMAGEDESCRIPTION_MAX_UTF8_BYTES } from '../shared/exifLimits.js'
+import {
+  getCustomDescribeSystemPromptTemplate,
+  setCustomDescribeSystemPromptTemplate
+} from './ollamaDescribePromptPrefs.js'
+import {
+  DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER,
+  formatDescribeSystemPromptTemplate,
+  ollamaDescribeImage,
+  ollamaWarmup,
+  setDescribeSystemPromptFromUser
+} from './ollamaDescribe.js'
 
 describe('ollamaWarmup', () => {
   const originalFetch = globalThis.fetch
@@ -80,6 +96,10 @@ describe('ollamaWarmup', () => {
 describe('ollamaDescribeImage', () => {
   const originalFetch = globalThis.fetch
 
+  beforeEach(() => {
+    vi.mocked(getCustomDescribeSystemPromptTemplate).mockReturnValue(null)
+  })
+
   afterEach(() => {
     vi.unstubAllGlobals()
     globalThis.fetch = originalFetch
@@ -114,5 +134,65 @@ describe('ollamaDescribeImage', () => {
       temperature: expect.any(Number),
       top_p: expect.any(Number)
     })
+    expect(String(body.messages[0].content)).toContain(String(IMAGEDESCRIPTION_MAX_UTF8_BYTES))
+  })
+
+  it('sends the user-stored system prompt in message content, not the built-in default', async () => {
+    const custom = `CUSTOM_OLLAMA_SYSTEM_PROMPT_LINE ${DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER} end.`
+    vi.mocked(getCustomDescribeSystemPromptTemplate).mockReturnValue(custom)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ message: { content: '{"description":"X","keywords":[]}' } })
+      })
+    )
+    const r = await ollamaDescribeImage('/tmp/fake.jpg', { model: 'm1' })
+    expect(r.ok).toBe(true)
+    const init = vi.mocked(fetch).mock.calls[0]![1]!
+    const body = JSON.parse(String(init.body))
+    const content = String(body.messages[0].content)
+    expect(content).toContain('CUSTOM_OLLAMA_SYSTEM_PROMPT_LINE')
+    expect(content).toContain(' end.')
+    expect(content).toContain(String(IMAGEDESCRIPTION_MAX_UTF8_BYTES))
+    expect(content).not.toContain('You label a photograph for EXIF ImageDescription')
+  })
+})
+
+describe('formatDescribeSystemPromptTemplate', () => {
+  it('replaces all placeholder occurrences with the byte cap', () => {
+    const out = formatDescribeSystemPromptTemplate(
+      `a ${DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER} b ${DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER}`,
+      42
+    )
+    expect(out).toBe('a 42 b 42')
+  })
+})
+
+describe('setDescribeSystemPromptFromUser', () => {
+  beforeEach(() => {
+    vi.mocked(setCustomDescribeSystemPromptTemplate).mockClear()
+  })
+
+  it('returns missing_placeholder when token is absent', () => {
+    const r = setDescribeSystemPromptFromUser('no token here')
+    expect(r).toEqual({ ok: false, error: 'missing_placeholder' })
+    expect(setCustomDescribeSystemPromptTemplate).not.toHaveBeenCalled()
+  })
+
+  it('persists when token is present', () => {
+    const r = setDescribeSystemPromptFromUser(
+      `x ${DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER} y`
+    )
+    expect(r).toEqual({ ok: true })
+    expect(setCustomDescribeSystemPromptTemplate).toHaveBeenCalledWith(
+      `x ${DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER} y`
+    )
+  })
+
+  it('clears custom when empty', () => {
+    const r = setDescribeSystemPromptFromUser('   ')
+    expect(r).toEqual({ ok: true })
+    expect(setCustomDescribeSystemPromptTemplate).toHaveBeenCalledWith(null)
   })
 })

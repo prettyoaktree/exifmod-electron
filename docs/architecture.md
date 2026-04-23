@@ -4,7 +4,7 @@ Technical overview for contributors and tooling (AI agents: see also `[AGENTS.md
 
 ## Stack
 
-- **Electron** main process (privileged): IPC, native menus and dialogs, filesystem, ExifTool runner, optional Ollama HTTP (AI describe, list installed **vision** models, saved model in `userData`), image preview encoding, SQLite catalog via **sql.js** (WASM loaded from packaged resources in production).
+- **Electron** main process (privileged): IPC, native menus and dialogs, filesystem, ExifTool runner, optional Ollama HTTP (AI describe, `getDescribeSystemPrompt` for the status panel), image preview encoding, SQLite catalog via **sql.js** (WASM loaded from packaged resources in production).
 - **Renderer:** **React** (Vite) UI; **i18next** for localized strings under `[locales/](../locales/)`.
 - **Preload:** `[src/preload/index.ts](../src/preload/index.ts)` exposes a single `window.exifmod` API via `contextBridge` — the renderer must not use Node APIs directly.
 
@@ -34,7 +34,7 @@ Path aliases: `@shared` → `src/shared`, `@renderer` → `src/renderer/src` (se
 
 ## Preload API (summary)
 
-`window.exifmod` covers paths, locale, dialogs, catalog/presets, EXIF read (single-file and **folder batch** with progress), merge/apply (raster in-file vs **RAW → XMP sidecar** in main), remembered-dialog preferences (Lightroom snapshot tip, pre-write backup), optional Ollama helpers (describe, list vision models, get/set model selection), filesystem helpers, and startup paths for cold “Open With” flows. The **Help** menu can install the bundled **Lightroom Classic** plug-in from `[src/main/installLightroomPlugin.ts](../src/main/installLightroomPlugin.ts)` and reset remembered prompts. The authoritative preload list is in `[src/preload/index.ts](../src/preload/index.ts)`.
+`window.exifmod` covers paths, locale, dialogs, catalog/presets, EXIF read (single-file and **folder batch** with progress), merge/apply (raster in-file vs **RAW → XMP sidecar** in main), remembered-dialog preferences (Lightroom snapshot tip, pre-write backup), optional Ollama helpers (describe, `**ollamaGetDescribeSystemPrompt**`, `**ollamaGetDescribeSystemPromptState**`, `**ollamaSetDescribeSystemPrompt**`), filesystem helpers, and startup paths for cold “Open With” flows. The **Help** menu can install the bundled **Lightroom Classic** plug-in from `[src/main/installLightroomPlugin.ts](../src/main/installLightroomPlugin.ts)` and reset remembered prompts. The authoritative preload list is in `[src/preload/index.ts](../src/preload/index.ts)`.
 
 ## Packaging and releases
 

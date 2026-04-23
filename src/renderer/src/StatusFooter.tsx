@@ -2,7 +2,11 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type 
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import type { AiDescribeBusyState } from '@shared/types.js'
+import { unwrapIpcErrorMessage } from './ipcError.js'
 import type { UpdaterUiPayload as UpdaterUiState } from '@shared/updaterUi.js'
+
+/** Same token as `DESCRIBE_SYSTEM_PROMPT_MAX_BYTES_PLACEHOLDER` in main ollamaDescribe (i18n `ph` value). */
+const OLLAMA_DESCRIBE_PROMPT_MAX_BYTES_PLACEHOLDER = '{{MAX_DESC_BYTES}}'
 
 export type ApplicationPhase = 'verifying' | 'ok' | 'error'
 
@@ -194,7 +198,7 @@ export type StatusFooterProps = {
   ollamaStartError: string | null
   /** While set, Ollama segment shows generation progress and uses the pulsing blue light. */
   aiDescribeBusy: AiDescribeBusyState
-  /** Shown at the top of the Ollama panel after a successful describe run; triggers auto-open when set. */
+  /** Shown at the top of the Ollama panel after a successful describe run (panel does not auto-open). */
   ollamaGenerationCompleteMessage: string | null
   updaterSupported: boolean
   updaterState: UpdaterUiState
@@ -206,21 +210,6 @@ export type StatusFooterProps = {
   onUpdaterLater: () => void
   /** Help → Check for Updates and in-panel “Check” use the same IPC path when updates are supported. */
   onUpdaterCheck?: () => void
-  /**
-   * When the Generative AI panel is shown (`openSegment === 'ollama'`), e.g. to refresh the model list.
-   * Fires when the user opens that segment (not on every re-render while it stays open).
-   */
-  onOllamaPanelOpened?: () => void
-  /** Ollama vision model picker; only when session is `ready` and the describe API exists. */
-  ollamaModelUi?: {
-    models: string[]
-    effectiveModel: string
-    envLocked: boolean
-    listLoading: boolean
-    listError: string | null
-    onModelChange: (name: string) => void
-    onRefreshList: () => void
-  } | null
 }
 
 export function StatusFooter({
@@ -238,13 +227,16 @@ export function StatusFooter({
   onUpdaterDownload,
   onUpdaterRestart,
   onUpdaterLater,
-  onUpdaterCheck,
-  onOllamaPanelOpened,
-  ollamaModelUi
+  onUpdaterCheck
 }: StatusFooterProps): React.ReactElement {
   const { t } = useTranslation()
   const [openSegment, setOpenSegment] = useState<SegmentId | null>(null)
-  const prevOpenSegmentOllamaRef = useRef(false)
+  const [ollamaSystemPromptOpen, setOllamaSystemPromptOpen] = useState(false)
+  const [ollamaSystemPromptDraft, setOllamaSystemPromptDraft] = useState('')
+  const [ollamaSystemPromptError, setOllamaSystemPromptError] = useState<string | null>(null)
+  const [ollamaSystemPromptLoading, setOllamaSystemPromptLoading] = useState(false)
+  const [ollamaSystemPromptFeedback, setOllamaSystemPromptFeedback] = useState<'saved' | 'reset' | null>(null)
+  const ollamaPromptFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const applicationPanelRef = useRef<HTMLDivElement>(null)
   const prevPhaseRef = useRef<ApplicationPhase>(applicationPhase)
   const prevOpenSegmentRef = useRef<SegmentId | null>(null)
@@ -343,20 +335,55 @@ export function StatusFooter({
     prevOpenSegmentRef.current = openSegment
   }, [openSegment, onOllamaPanelDismiss])
 
-  useEffect(() => {
-    const nowOllama = openSegment === 'ollama'
-    if (nowOllama && !prevOpenSegmentOllamaRef.current) {
-      onOllamaPanelOpened?.()
-    }
-    prevOpenSegmentOllamaRef.current = nowOllama
-  }, [openSegment, onOllamaPanelOpened])
+  const loadOllamaDescribeSystemPromptState = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const api = window.exifmod
+      if (!api?.ollamaGetDescribeSystemPromptState) {
+        setOllamaSystemPromptError(t('ui.ollamaSystemPromptPreloadError'))
+        return
+      }
+      if (!options?.silent) {
+        setOllamaSystemPromptLoading(true)
+      }
+      setOllamaSystemPromptError(null)
+      try {
+        const s = await api.ollamaGetDescribeSystemPromptState()
+        setOllamaSystemPromptDraft(s.template)
+      } catch (e) {
+        setOllamaSystemPromptDraft('')
+        setOllamaSystemPromptError(unwrapIpcErrorMessage(e))
+      } finally {
+        if (!options?.silent) {
+          setOllamaSystemPromptLoading(false)
+        }
+      }
+    },
+    [t]
+  )
 
-  /** After successful AI describe, surface completion in the Ollama panel (cannot steal focus from forced Application error panel). */
   useEffect(() => {
-    if (!ollamaGenerationCompleteMessage) return
-    if (applicationDismissDisabled) return
-    setOpenSegment('ollama')
-  }, [ollamaGenerationCompleteMessage, applicationDismissDisabled])
+    if (!ollamaSystemPromptOpen || preloadMissing) return
+    void loadOllamaDescribeSystemPromptState()
+  }, [ollamaSystemPromptOpen, preloadMissing, loadOllamaDescribeSystemPromptState])
+
+  const showOllamaPromptFeedback = useCallback((kind: 'saved' | 'reset') => {
+    if (ollamaPromptFeedbackTimerRef.current) {
+      clearTimeout(ollamaPromptFeedbackTimerRef.current)
+    }
+    setOllamaSystemPromptFeedback(kind)
+    ollamaPromptFeedbackTimerRef.current = setTimeout(() => {
+      setOllamaSystemPromptFeedback(null)
+      ollamaPromptFeedbackTimerRef.current = null
+    }, 4000)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (ollamaPromptFeedbackTimerRef.current) {
+        clearTimeout(ollamaPromptFeedbackTimerRef.current)
+      }
+    }
+  }, [])
 
   const setSegmentOpen = useCallback(
     (id: SegmentId, open: boolean): void => {
@@ -443,58 +470,121 @@ export function StatusFooter({
     return <p className="status-footer-panel-message">{t('ui.aiDescribeOllamaUnavailable')}</p>
   })()
 
-  const ollamaModelBlock =
-    ollamaSession === 'ready' && ollamaModelUi && !aiDescribeBusy ? (
-      <div className="status-footer-ollama-model" data-ollama-model>
-        {ollamaModelUi.envLocked ? (
-          <p className="status-footer-panel-message">
-            {t('ui.ollamaModelEnvLocked', { model: ollamaModelUi.effectiveModel })}
-          </p>
-        ) : (
+  const ollamaSystemPromptBlock =
+    ollamaSession === 'ready' && !preloadMissing && !aiDescribeBusy ? (
+      <div className="status-footer-ollama-prompt" data-ollama-prompt>
+        <div className="status-footer-panel-actions">
+          <button
+            type="button"
+            className="btn"
+            aria-expanded={ollamaSystemPromptOpen}
+            onClick={() => {
+              setOllamaSystemPromptOpen((o) => {
+                if (o) {
+                  setOllamaSystemPromptDraft('')
+                  setOllamaSystemPromptError(null)
+                  setOllamaSystemPromptFeedback(null)
+                }
+                return !o
+              })
+            }}
+          >
+            {ollamaSystemPromptOpen
+              ? t('ui.ollamaHideSystemPrompt')
+              : t('ui.ollamaShowSystemPrompt')}
+          </button>
+        </div>
+        {ollamaSystemPromptOpen ? (
           <>
-            <div className="status-footer-ollama-model-row">
-              <label className="status-footer-ollama-model-label" htmlFor="ollama-model-select">
-                {t('ui.ollamaModelLabel')}
-              </label>
-              <div className="status-footer-ollama-model-controls">
-                <select
-                  id="ollama-model-select"
-                  className="status-footer-ollama-select"
-                  value={ollamaModelUi.effectiveModel}
-                  disabled={ollamaModelUi.listLoading}
-                  onChange={(e) => ollamaModelUi.onModelChange(e.target.value)}
-                >
-                  {(() => {
-                    const m = ollamaModelUi.models
-                    const eff = ollamaModelUi.effectiveModel
-                    const withEff = m.includes(eff) ? m : [eff, ...m]
-                    return withEff.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))
-                  })()}
-                </select>
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={ollamaModelUi.listLoading}
-                  onClick={() => ollamaModelUi.onRefreshList()}
-                >
-                  {ollamaModelUi.listLoading ? t('ui.ollamaModelLoading') : t('ui.ollamaModelRefresh')}
-                </button>
-              </div>
-            </div>
-            {ollamaModelUi.listError ? (
-              <p className="status-footer-panel-message status-footer-panel-message--error" title={ollamaModelUi.listError}>
-                {t('ui.ollamaModelListError', { message: ollamaModelUi.listError })}
+            <p className="status-footer-panel-message status-footer-ollama-prompt-hint">
+              {t('ui.ollamaSystemPromptHint', { ph: OLLAMA_DESCRIBE_PROMPT_MAX_BYTES_PLACEHOLDER })}
+            </p>
+            {ollamaSystemPromptLoading ? (
+              <p className="status-footer-panel-message">{t('ui.ollamaSystemPromptLoading')}</p>
+            ) : null}
+            {ollamaSystemPromptError ? (
+              <p className="status-footer-panel-message status-footer-panel-message--error" title={ollamaSystemPromptError}>
+                {t('ui.ollamaSystemPromptError', { message: ollamaSystemPromptError })}
               </p>
             ) : null}
-            {!ollamaModelUi.listLoading && ollamaModelUi.models.length === 0 && !ollamaModelUi.listError ? (
-              <p className="status-footer-panel-message">{t('ui.ollamaModelNoVision')}</p>
+            {!ollamaSystemPromptLoading ? (
+              <>
+                <textarea
+                  className="status-footer-ollama-prompt-textarea"
+                  value={ollamaSystemPromptDraft}
+                  onChange={(e) => {
+                    setOllamaSystemPromptDraft(e.target.value)
+                    setOllamaSystemPromptFeedback(null)
+                  }}
+                  rows={10}
+                  spellCheck={false}
+                  aria-label={t('ui.ollamaSystemPromptTextareaLabel')}
+                />
+                <div className="status-footer-ollama-prompt-actions">
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={ollamaSystemPromptLoading}
+                    onClick={() => {
+                      void (async () => {
+                        const api = window.exifmod
+                        if (!api?.ollamaSetDescribeSystemPrompt) return
+                        setOllamaSystemPromptError(null)
+                        setOllamaSystemPromptFeedback(null)
+                        const r = await api.ollamaSetDescribeSystemPrompt(ollamaSystemPromptDraft)
+                        if (r.ok) {
+                          await loadOllamaDescribeSystemPromptState({ silent: true })
+                          showOllamaPromptFeedback('saved')
+                          return
+                        }
+                        if (r.error === 'missing_placeholder') {
+                          setOllamaSystemPromptError(
+                            t('ui.ollamaSystemPromptMissingPlaceholder', {
+                              ph: OLLAMA_DESCRIBE_PROMPT_MAX_BYTES_PLACEHOLDER
+                            })
+                          )
+                        }
+                      })()
+                    }}
+                  >
+                    {t('ui.ollamaSystemPromptSave')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={ollamaSystemPromptLoading}
+                    onClick={() => {
+                      void (async () => {
+                        const api = window.exifmod
+                        if (!api?.ollamaSetDescribeSystemPrompt) return
+                        setOllamaSystemPromptError(null)
+                        setOllamaSystemPromptFeedback(null)
+                        const r = await api.ollamaSetDescribeSystemPrompt(null)
+                        if (r.ok) {
+                          await loadOllamaDescribeSystemPromptState({ silent: true })
+                          showOllamaPromptFeedback('reset')
+                        }
+                      })()
+                    }}
+                  >
+                    {t('ui.ollamaSystemPromptResetDefault')}
+                  </button>
+                </div>
+                {ollamaSystemPromptFeedback ? (
+                  <p
+                    className="status-footer-panel-message status-footer-panel-message--success"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    {ollamaSystemPromptFeedback === 'saved'
+                      ? t('ui.ollamaSystemPromptSaveDone')
+                      : t('ui.ollamaSystemPromptResetDone')}
+                  </p>
+                ) : null}
+              </>
             ) : null}
           </>
-        )}
+        ) : null}
       </div>
     ) : null
 
@@ -512,7 +602,7 @@ export function StatusFooter({
       {ollamaGenerationCompleteMessage ? (
         <p className="status-footer-panel-message">{ollamaGenerationCompleteMessage}</p>
       ) : null}
-      {ollamaModelBlock}
+      {ollamaSystemPromptBlock}
       {ollamaBodyDefault}
     </>
   )

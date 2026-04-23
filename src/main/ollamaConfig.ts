@@ -61,3 +61,8 @@ export function buildOllamaChatOptions(): {
 export function getOllamaBaseUrlString(): string {
   return process.env.EXIFMOD_OLLAMA_HOST ?? DEFAULT_OLLAMA_BASE
 }
+
+/** `EXIFMOD_OLLAMA_MODEL` if set, else app default (e.g. `gemma4`). */
+export function resolveOllamaModelName(): string {
+  return (process.env.EXIFMOD_OLLAMA_MODEL || '').trim() || DEFAULT_OLLAMA_MODEL
+}

@@ -53,16 +53,11 @@ export interface ExifmodApi {
     | { status: 'no_cli' }
   >
   ollamaTryStartServer: () => Promise<{ ok: true } | { ok: false; error: string }>
-  ollamaListVisionModels: (forceRefresh?: boolean) => Promise<
-    { ok: true; models: string[] } | { ok: false; error: string }
+  ollamaGetDescribeSystemPrompt: (maxDescriptionUtf8Bytes?: number) => Promise<string>
+  ollamaGetDescribeSystemPromptState: () => Promise<{ isCustom: boolean; template: string }>
+  ollamaSetDescribeSystemPrompt: (text: string | null) => Promise<
+    { ok: true } | { ok: false; error: 'missing_placeholder' }
   >
-  ollamaGetModelSelection: () => Promise<{
-    effectiveModel: string
-    envLocked: boolean
-    savedModel: string | null
-    source: 'env' | 'saved' | 'default'
-  }>
-  ollamaSetModel: (name: string) => Promise<{ ok: true } | { ok: false; error: 'env' | 'empty' }>
   onPresetsImported: (cb: () => void) => () => void
   onTutorialStart: (cb: (payload?: { firstRun?: boolean }) => void) => () => void
   markTutorialOnboardingSeen: () => Promise<void>

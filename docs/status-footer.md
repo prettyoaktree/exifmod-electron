@@ -112,14 +112,14 @@ Implementation today uses `OllamaSession` in [`App.tsx`](../src/renderer/src/App
 | ------------------- | ----- | ------------- | ----------- | ---------------------------- | ------- |
 | `checking` | **Blue / pulse** | Closed | Yes | Explains AI availability is being checked. | None |
 | `launching` | **Blue / pulse** | Optional: auto-open **not** required; user already chose Start | Yes | “Starting Ollama…” | None (wait) |
-| `ready` | **Green** | Closed | Yes | AI available for describe when selection allows. The panel can include a **Model** list (vision models only) and **Refresh list**, plus a read-only line if `**EXIFMOD_OLLAMA_MODEL**` is set. | **Refresh list** re-queries Ollama |
+| `ready` | **Green** | Closed | Yes | AI available for describe when selection allows. The panel can include **Show system prompt** (editable; must include `{{MAX_DESC_BYTES}}`; saved via main). | — |
 | `server_down` | **Amber** | Closed (unless user opened) | Yes | Ollama CLI may exist but server not responding; explain **Start Ollama** / Terminal. | **Start Ollama** (dismiss the panel to defer—no separate “Not now” control) |
 | `no_install` | **Amber** | Closed | Yes | Ollama not installed; link or text to install. | Optional: “Learn more” |
 | `declined` | **Amber** or **Green** (product: “user skipped”) | Closed | Yes | User chose not to start server this session. | Optional: “Try again” → back to `server_down` flow |
 | `failed` | **Amber** | Closed | Yes | Generic unreachable / startup failure copy. | Retry / Check install per product |
 | `ollamaTryStartServer` error (after user click) | **Red** or **Amber** | Open with error detail | Yes | Show `ollamaStartError` string. | **Retry** (Start again), dismiss |
 | **AI describe running** (`ollamaDescribeImage` single or batch) | **Blue / pulse** | **Closed by default** (do not auto-open when generation **starts**) | Yes | When opened: progress line (`ui.statusFooter.ollamaGeneratingProgress` for batch, or loading copy for single). | None (wait) |
-| **AI describe finished successfully** | (returns to session row, e.g. **Green** when `ready`) | **Auto-open** Ollama panel with completion banner (`ui.statusFooter.ollamaGenerationComplete`) above normal session copy — **skipped** if Application is in forced **`error`** (panel cannot open) | Yes | Banner + usual `ready` (or other) body until user dismisses panel (clears banner). | — |
+| **AI describe finished successfully** | (returns to session row, e.g. **Green** when `ready`) | **Closed** by default (the panel is **not** auto-opened). If the user opens the Ollama panel, the completion line (`ui.statusFooter.ollamaGenerationComplete`) can show above the usual `ready` body until the panel is dismissed. | Yes | — | — |
 
 **Note:** If Application is in **`error`**, Ollama panel may be secondary; do not steal focus from forced Application panel.
 
@@ -174,7 +174,7 @@ When you add a feature that touches runtime health, updates, or AI:
 | Footer UI | [`src/renderer/src/StatusFooter.tsx`](../src/renderer/src/StatusFooter.tsx) (when added), [`App.tsx`](../src/renderer/src/App.tsx), [`App.css`](../src/renderer/src/App.css) |
 | Preload | [`src/preload/index.ts`](../src/preload/index.ts), [`vite-env.d.ts`](../src/renderer/src/vite-env.d.ts) |
 | Application health | [`src/main/index.ts`](../src/main/index.ts), [`src/main/exifCore/index.ts`](../src/main/exifCore/index.ts), [`localizePreflight.ts`](../src/main/localizePreflight.ts) |
-| Ollama | [`src/main/ollamaLifecycle.ts`](../src/main/ollamaLifecycle.ts), [`ollamaDescribe.ts`](../src/main/ollamaDescribe.ts), [`ollamaListVision.ts`](../src/main/ollamaListVision.ts), [`ollamaPrefs.ts`](../src/main/ollamaPrefs.ts) |
+| Ollama | [`src/main/ollamaLifecycle.ts`](../src/main/ollamaLifecycle.ts), [`ollamaDescribe.ts`](../src/main/ollamaDescribe.ts), [`ollamaConfig.ts`](../src/main/ollamaConfig.ts) |
 | Updates | [`src/main/autoUpdate.ts`](../src/main/autoUpdate.ts) |
 
 This document is normative for **footer behavior**; if code and doc diverge, **fix the code or update this doc** in the same change.
