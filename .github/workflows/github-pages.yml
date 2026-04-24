@@ -9,6 +9,10 @@ on:
       - main
     paths:
       - 'website/**'
+      - 'docs/user/**'
+      - 'scripts/build-user-docs.mjs'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/github-pages.yml'
   workflow_dispatch:
 
@@ -30,6 +34,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install and build user docs
+        run: |
+          npm ci
+          npm run site:build
 
       - name: Configure Pages
         uses: actions/configure-pages@v4

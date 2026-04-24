@@ -11,7 +11,7 @@ Every doc is written for one of two readers:
 
 | Type                 | Reads it when                                                  | Examples                                                                                    |
 | -------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| **User-facing**      | Installing, using, or evaluating the software                  | `README.md`, `docs/product.md`                                                              |
+| **User-facing**      | Installing, using, or evaluating the software                  | `README.md`, [user guide on Pages](https://prettyoaktree.github.io/exifmod/docs/) (source `docs/user/`), `docs/product.md` (pointer) |
 | **Internal / agent** | Building, changing, releasing, or reasoning about the software | `AGENTS.md`, `docs/architecture.md`, `docs/status-footer.md`, `maintainer.md`, `RELEASE.md` |
 
 
