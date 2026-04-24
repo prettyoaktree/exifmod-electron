@@ -5,6 +5,12 @@ Desktop app for editing image metadata using a preset catalog.
 - Requires **ExifTool** for reading and writing metadata.
 - Supports local AI models for generating image descriptions and keywords — see **[docs/product.md](docs/product.md)** for setup and configuration.
 
+## Public website
+
+The marketing landing page is published with **GitHub Pages** at **https://prettyoaktree.github.io/exifmod/**. Static source files are in [`website/`](website/) in this repository.
+
+**`package.json` `homepage`** points at the [GitHub repository](https://github.com/prettyoaktree/exifmod#readme) for npm-style metadata; the `github.io` URL is the public site.
+
 ## Installation
 
 ### GitHub Releases

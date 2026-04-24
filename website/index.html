@@ -1,0 +1,710 @@
+<!DOCTYPE html><html lang="en"><head>
+
+
+
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EXIFmod — Image Metadata Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&amp;display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: oklch(0.52 0.14 145);
+      --green-light: oklch(0.94 0.04 145);
+      --green-mid: oklch(0.72 0.10 145);
+      --bg: oklch(0.985 0.004 80);
+      --bg2: oklch(0.965 0.006 80);
+      --border: oklch(0.88 0.005 80);
+      --text: oklch(0.18 0.008 80);
+      --text-mid: oklch(0.42 0.008 80);
+      --text-light: oklch(0.60 0.006 80);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: "DM Sans", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: color-mix(in oklch, var(--bg) 90%, transparent);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      height: 60px;
+    }
+    .nav-logo {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      text-decoration: none;
+    }
+    .nav-logo span { color: var(--green); }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      list-style: none;
+    }
+    .nav-links a {
+      font-size: 14px;
+      color: var(--text-mid);
+      text-decoration: none;
+      font-weight: 450;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .btn-nav {
+      background: var(--green);
+      color: white !important;
+      padding: 8px 18px;
+      border-radius: 7px;
+      font-weight: 500;
+      font-size: 14px !important;
+      transition: opacity 0.15s !important;
+    }
+    .btn-nav:hover { opacity: 0.88; }
+
+    /* ─── HERO ─── */
+    .hero {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 80px 40px 60px;
+      display: grid;
+      grid-template-columns: 1fr 1.15fr;
+      gap: 64px;
+      align-items: center;
+    }
+    .hero-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--green);
+      background: var(--green-light);
+      padding: 5px 12px;
+      border-radius: 99px;
+      margin-bottom: 20px;
+    }
+    .hero-label .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+    }
+    .hero h1 {
+      font-size: clamp(32px, 4vw, 48px);
+      font-weight: 600;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      margin-bottom: 20px;
+      text-wrap: pretty;
+    }
+    .hero h1 em {
+      font-style: normal;
+      color: var(--green);
+    }
+    .hero-desc {
+      font-size: 17px;
+      color: var(--text-mid);
+      line-height: 1.7;
+      margin-bottom: 36px;
+      max-width: 420px;
+      text-wrap: pretty;
+    }
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: stretch;
+    }
+    .hero-actions a {
+      justify-content: center;
+    }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--green);
+      color: white;
+      text-decoration: none;
+      padding: 12px 22px;
+      border-radius: 9px;
+      font-weight: 500;
+      font-size: 15px;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: white;
+      color: var(--text);
+      text-decoration: none;
+      padding: 12px 22px;
+      border-radius: 9px;
+      font-weight: 500;
+      font-size: 15px;
+      border: 1.5px solid var(--border);
+      transition: border-color 0.15s, transform 0.1s;
+    }
+    .btn-secondary:hover { border-color: oklch(0.72 0.008 80); transform: translateY(-1px); }
+    .btn-icon { font-size: 18px; line-height: 1; }
+    .hero-version {
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--text-light);
+    }
+    .hero-version a {
+      color: var(--green);
+      text-decoration: none;
+    }
+
+    /* screenshot */
+    .hero-screenshot {
+      position: relative;
+    }
+    .screenshot-frame {
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px oklch(0 0 0 / 0.04), 0 8px 24px oklch(0 0 0 / 0.10), 0 24px 64px oklch(0 0 0 / 0.10);
+      border: 1px solid var(--border);
+      background: white;
+    }
+    .screenshot-frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    /* ─── SECTION COMMON ─── */
+    section {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 80px 40px;
+    }
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(24px, 3vw, 34px);
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+    .section-desc {
+      font-size: 16px;
+      color: var(--text-mid);
+      max-width: 540px;
+      text-wrap: pretty;
+    }
+
+    /* ─── DIVIDER ─── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* ─── FEATURES ─── */
+    .features-section {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .features-section > section {
+      display: block;
+    }
+    .features-intro {
+      margin-bottom: 40px;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px 24px;
+    }
+    .feature-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .feature-icon {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      background: var(--green-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+    .feature-icon svg {
+      width: 18px; height: 18px;
+      stroke: var(--green);
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .feature-card h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      letter-spacing: -0.01em;
+    }
+    .feature-card p {
+      font-size: 13px;
+      color: var(--text-mid);
+      line-height: 1.55;
+    }
+
+    /* ─── SCREENSHOTS STRIP ─── */
+    .screenshots-section { }
+    .screenshots-header {
+      margin-bottom: 40px;
+    }
+    .screenshots-grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    .ss-card {
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 16px oklch(0 0 0 / 0.07);
+    }
+    .ss-card img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .ss-caption {
+      padding: 14px 16px;
+      background: white;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-light);
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+    .screenshots-side {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ─── HOW IT WORKS ─── */
+    .how-section {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .how-section > section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+    }
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .step {
+      display: flex;
+      gap: 16px;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .step:first-child { padding-top: 0; }
+    .step:last-child { border-bottom: none; padding-bottom: 0; }
+    .step-num {
+      flex-shrink: 0;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--green);
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step-body h4 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+    }
+    .step-body p {
+      font-size: 14px;
+      color: var(--text-mid);
+      line-height: 1.55;
+    }
+    .how-screenshot .screenshot-frame {
+      box-shadow: 0 2px 4px oklch(0 0 0 / 0.04), 0 8px 24px oklch(0 0 0 / 0.09);
+    }
+
+    /* ─── INSTALL ─── */
+    .install-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .install-header .section-desc {
+      margin: 0 auto;
+    }
+    .install-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      max-width: 820px;
+      margin: 0 auto;
+    }
+    .install-card {
+      background: white;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+    }
+    .install-card-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .platform-icon {
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .platform-icon svg {
+      width: 36px; height: 36px;
+      fill: var(--text);
+    }
+    .install-card h3 {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    .install-card .note {
+      font-size: 12px;
+      color: var(--text-light);
+      margin-top: 2px;
+    }
+    .install-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
+    .install-option-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-light);
+      margin-bottom: 8px;
+    }
+    .code-block {
+      background: oklch(0.96 0.004 80);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 12px 14px;
+      font-family: "Menlo", "Consolas", monospace;
+      font-size: 12px;
+      color: var(--text);
+      line-height: 1.5;
+      margin-bottom: 12px;
+      word-break: break-all;
+    }
+    .install-card .btn-primary {
+      width: 100%;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    .install-prereq {
+      font-size: 12px;
+      color: var(--text-light);
+      margin-top: 10px;
+      text-align: center;
+    }
+    .install-prereq a { color: var(--green); text-decoration: none; }
+
+    /* ─── AI CALLOUT ─── */
+    .ai-callout {
+      background: var(--green-light);
+      border: 1.5px solid oklch(0.82 0.08 145);
+      border-radius: 12px;
+      padding: 28px 32px;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      max-width: 820px;
+      margin: 32px auto 0;
+    }
+    .ai-icon {
+      flex-shrink: 0;
+      width: 36px; height: 36px;
+      background: var(--green);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ai-icon svg {
+      width: 18px; height: 18px;
+      stroke: white;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .ai-callout h4 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: oklch(0.28 0.10 145);
+    }
+    .ai-callout p {
+      font-size: 14px;
+      color: oklch(0.40 0.08 145);
+      line-height: 1.55;
+    }
+    .ai-callout a { color: var(--green); }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .footer-left {
+      font-size: 14px;
+      color: var(--text-light);
+    }
+    .footer-left strong { color: var(--text); font-weight: 500; }
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      list-style: none;
+    }
+    .footer-links a {
+      font-size: 13px;
+      color: var(--text-light);
+      text-decoration: none;
+    }
+    .footer-links a:hover { color: var(--text); }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 768px) {
+      nav { padding: 0 20px; }
+      .nav-links li:not(:last-child) { display: none; }
+
+      .hero {
+        grid-template-columns: 1fr;
+        padding: 48px 20px 40px;
+        gap: 40px;
+      }
+      section { padding: 60px 20px; }
+
+      .features-section > section,
+      .how-section > section {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+      .screenshots-grid { grid-template-columns: 1fr; }
+      .screenshots-side { display: none; }
+      .install-cards { grid-template-columns: 1fr; }
+      footer { flex-direction: column; gap: 16px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">EXIF<span>mod</span></a>
+  <ul class="nav-links">
+    <li><a href="#how-it-works">How it works</a></li>
+    <li><a href="#install" class="btn-nav">Download</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-text">
+    <h1>Edit image metadata<br>with <em>precision</em> and<br>speed.</h1>
+    <p class="hero-desc">EXIFmod is a desktop app for batch-editing photo EXIF metadata using a preset catalog — camera, lens, film stock, author, and more. With optional AI assistance for descriptions and keywords.</p>
+    <div class="hero-actions">
+      <a href="#install" class="btn-primary">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Download EXIFmod
+      </a>
+    </div>
+  </div>
+  <div class="hero-screenshot">
+    <div class="screenshot-frame">
+      <img src="assets/exifmod-overview.jpeg" alt="EXIFmod main interface showing metadata editing panel">
+    </div>
+  </div>
+</div>
+
+<!-- SCREENSHOTS -->
+
+<!-- HOW IT WORKS -->
+<div class="how-section">
+  <section id="how-it-works">
+    <div class="how-screenshot">
+      <div class="screenshot-frame">
+        <img src="assets/exifmod-edit-metadata.jpeg" alt="EXIFmod editing metadata">
+      </div>
+    </div>
+    <div>
+      <div class="section-label">HOW IT WORKS</div>
+      <h2 class="section-title">From folder to finished metadata in seconds.</h2>
+      <p class="section-desc" style="margin-bottom: 36px;">EXIFmod is built around a simple, repeatable workflow.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Open a folder</h4>
+            <p>Point EXIFmod at any folder of images. It reads existing EXIF values immediately.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Select files &amp; apply presets</h4>
+            <p>Pick images, then choose your camera, lens, film stock, and author presets from your catalog.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Add descriptions &amp; keywords</h4>
+            <p>Write them manually, or let a local AI model generate them from the image content.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Preview &amp; write</h4>
+            <p>Expand the change preview to see every tag that will be written, then confirm.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+</div>
+
+<!-- INSTALL -->
+<section id="install">
+  <div class="install-header">
+    <div class="section-label">DOWNLOAD</div>
+    <h2 class="section-title">Available for macOS and Windows.</h2>
+    <p class="section-desc">Free to download. Requires <a href="https://exiftool.org" target="_blank" style="color:var(--green);text-decoration:none;">ExifTool</a> — the package managers install it automatically.</p>
+  </div>
+
+  <div class="install-cards">
+    <!-- macOS -->
+    <div class="install-card">
+      <div class="install-card-head">
+        <div class="platform-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"></path>
+          </svg>
+        </div>
+        <div>
+          <h3>macOS</h3>
+          <div class="note">Signed &amp; notarized · Apple Silicon + Intel</div>
+        </div>
+      </div>
+      <div class="install-option-label">Via Homebrew</div>
+      <div class="code-block">brew tap prettyoaktree/homebrew-exifmod<br>brew install --cask exifmod</div>
+      <div class="install-divider"></div>
+      <div class="install-option-label">Direct download</div>
+      <a href="https://github.com/prettyoaktree/exifmod/releases/latest" target="_blank" class="btn-primary">
+        <span class="btn-icon">⬇</span> Download .dmg
+      </a>
+    </div>
+
+    <!-- Windows -->
+    <div class="install-card">
+      <div class="install-card-head">
+        <div class="platform-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"></path>
+          </svg>
+        </div>
+        <div>
+          <h3>Windows</h3>
+          <div class="note">x64 · SmartScreen may appear on first run</div>
+        </div>
+      </div>
+      <div class="install-option-label">Via Winget</div>
+      <div class="code-block">winget install -e --id PrettyOakTree.EXIFmod</div>
+      <div class="install-divider"></div>
+      <div class="install-option-label">Direct download</div>
+      <a href="https://github.com/prettyoaktree/exifmod/releases/latest" target="_blank" class="btn-primary">
+        <span class="btn-icon">⬇</span> Download .exe
+      </a>
+    </div>
+  </div>
+
+  <div class="ai-callout">
+    <div class="ai-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2zM7.5 13a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm9 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"></path></svg>
+    </div>
+    <div>
+      <h4>Optional: Local AI for descriptions &amp; keywords</h4>
+      <p>EXIFmod can connect to a local AI model to automatically generate image descriptions and keyword tags — no cloud, no API key. See the <a href="https://github.com/prettyoaktree/exifmod/blob/main/docs/product.md" target="_blank">product docs</a> for setup instructions.</p>
+    </div>
+  </div>
+
+
+</section>
+
+<!-- FOOTER -->
+<div class="divider"></div>
+<footer>
+  <div class="footer-left"><strong>EXIFmod</strong>&nbsp;· © 2026 prettyoaktree</div>
+  <ul class="footer-links">
+    <li><a href="https://github.com/prettyoaktree/exifmod" target="_blank">GitHub</a></li>
+    <li><a href="https://github.com/prettyoaktree/exifmod/releases" target="_blank">Releases</a></li>
+    <li><a href="https://github.com/prettyoaktree/exifmod/blob/main/docs/product.md" target="_blank">Docs</a></li>
+    <li><a href="https://github.com/prettyoaktree/exifmod/blob/main/LICENSE" target="_blank">License</a></li>
+  </ul>
+</footer>
+
+
+
+</body></html>
