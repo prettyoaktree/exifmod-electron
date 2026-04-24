@@ -9,7 +9,7 @@ return {
 	LrSdkMinimumVersion = 4.0,
 	LrToolkitIdentifier = 'com.exifmod.lr.open.dev',
 	LrPluginName = 'EXIFmod Open (Dev)',
-	LrPluginInfoUrl = 'https://github.com/prettyoaktree/exifmod-electron',
+	LrPluginInfoUrl = 'https://github.com/prettyoaktree/exifmod',
 	VERSION = { major = 1, minor = 0, revision = 3 },
 
 	LrLibraryMenuItems = {

@@ -13,7 +13,7 @@
 #   WINGET_PKGS_DIR  — git clone of your fork of github.com/microsoft/winget-pkgs (same idea as TAP_DIR for Homebrew)
 #
 # Optional env:
-#   APP_REPO         — default: prettyoaktree/exifmod-electron
+#   APP_REPO         — default: prettyoaktree/exifmod
 #   DRY_RUN=1        — print actions only (no git/gh changes)
 #   SKIP_SHA_REFRESH=1 — copy YAML as-is (do not patch InstallerSha256; not recommended)
 #
@@ -26,7 +26,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="$(cd "$ROOT" && node -p "require('./package.json').version")"
 WINGET_PKGS_DIR="${WINGET_PKGS_DIR:?Set WINGET_PKGS_DIR to a git clone of your fork of https://github.com/microsoft/winget-pkgs}"
-APP_REPO="${APP_REPO:-prettyoaktree/exifmod-electron}"
+APP_REPO="${APP_REPO:-prettyoaktree/exifmod}"
 UPSTREAM_URL="${UPSTREAM_URL:-https://github.com/microsoft/winget-pkgs.git}"
 TAG="v${VERSION}"
 SHA256_NAME="EXIFmod-${VERSION}-setup.exe.sha256"

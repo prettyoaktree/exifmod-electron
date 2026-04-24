@@ -39,7 +39,7 @@ Path aliases: `@shared` → `src/shared`, `@renderer` → `src/renderer/src` (se
 ## Packaging and releases
 
 - **electron-builder** configuration lives in [package.json](../package.json) under `"build"`.
-- **Releases** are published on **[GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases)**:
+- **Releases** are published on **[GitHub Releases](https://github.com/prettyoaktree/exifmod/releases)**:
   - **macOS:** DMG + ZIP + `latest-mac.yml` (auto-update). CI: [.github/workflows/release-macos.yml](../.github/workflows/release-macos.yml) (signed + notarized when secrets are configured).
   - **Windows:** NSIS installer + `latest.yml` (auto-update). CI: [.github/workflows/release-windows.yml](../.github/workflows/release-windows.yml).
 - **Homebrew cask** (macOS only) lives in the separate tap repo; [scripts/publish-homebrew-tap-release.sh](../scripts/publish-homebrew-tap-release.sh) bumps the cask to point at the app repo DMG URL.

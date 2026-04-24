@@ -7,9 +7,9 @@ Publisher: prettyoaktree
 PublisherUrl: https://github.com/prettyoaktree
 Author: prettyoaktree
 PackageName: EXIFmod
-PackageUrl: https://github.com/prettyoaktree/exifmod-electron
+PackageUrl: https://github.com/prettyoaktree/exifmod
 License: MIT
-LicenseUrl: https://github.com/prettyoaktree/exifmod-electron/blob/main/LICENSE
+LicenseUrl: https://github.com/prettyoaktree/exifmod/blob/main/LICENSE
 Copyright: Copyright (c) prettyoaktree
 ShortDescription: EXIF metadata editor with presets
 Description: |-
@@ -20,6 +20,6 @@ Tags:
   - metadata
   - photography
   - image
-ReleaseNotesUrl: https://github.com/prettyoaktree/exifmod-electron/releases/tag/v1.4.2
+ReleaseNotesUrl: https://github.com/prettyoaktree/exifmod/releases/tag/v1.4.2
 ManifestType: defaultLocale
 ManifestVersion: 1.9.0

@@ -5,10 +5,10 @@ cask "exifmod" do
   sha256 "045cb0e7341c052027939ee35af22fb820d95200f0bef844b3905827929fe205"
   auto_updates true
 
-  url "https://github.com/prettyoaktree/exifmod-electron/releases/download/v#{version}/EXIFmod-#{version}.dmg"
+  url "https://github.com/prettyoaktree/exifmod/releases/download/v#{version}/EXIFmod-#{version}.dmg"
   name "EXIFmod"
   desc "EXIF metadata editor with presets"
-  homepage "https://github.com/prettyoaktree/exifmod-electron"
+  homepage "https://github.com/prettyoaktree/exifmod"
 
   depends_on formula: "exiftool"
 

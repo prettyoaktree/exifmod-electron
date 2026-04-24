@@ -1,8 +1,8 @@
 # Maintainer notes
 
-Operational checklist for **exifmod-electron** releases: signing, GitHub Actions secrets, and Homebrew cask bumps. **Do not commit real credentials**—use GitHub **Actions secrets** and a password manager or keychain for values; this file should only list secret *names* and procedures.
+Operational checklist for **exifmod** releases: signing, GitHub Actions secrets, and Homebrew cask bumps. **Do not commit real credentials**—use GitHub **Actions secrets** and a password manager or keychain for values; this file should only list secret *names* and procedures.
 
-## GitHub Actions secrets (`exifmod-electron` repo)
+## GitHub Actions secrets (`exifmod` repo)
 
 In **Settings → Secrets and variables → Actions**, configure:
 

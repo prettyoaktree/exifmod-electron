@@ -1,7 +1,7 @@
 ---
 name: exifmod-release
 description: >-
-  Ships a new EXIFmod (exifmod-electron) version end-to-end: semver bump in
+  Ships a new EXIFmod (exifmod) version end-to-end: semver bump in
   package.json, git tag vX.Y.Z, GitHub Release with macOS + Windows artifacts and
   updater metadata, release notes, Homebrew cask bump, and winget-pkgs manifest
   bump (staged under winget/manifests/). Use when the user asks to release,
@@ -9,7 +9,7 @@ description: >-
   for EXIFmod.
 ---
 
-# EXIFmod release (exifmod-electron)
+# EXIFmod release (exifmod)
 
 ## Preconditions
 

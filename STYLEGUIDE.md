@@ -112,7 +112,7 @@ When a single doc genuinely needs to serve both audiences, use a clear section b
 
 Keep user-facing content first. Agent sections go at the end and must be clearly labeled.
 
-**When to split instead:** Once the agent/internal section exceeds roughly 30–40 lines, create a separate `AGENTS.md`. `exifmod-electron` does this correctly: `README.md` is clean user-facing content, `AGENTS.md` holds all agent guidance.
+**When to split instead:** Once the agent/internal section exceeds roughly 30–40 lines, create a separate `AGENTS.md`. This repository does that correctly: `README.md` is clean user-facing content, `AGENTS.md` holds all agent guidance.
 
 ---
 

@@ -1,6 +1,6 @@
 # homebrew-exifmod
 
-A [Homebrew tap](https://docs.brew.sh/Taps) that distributes **EXIFmod** for macOS. The cask downloads the **signed release DMG** from the public **[exifmod-electron](https://github.com/prettyoaktree/exifmod-electron)** app repository’s [GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases). This tap repository holds the **cask definition** and release automation for bumping it.
+A [Homebrew tap](https://docs.brew.sh/Taps) that distributes **EXIFmod** for macOS. The cask downloads the **signed release DMG** from the public **[exifmod](https://github.com/prettyoaktree/exifmod)** app repository’s [GitHub Releases](https://github.com/prettyoaktree/exifmod/releases). This tap repository holds the **cask definition** and release automation for bumping it.
 
 ## Install
 
@@ -23,7 +23,7 @@ This cask declares `depends_on formula: "exiftool"`, so Homebrew should install 
 
 ## Repository layout
 
-- `Casks/exifmod.rb` — cask definition (version, checksum, download URL to **exifmod-electron** releases).
+- `Casks/exifmod.rb` — cask definition (version, checksum, download URL to **exifmod** releases).
 
 ## Maintainer notes
 

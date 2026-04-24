@@ -3,13 +3,13 @@
   "version": "1.7.3",
   "description": "EXIF metadata editor with presets (Electron)",
   "license": "MIT",
-  "homepage": "https://github.com/prettyoaktree/exifmod-electron#readme",
+  "homepage": "https://github.com/prettyoaktree/exifmod#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/prettyoaktree/exifmod-electron.git"
+    "url": "https://github.com/prettyoaktree/exifmod.git"
   },
   "bugs": {
-    "url": "https://github.com/prettyoaktree/exifmod-electron/issues"
+    "url": "https://github.com/prettyoaktree/exifmod/issues"
   },
   "main": "out/main/index.js",
   "type": "module",
@@ -50,7 +50,7 @@
     "publish": {
       "provider": "github",
       "owner": "prettyoaktree",
-      "repo": "exifmod-electron",
+      "repo": "exifmod",
       "releaseType": "release"
     },
     "appId": "dev.ay.exifmod",

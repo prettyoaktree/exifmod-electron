@@ -9,7 +9,7 @@ Desktop app for editing image metadata using a preset catalog.
 
 ### GitHub Releases
 
-Download the correct installer for your platform from [GitHub Releases](https://github.com/prettyoaktree/exifmod-electron/releases) and run it.
+Download the correct installer for your platform from [GitHub Releases](https://github.com/prettyoaktree/exifmod/releases) and run it.
 
 - **macOS:** the app is signed and notarized.
 - **Windows:** the app is not code-signed. The first time you run the installer or the app, **Microsoft Defender SmartScreen** may block it. Choose **More info** → **Run anyway** if you trust this release.

@@ -21,7 +21,7 @@ ReleaseDate: 2026-04-17
 Installers:
   - Architecture: x64
     Scope: user
-    InstallerUrl: https://github.com/prettyoaktree/exifmod-electron/releases/download/v1.4.2/EXIFmod-1.4.2-setup.exe
+    InstallerUrl: https://github.com/prettyoaktree/exifmod/releases/download/v1.4.2/EXIFmod-1.4.2-setup.exe
     InstallerSha256: B60BF86F703547AA9BF24501CD3615F42C0F4CE77423B8AD62F034BE049882B9
     RequireExplicitUpgrade: true
 ManifestType: installer

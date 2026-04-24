@@ -1,6 +1,6 @@
 # Publishing EXIFmod for Homebrew (cask bump)
 
-Release **binaries** (DMG, ZIP, auto-update metadata) are built and published from the **[exifmod-electron](https://github.com/prettyoaktree/exifmod-electron)** app repository (GitHub Actions on version tags). The **homebrew-exifmod** tap hosts the **cask definition** only; the cask downloads the DMG from **exifmod-electron** releases.
+Release **binaries** (DMG, ZIP, auto-update metadata) are built and published from the **[exifmod](https://github.com/prettyoaktree/exifmod)** app repository (GitHub Actions on version tags). The **homebrew-exifmod** tap hosts the **cask definition** only; the cask downloads the DMG from **exifmod** releases.
 
 ## One command (recommended)
 
@@ -29,7 +29,7 @@ The script:
 | `FORCE_BUILD=1`       | Always run `npm run build` even if `release/EXIFmod-<version>.dmg` exists.                               |
 | `SKIP_HOUSEKEEPING=1` | Do **not** delete older GitHub Releases on the **tap** repo after success.                               |
 | `DMG_PATH`            | Override path to the DMG (default `<app-repo>/release/EXIFmod-<version>.dmg`).                           |
-| `APP_REPO`            | Override app org/repo (default `prettyoaktree/exifmod-electron`).                                        |
+| `APP_REPO`            | Override app org/repo (default `prettyoaktree/exifmod`).                                        |
 | `TAP_REPO`            | Override tap org/repo (default `prettyoaktree/homebrew-exifmod`).                                        |
 
 
@@ -37,11 +37,11 @@ Requires `**gh`** authenticated (`gh auth login`) with permission to open PRs on
 
 ## Housekeeping on the tap repo
 
-By default the script **deletes other releases** on `**prettyoaktree/homebrew-exifmod`** so only the current tap-related release tag remains. This does **not** affect `**exifmod-electron`** releases (those must be retained for auto-updates). Use `**SKIP_HOUSEKEEPING=1`** to keep historical tap releases.
+By default the script **deletes other releases** on `**prettyoaktree/homebrew-exifmod`** so only the current tap-related release tag remains. This does **not** affect `**exifmod`** app releases (those must be retained for auto-updates). Use `**SKIP_HOUSEKEEPING=1**` to keep historical tap releases.
 
 ## App releases (source of truth)
 
-Tag `**v<version>`** on `**main**` in **exifmod-electron** after bumping `**package.json`** so CI publishes matching artifacts. See `**maintainer.md`** in the app repo for signing secrets and operator checklists.
+Tag `**v<version>`** on `**main**` in **exifmod** after bumping `**package.json`** so CI publishes matching artifacts. See `**maintainer.md`** in the app repo for signing secrets and operator checklists.
 
 ## Homebrew + in-app updater policy
 

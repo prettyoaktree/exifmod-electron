@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bump the Homebrew cask for EXIFmod using the DMG published on prettyoaktree/exifmod-electron GitHub Releases.
+# Bump the Homebrew cask for EXIFmod using the DMG published on prettyoaktree/exifmod GitHub Releases.
 #
 # Version is always taken from package.json in the app repo (no VERSION= needed).
 #
@@ -13,7 +13,7 @@
 #   FORCE_BUILD=1       — always run `npm run build` even if release/EXIFmod-<version>.dmg already exists
 #   SKIP_HOUSEKEEPING=1 — do not delete older GitHub Releases on the tap repo after success
 #   DMG_PATH            — defaults to <app-repo>/release/EXIFmod-<version>.dmg
-#   APP_REPO            — defaults to prettyoaktree/exifmod-electron (source of DMG + checksum)
+#   APP_REPO            — defaults to prettyoaktree/exifmod (source of DMG + checksum)
 #   TAP_REPO            — defaults to prettyoaktree/homebrew-exifmod (cask PR target)
 #   DMG_NAME            — defaults to EXIFmod-<version>.dmg
 #
@@ -26,7 +26,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="$(cd "$ROOT" && node -p "require('./package.json').version")"
 TAP_DIR="${TAP_DIR:?Set TAP_DIR to a git clone of github.com/prettyoaktree/homebrew-exifmod}"
-APP_REPO="${APP_REPO:-prettyoaktree/exifmod-electron}"
+APP_REPO="${APP_REPO:-prettyoaktree/exifmod}"
 TAP_REPO="${TAP_REPO:-prettyoaktree/homebrew-exifmod}"
 DMG_NAME="${DMG_NAME:-EXIFmod-${VERSION}.dmg}"
 DMG_PATH="${DMG_PATH:-$ROOT/release/${DMG_NAME}}"
