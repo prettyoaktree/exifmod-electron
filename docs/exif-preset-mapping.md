@@ -8,7 +8,7 @@ Implementation reference for contributors and AI agents. Describes how preset pa
 - ExifTool apply argv or sidecar behavior (`buildApplyCommand`, `buildApplySidecarCommand`)
 - The "Current" column inference rules (`infer.ts`, `presetDraftFromMetadata.ts`)
 
-User-facing behavior is documented in [`docs/product.md`](product.md); this file covers the implementation detail behind that behavior.
+User-facing behavior is covered in the [user guide (website)](https://prettyoaktree.github.io/exifmod/docs/) and its source under [`docs/user/`](user/); this file covers the implementation detail behind that behavior.
 
 Implementation references:
 

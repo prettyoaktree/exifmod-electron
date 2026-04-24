@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lightroom Classic — EXIFmod</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/site.css" />
+</head>
+<body class="docs-body">
+  <header class="docs-nav">
+    <a class="brand" href="../index.html">EXIF<span>mod</span></a>
+    <ul class="docs-nav-links">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="index.html">User guide</a></li>
+      <li><a href="https://github.com/prettyoaktree/exifmod/releases/latest" target="_blank" rel="noopener noreferrer">Download</a></li>
+    </ul>
+  </header>
+  <main class="docs-wrap">
+  <article class="md-content">
+    <h1>Lightroom Classic</h1>
+<p>EXIFmod ships a small <strong>Lightroom Classic</strong> plugin (<strong>Mac only</strong> for now). Install it from the app’s <strong>Help</strong> menu.</p>
+<p>In Lightroom, select a file in the library, then use <strong>Library → Plug-in Extras → Open in EXIFmod</strong> to jump straight to that file in EXIFmod.</p>
+<h2>Important: don’t lose Lightroom’s work</h2>
+<p>Lightroom leans on metadata to remember your edits. If another app rewrites the same file’s metadata, Lightroom can get confused and you can <strong>lose edits</strong> if you’re not careful.</p>
+<p><strong>Best approach</strong></p>
+<ul>
+<li>Use EXIFmod <strong>before</strong> you do heavy Develop work, when you can. For example: import scans → EXIFmod for metadata → <strong>resync the folder in LrC</strong> → then your usual convert-with-NLP / edit flow.</li>
+</ul>
+<p><strong>If the photo is already developed in Lightroom</strong></p>
+<ul>
+<li>Before you use EXIFmod, make a <strong>Develop snapshot</strong> (⌘N in Develop on a Mac) for each image you care about. When you’re done in EXIFmod, <strong>resync the folder</strong> in LrC, <strong>load metadata from files</strong> if Lightroom asks, then <strong>reapply the snapshots</strong> as needed. You might still need to nudge rotation, but your edits should come back.</li>
+</ul>
+<p>This sounds fussy, but it’s a lot calmer than rebuilding edits from scratch.</p>
+
+  </article>
+</main>
+  <footer class="docs-foot">
+    <a href="../index.html">Home</a> ·
+    <a href="https://github.com/prettyoaktree/exifmod" target="_blank" rel="noopener noreferrer">GitHub</a> ·
+    <a href="https://github.com/prettyoaktree/exifmod/blob/main/docs/exif-preset-mapping.md" target="_blank" rel="noopener noreferrer">EXIF &amp; preset details (developers)</a>
+  </footer>
+</body>
+</html>
