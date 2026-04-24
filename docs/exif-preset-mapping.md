@@ -1,6 +1,14 @@
 # EXIF tags, presets, and UI mapping
 
-This document describes how EXIF tag names relate to **preset categories** (Camera, Lens, Film, Author), what gets **written to image files**, and where values appear in the **EXIFmod UI**.
+Implementation reference for contributors and AI agents. Describes how preset payloads map to EXIF tags, merge order, Film keyword semantics, and ExifTool apply behavior. **Update this document whenever you change:**
+
+- Preset payload fields or merge order (`mergeSelectedPayloads`, `sanitizeWritePayload`)
+- Film keyword format or inference logic (`filmKeywords.ts`)
+- Tag exclusion lists (`exifClearTags.ts`, `WRITE_EXCLUDED_FIELDS`)
+- ExifTool apply argv or sidecar behavior (`buildApplyCommand`, `buildApplySidecarCommand`)
+- The "Current" column inference rules (`infer.ts`, `presetDraftFromMetadata.ts`)
+
+User-facing behavior is documented in [`docs/product.md`](product.md); this file covers the implementation detail behind that behavior.
 
 Implementation references:
 
@@ -18,13 +26,13 @@ Implementation references:
 
 ## How preset payloads become EXIF
 
-1. Each preset stores a JSON `**payload**` of tag names → values (EXIF field names as used by ExifTool, e.g. `Make`, `Model`, `Keywords`).
-2. **Camera** presets also store `**lens_system`**, `**lens_mount**`, `**lens_adaptable**` in the database. These drive **lens compatibility** in the UI; they are **not** written as EXIF tags named `LensSystem` / `LensMount` / `LensAdaptable` (see below).
-3. When applying metadata, `**mergePayloads`** loads the selected Camera, Lens, Author, and Film presets and merges their JSON payloads in this order: **Camera → Lens → Author → Film**. If the same tag appears in more than one preset, **later categories win** (last write wins).
-4. `**readConfigPayload`** drops keys in `**CONTROL_FIELDS**` (`LensSystem`, `LensMount`, `LensAdaptable`, `FixedShutter`, `FixedAperture`) from stored JSON before merge, so those names never enter the merged write payload from preset JSON. The fixed-shutter / fixed-aperture keys are **import-only** metadata for JSON seed files; camera rows persist them as `**fixed_shutter**` / `**fixed_aperture**` in the database (same as the Preset Editor).
-5. `**sanitizeWritePayload**` removes `**Film**` and `**Film Maker**` from whatever is about to be written, so those keys are **never** passed to ExifTool from the merged payload (they may still exist in stored preset JSON for catalog / legacy reasons).
+1. Each preset stores a JSON **`payload`** of tag names → values (EXIF field names as used by ExifTool, e.g. `Make`, `Model`, `Keywords`).
+2. **Camera** presets also store **`lens_system`**, **`lens_mount`**, **`lens_adaptable`** in the database. These drive **lens compatibility** in the UI; they are **not** written as EXIF tags named `LensSystem` / `LensMount` / `LensAdaptable` (see below).
+3. When applying metadata, **`mergePayloads`** loads the selected Camera, Lens, Author, and Film presets and merges their JSON payloads in this order: **Camera → Lens → Author → Film**. If the same tag appears in more than one preset, **later categories win** (last write wins).
+4. **`readConfigPayload`** drops keys in **`CONTROL_FIELDS`** (`LensSystem`, `LensMount`, `LensAdaptable`, `FixedShutter`, `FixedAperture`) from stored JSON before merge, so those names never enter the merged write payload from preset JSON. The fixed-shutter / fixed-aperture keys are **import-only** metadata for JSON seed files; camera rows persist them as **`fixed_shutter`** / **`fixed_aperture`** in the database (same as the Preset Editor).
+5. **`sanitizeWritePayload`** removes **`Film`** and **`Film Maker`** from whatever is about to be written, so those keys are **never** passed to ExifTool from the merged payload (they may still exist in stored preset JSON for catalog / legacy reasons).
 
-After that merge, the main window can add `**ExposureTime`**, `**FNumber**`, `**ImageDescription**`, and merged `**Keywords**` from the editing controls (see below).
+After that merge, the main window can add **`ExposureTime`**, **`FNumber`**, **`ImageDescription`**, and merged **`Keywords`** from the editing controls (see below).
 
 ---
 
@@ -39,13 +47,13 @@ These are the fields the **New / Edit preset** dialogs edit (`PresetEditor.tsx`)
 | `Model`             | ✓                                                |      |           |        | Camera body model                                                                                                                                                                                             |
 | `LensMake`          | ✓ (fixed lens only)                              | ✓    |           |        | UI: “Lens Make” (legacy `Lens` in old presets is migrated to `LensMake` on load)                                                                                                                              |
 | `LensModel`         | ✓ (fixed lens only)                              | ✓    |           |        | UI: “Lens Model”; legacy `LensID` in old presets is migrated to `LensModel` on load when model was empty                                                                                                      |
-| `ExposureTime`      | ✓ (only when **Fixed shutter speed** is enabled) |      |           |        | Written from the camera preset when the `**fixed_shutter`** DB flag is set; not inferred from tag presence alone                                                                                              |
-| `FNumber`           | ✓ (only when **Fixed aperture** is enabled)      |      |           |        | Written from the camera preset when the `**fixed_aperture`** DB flag is set                                                                                                                                   |
+| `ExposureTime`      | ✓ (only when **Fixed shutter speed** is enabled) |      |           |        | Written from the camera preset when the **`fixed_shutter`** DB flag is set; not inferred from tag presence alone                                                                                              |
+| `FNumber`           | ✓ (only when **Fixed aperture** is enabled)      |      |           |        | Written from the camera preset when the **`fixed_aperture`** DB flag is set                                                                                                                                   |
 | `ISO`               |                                                  |      | ✓         |        | Shown as **ISO** in the Film preset dialog                                                                                                                                                                    |
 | `Keywords`          |                                                  |      | ✓ (array) |        | **Not** edited as raw keywords in the UI. The Film preset dialog asks for **Film stock** then **ISO**; the app builds `Keywords` for EXIF (see [Film stock and EXIF Keywords](#film-stock-and-exif-keywords)) |
 | `Artist`, `Creator` |                                                  |      |           | ✓      | UI **Author Name**; one value is written to **both** tags                                                                                                                                                     |
 | `Copyright`         |                                                  |      |           | ✓      | UI **Copyright (optional)** — stored value is **user text only**; on EXIF write it becomes `© {currentYear} {user text}`. Empty means no Copyright tag                                                        |
-| `Author`            |                                                  |      |           | ✓      | Always set to `**Person`** on save (fixed; not a dialog field)                                                                                                                                                |
+| `Author`            |                                                  |      |           | ✓      | Always set to **`Person`** on save (fixed; not a dialog field)                                                                                                                                                |
 
 
 **DB-only (not in `payload_json` as tag keys for merge):**
@@ -67,10 +75,10 @@ Lens presets **no longer** save `ExposureTime` or `FNumber` in the editor; any l
 ### Author preset dialog (order)
 
 1. **Preset Name** — database / list name (all categories).
-2. **Author Name** → EXIF `**Artist`** and `**Creator**` (same string in both). Catalog display names use `**Creator**` / `**Artist**` (see `displayNameForRecord`).
+2. **Author Name** → EXIF **`Artist`** and **`Creator`** (same string in both). Catalog display names use **`Creator`** / **`Artist`** (see `displayNameForRecord`).
 3. **Copyright (optional)** — user-entered suffix only. When metadata is **written to files**, `sanitizeWritePayload` (`src/main/exifCore/pure.ts`) sets EXIF **Copyright** to `© {current calendar year} {trimmed user text}`. If the field is empty, **Copyright** is not written.
 
-On every Author preset save, `**Author`** is set to the literal string `**Person**` (ExifTool tag `Author`), in addition to the fields above. Legacy `**Author Name**` in stored JSON is migrated into **Artist**/**Creator** on load and no longer saved. Legacy **Creator** vs **Artist** values are unified on load when they differ.
+On every Author preset save, **`Author`** is set to the literal string **`Person`** (ExifTool tag `Author`), in addition to the fields above. Legacy **`Author Name`** in stored JSON is migrated into **Artist**/**Creator** on load and no longer saved. Legacy **Creator** vs **Artist** values are unified on load when they differ.
 
 The Author preset dialog shows a **hint** under the Copyright field with the exact string that will be written (or that no Copyright will be written). **Preview EXIF changes** uses the same formatting for the merged payload display.
 
@@ -82,8 +90,8 @@ EXIFmod treats **EXIF `Keywords`** as the bridge between **film stock identity**
 
 ### What we store and write
 
-- `**ISO`** — plain string in the preset payload (same tag on write when merged).
-- `**Keywords**` — string array. The app always includes a literal token `**film**` (lowercase) as a **marker**. The film stock is stored as a **single** keyword `**{stock name} Film Stock`** (literal substring  `Film Stock` at the end for inference). The Film preset dialog edits **Film stock** as one line; on save the stock becomes that single suffixed keyword after `film`.
+- **`ISO`** — plain string in the preset payload (same tag on write when merged).
+- **`Keywords`** — string array. The app always includes a literal token **`film`** (lowercase) as a **marker**. The film stock is stored as a **single** keyword **`{stock name} Film Stock`** (literal substring **`Film Stock`** at the end for inference). The Film preset dialog edits **Film stock** as one line; on save the stock becomes that single suffixed keyword after `film`.
 
 Example payload shape:
 
@@ -101,9 +109,9 @@ If the user leaves **Film stock** empty, the saved preset still has `Keywords: [
 `src/main/exifCore/store.ts` (`filmNameFromKeywords`, `displayNameForRecord` for `film`):
 
 1. Read `Keywords` as either a single string or an array of strings (ExifTool may return either).
-2. Require at least one token equal to `**film`** (case‑insensitive). If missing, the derived film name is empty.
-3. Prefer a keyword whose text **contains** `**Film Stock`**; use that token with the trailing  `**Film Stock**` suffix stripped as the **stock name**. If none, use the **first** non‑`film` keyword (legacy) and strip a trailing  `**Film Stock`** if present.
-4. Append  `**(ISO …)**` when `ISO` is non‑empty, e.g. `Portra 400 (ISO 400)`.
+2. Require at least one token equal to **`film`** (case‑insensitive). If missing, the derived film name is empty.
+3. Prefer a keyword whose text **contains** the substring **`Film Stock`**; use that token with the trailing **`Film Stock`** suffix stripped as the **stock name**. If none, use the **first** non‑`film` keyword (legacy) and strip a trailing **`Film Stock`** if present.
+4. Append **(ISO …)** when `ISO` is non‑empty, e.g. `Portra 400 (ISO 400)`.
 
 So the **list label** for a film preset is driven by **stock name + ISO**, with the suffixed keyword format keeping stock identifiable even when other keywords exist on files.
 
@@ -112,12 +120,12 @@ So the **list label** for a film preset is driven by **stock name + ISO**, with 
 `src/renderer/src/exif/infer.ts` (`inferCategoryValues`), using `filmStockHintFromExifKeywords` (`src/shared/filmKeywords.ts`):
 
 1. Load keyword tokens from metadata (`Keywords` string or array).
-2. Require the `**film`** marker.
-3. **Primary:** If any keyword contains the substring `**Film Stock`**, use that keyword (with the suffix stripped) as the **single stock hint** for catalog matching.
+2. Require the **`film`** marker.
+3. **Primary:** If any keyword contains the substring **`Film Stock`**, use that keyword (with the suffix stripped) as the **single stock hint** for catalog matching.
 4. **Legacy:** Otherwise use the keyword **immediately after** the first `film` token in array order.
-5. Compare that hint to `**catalog.film_values`** (same ISO / exact / fuzzy rules as before).
+5. Compare that hint to **`catalog.film_values`** (same ISO / exact / fuzzy rules as before).
 
-So files must carry `**film` in Keywords** plus a recognizable stock hint (preferably the `… Film Stock` form) for the Film **Current** cell to resolve to a catalog preset name.
+So files must carry a **`film`** marker in **Keywords**, plus a recognizable stock hint (preferably the `… Film Stock` form) for the Film **Current** cell to resolve to a catalog preset name.
 
 ### UI summary (Film preset modal)
 
@@ -151,8 +159,8 @@ After merging the four preset selections, the app may add:
 | Tag                 | Source                                                                                                                                                                                                                                                                                                                                       | UI label (English)                                                                |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | Preset merge result | Selected Camera / Lens / Film / Author presets                                                                                                                                                                                                                                                                                               | Shown indirectly via **New** column preset dropdowns and **Preview EXIF changes** |
-| `ExposureTime`      | Camera preset when `**fixed_shutter`** is set, else manual “Shutter Speed” when non-empty                                                                                                                                                                                                                                                    | Shutter Speed                                                                     |
-| `FNumber`           | Camera preset when `**fixed_aperture**` is set, else manual aperture when non-empty                                                                                                                                                                                                                                                          | Aperture                                                                          |
+| `ExposureTime`      | Camera preset when **`fixed_shutter`** is set, else manual “Shutter Speed” when non-empty                                                                                                                                                                                                                                                    | Shutter Speed                                                                     |
+| `FNumber`           | Camera preset when **`fixed_aperture`** is set, else manual aperture when non-empty                                                                                                                                                                                                                                                          | Aperture                                                                          |
 | `ImageDescription`  | **Description** textarea when non-empty after trim; if empty, **omit** manual write (leave on-file value). **Remove** checkbox forces clear (`ImageDescription` empty)                                                                                                                                                                       | Description                                                                       |
 | `Keywords`          | **Film identity** (`film`, `… Film Stock`) and **descriptive** keywords are merged separately (`buildMergedKeywordsForWrite` in `src/shared/filmKeywords.ts`). Film tokens come from the merged Film preset (last preset wins on `Keywords`) or, if the preset supplies none, from the file’s existing keywords. Film marker and `Film Stock` matching are case-insensitive, and the marker is canonicalized to lowercase `film` on write. Descriptive tokens come from the **New Keywords** field (film tokens stripped for that lane); the visible **New Keywords** textarea is always **descriptive-only** (`formatDescriptiveKeywordsLine` in `src/shared/filmKeywords.ts`), including after **Copy** and **AI** updates. When the New field is empty, descriptives fall back to the last-read file keywords (also with film identity stripped) so edits elsewhere do not wipe unrelated keywords. `fitKeywordsForExif` applies after merge. **Remove Keywords** forces full clear | Keywords                                                                          |
 
@@ -178,7 +186,7 @@ The **Current** column does not read preset IDs; it **infers** display strings f
 | --------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
 | Camera          | `Model`, else `Make`                                                                                               | `Model`, `Make`                                                                |
 | Lens            | `LensModel`, else `Lens`                                                                                           | `LensModel`, `Lens`                                                            |
-| Film            | `film` marker + stock hint from `**Film Stock`** keyword or legacy position after `film`; matched vs `film_values` | `Keywords`, `ISO`, catalog list                                                |
+| Film            | `film` marker + stock hint from a **`Film Stock`**-style keyword or legacy position after `film`; matched vs `film_values` | `Keywords`, `ISO`, catalog list                                                |
 | Author          | First non-empty of `Author Name`, `Creator`, `Artist`                                                              | Same keys (see Author preset dialog above); `Author` is not used for this hint |
 
 
@@ -188,7 +196,7 @@ The **Current** column does not read preset IDs; it **infers** display strings f
 
 ## Preview EXIF changes
 
-Lists **only tags that would change** for each file in the open folder: `diffWritePayloadFromMetadata` compares the merged write payload (after Copyright formatting) to the last `**exiftool -j`** read for that path (`metadataByPath`). **Keywords** comparison uses the same `fitKeywordsForExif` normalization as the UI. If no file would change any tag, the preview body is **empty** (the UI shows “—”). **Write pending** only queues files with a non-empty diff.
+Lists **only tags that would change** for each file in the open folder: `diffWritePayloadFromMetadata` compares the merged write payload (after Copyright formatting) to the last **`exiftool -j`** read for that path (`metadataByPath`). **Keywords** comparison uses the same `fitKeywordsForExif` normalization as the UI. If no file would change any tag, the preview body is **empty** (the UI shows “—”). **Write pending** only queues files with a non-empty diff.
 
 The file-list **Pending** badge and metadata-table **pending row styling** use the same per-file diff (via `diffToAttributeHighlights` in `src/renderer/src/exif/payloadDiff.ts`), so choosing presets that match what is already on disk does not show as pending.
 
@@ -196,9 +204,9 @@ The file-list **Pending** badge and metadata-table **pending row styling** use t
 
 ## ExifTool apply argv and Lightroom
 
-- **JPEG/TIFF:** `**buildApplyCommand**` (`src/main/exifCore/pure.ts`) passes `**-overwrite_original**`, `**-P**` (preserve filesystem modification time), `**-charset EXIF=utf8**`, then per-field `-Tag=value` assignments and clears `DigitalSourceType` / `DigitalSourceFileType`.
-- **RAW-class files:** `**buildApplySidecarCommand**` writes tags to `**basename.xmp**` via `**-o**` (no `**-overwrite_original**` on the container); the source file path is still the last argument so ExifTool reads context from the RAW.
-- **Read path:** Single-file and folder-batch reads merge a companion `**.xmp**` on top of the RAW container row when present (`readExifMetadataMerged` / `readExifMetadataBatchMerged` in `src/main/exiftoolRunner.ts`).
+- **JPEG/TIFF:** **`buildApplyCommand`** (`src/main/exifCore/pure.ts`) passes **`-overwrite_original`**, **`-P`** (preserve filesystem modification time), **`-charset EXIF=utf8`**, then per-field `-Tag=value` assignments and clears `DigitalSourceType` / `DigitalSourceFileType`.
+- **RAW-class files:** **`buildApplySidecarCommand`** writes tags to **`basename.xmp`** via **`-o`** (no **`-overwrite_original`** on the container); the source file path is still the last argument so ExifTool reads context from the RAW.
+- **Read path:** Single-file and folder-batch reads merge a companion **`.xmp`** sidecar on top of the RAW container row when present (`readExifMetadataMerged` / `readExifMetadataBatchMerged` in `src/main/exiftoolRunner.ts`).
 - **Lightroom plug-in:** Optional **`EXIFmodOpen.lrplugin`** is kept under **`extras/lightroom-classic-exifmod-open/`** in the repository; the packaged app can copy it via **Help → Install Lightroom Classic Plugin…** (see `src/main/installLightroomPlugin.ts`). An unpacked dev build also installs **`EXIFmodOpenDev.lrplugin`** (not bundled in release DMGs). The plug-ins register **`LrLibraryMenuItems`** only (**Library → Plug-in Extras → Open in EXIFmod** / **Open in EXIFmod Dev**), not **File → Plug-in Extras**.
 
 ---
@@ -219,4 +227,4 @@ flowchart LR
 
 ---
 
-*Last updated to match the codebase at the time of writing; if behavior changes, update this file and the referenced modules.*
+*This document is normative for preset/EXIF mapping behavior; if code and doc diverge, fix the code or update this doc in the same change.*

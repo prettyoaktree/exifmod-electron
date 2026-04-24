@@ -1,13 +1,9 @@
 # EXIFmod
 
-Desktop app for editing image metadata using a preset catalog. 
+Desktop app for editing image metadata using a preset catalog.
 
-- Metadata read/write uses **ExifTool** on your machine.
-- The optional generative AI feature uses a local **Ollama** server and a **vision**-capable model (default model tag **gemma4**). You can change the model, server address, and other options via **environment variables**—see **Optional local AI (Ollama)** in **[docs/product.md](docs/product.md)**. The **Generative AI** segment in the status bar can show and edit the describe instructions (“system prompt” in the UI); those settings are saved for this install.
-
-## Usage
-
-Open a folder of images, pick presets (camera, lens, film, author), adjust description and keywords, preview what would change, then write metadata into your files. See **[docs/product.md](docs/product.md)** for the full user-facing walkthrough.
+- Requires **ExifTool** for reading and writing metadata.
+- Supports local AI models for generating image descriptions and keywords — see **[docs/product.md](docs/product.md)** for setup and configuration.
 
 ## Installation
 
@@ -34,11 +30,15 @@ winget install -e --id PrettyOakTree.EXIFmod
 ```
 
 - Winget installs **ExifTool** when needed.
-- The build is still unsigned (same as the GitHub installer); **SmartScreen** may appear on first run—use **More info** → **Run anyway** as above.
+- **SmartScreen** may appear on first run — choose **More info** → **Run anyway**.
 
 ### Updates
 
-The installed app **checks GitHub Releases** for updates and **asks before downloading**; after a download you can restart to apply. Development builds from source do not auto-update.
+The installed app **checks GitHub Releases** for updates and **asks before downloading**; after a download you can restart to apply.
+
+## Usage
+
+Open a folder of images, pick presets (camera, lens, film, author), adjust description and keywords, preview what would change, then write metadata into your files. See **[docs/product.md](docs/product.md)** for the full walkthrough.
 
 ## Build From Source
 
@@ -59,15 +59,21 @@ npm run dev
 ## Documentation
 
 
-| Document                                                   | Contents                                                                        |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| [docs/product.md](docs/product.md)                         | Product behavior and workflows                                                  |
-| [docs/architecture.md](docs/architecture.md)               | Technical layout, IPC, packaging, contributor notes                             |
-| [docs/exif-preset-mapping.md](docs/exif-preset-mapping.md) | EXIF tags, merge rules, implementation pointers                                 |
+| Document                           | Contents                       |
+| ---------------------------------- | ------------------------------ |
+| [docs/product.md](docs/product.md) | Product behavior and workflows |
+
+
+### For contributors and developers
+
+
+| Document                                                   | Contents                                                                    |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------- |
+| [docs/architecture.md](docs/architecture.md)               | Technical layout, IPC, packaging, contributor notes                         |
+| [docs/exif-preset-mapping.md](docs/exif-preset-mapping.md) | EXIF tags, merge rules, implementation pointers                             |
 | [docs/status-footer.md](docs/status-footer.md)             | Status bar: lights, panels, copy, and actions (keep in sync when extending) |
-| [AGENTS.md](AGENTS.md)                                     | Guidance for AI coding agents working in this repo                              |
 
 
 ## Localization
 
-The app includes **English** and **French**. More languages can be added by contributing translation files; they are stored in the `locales/` directory in the source repository.
+The app includes **English** and **French**. More languages can be added by contributing translation files to the source repository.
