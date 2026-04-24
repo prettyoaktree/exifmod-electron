@@ -1,6 +1,6 @@
 {
   "name": "exifmod-electron",
-  "version": "1.7.3",
+  "version": "1.7.5",
   "description": "EXIF metadata editor with presets (Electron)",
   "license": "MIT",
   "homepage": "https://github.com/prettyoaktree/exifmod#readme",
