@@ -381,6 +381,21 @@
     .install-header .section-desc {
       margin: 0 auto;
     }
+    .install-header .install-req-list {
+      font-size: 16px;
+      color: var(--text-mid);
+      max-width: 540px;
+      margin: 0 auto;
+      text-align: left;
+      list-style-position: outside;
+      padding-left: 1.35em;
+      line-height: 1.65;
+      text-wrap: pretty;
+    }
+    .install-header .install-req-list a {
+      color: var(--green);
+      text-decoration: none;
+    }
     .install-cards {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -631,7 +646,10 @@
   <div class="install-header">
     <div class="section-label">DOWNLOAD</div>
     <h2 class="section-title">Available for macOS and Windows.</h2>
-    <p class="section-desc">Free to download. Requires <a href="https://exiftool.org" target="_blank" style="color:var(--green);text-decoration:none;">ExifTool</a> — the package managers install it automatically.</p>
+    <ul class="install-req-list">
+      <li>Requires <a href="https://exiftool.org" target="_blank" rel="noopener noreferrer">ExifTool</a> — the package managers install it automatically.</li>
+      <li>Requires <a href="https://ollama.com" target="_blank" rel="noopener noreferrer">Ollama</a> for generative AI — install on your own.</li>
+    </ul>
   </div>
 
   <div class="install-cards">
