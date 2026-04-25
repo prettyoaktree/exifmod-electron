@@ -82,6 +82,18 @@
     }
     .btn-nav:hover { opacity: 0.88; }
 
+    /* Top nav: show which in-page section is in view (see assets/landing-nav.js) */
+    .nav-links a.is-active:not(.btn-nav) {
+      color: var(--text) !important;
+      font-weight: 500;
+      box-shadow: 0 2px 0 0 var(--green);
+      padding-bottom: 2px;
+    }
+    .nav-links a.btn-nav.is-active {
+      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
+      opacity: 1;
+    }
+
     /* ─── HERO ─── */
     .hero {
       max-width: 1100px;
@@ -541,7 +553,8 @@
     /* ─── RESPONSIVE ─── */
     @media (max-width: 768px) {
       nav { padding: 0 20px; }
-      .nav-links li:not(:last-child) { display: none; }
+      /* Hide "How it works" only; keep User guide + Download */
+      .nav-links li:first-child { display: none; }
 
       .hero {
         grid-template-columns: 1fr;
@@ -569,6 +582,7 @@
   <a href="#" class="nav-logo">EXIF<span>mod</span></a>
   <ul class="nav-links">
     <li><a href="#how-it-works">How it works</a></li>
+    <li><a href="docs/">User guide</a></li>
     <li><a href="#install" class="btn-nav">Download</a></li>
   </ul>
 </nav>
@@ -625,7 +639,7 @@
           <div class="step-num">3</div>
           <div class="step-body">
             <h4>Add descriptions &amp; keywords</h4>
-            <p>Write them manually, or let a local AI model generate them from the image content. Requires <a href="https://ollama.com" target="_blank" rel="noopener noreferrer">Ollama</a>. Review the <a href="https://github.com/prettyoaktree/exifmod/blob/main/docs/product.md" target="_blank" rel="noopener noreferrer">product docs</a> to learn more.</p>
+            <p>Write them manually, or let a local AI model generate them from the image content. Requires <a href="https://ollama.com" target="_blank" rel="noopener noreferrer">Ollama</a>. See the <a href="docs/ollama.html">Ollama &amp; AI</a> section of the user guide for setup.</p>
           </div>
         </div>
         <div class="step">
@@ -704,7 +718,7 @@
     </div>
     <div>
       <h4>Optional: Local AI for descriptions &amp; keywords</h4>
-      <p>EXIFmod can connect to a local AI model to automatically generate image descriptions and keyword tags — no cloud, no API key. See the <a href="https://github.com/prettyoaktree/exifmod/blob/main/docs/product.md" target="_blank">product docs</a> for setup instructions.</p>
+      <p>EXIFmod can connect to a local AI model to automatically generate image descriptions and keyword tags — no cloud, no API key. See the <a href="docs/ollama.html">user guide: Ollama &amp; AI</a> for setup.</p>
     </div>
   </div>
 
@@ -718,11 +732,10 @@
   <ul class="footer-links">
     <li><a href="https://github.com/prettyoaktree/exifmod" target="_blank">GitHub</a></li>
     <li><a href="https://github.com/prettyoaktree/exifmod/releases" target="_blank">Releases</a></li>
-    <li><a href="https://github.com/prettyoaktree/exifmod/blob/main/docs/product.md" target="_blank">Docs</a></li>
+    <li><a href="docs/">User guide</a></li>
     <li><a href="https://github.com/prettyoaktree/exifmod/blob/main/LICENSE" target="_blank">License</a></li>
   </ul>
 </footer>
 
-
-
+<script src="assets/landing-nav.js" defer></script>
 </body></html>

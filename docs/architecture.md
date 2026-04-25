@@ -56,7 +56,7 @@ Operator-only signing (Apple + optional Windows), notarization, and GitHub Actio
 
 ## Lightroom Classic plugin (technical)
 
-User-facing behavior is in [docs/product.md](product.md). This section covers how the bundled plug-ins invoke EXIFmod on macOS.
+End-user documentation for the Lightroom flow is in the [user guide](https://prettyoaktree.github.io/exifmod/docs/) (source: [docs/user/](user/)). This section covers how the bundled plug-ins invoke EXIFmod on macOS.
 
 - **Help → Install Lightroom Classic Plugin…** copies the bundled plug-ins from [src/main/installLightroomPlugin.ts](../src/main/installLightroomPlugin.ts) into Adobe’s **Modules** folder, replacing any previous copy for upgrades.
 - From an **unpacked dev build** (`npm run dev`), installation includes **EXIFmod Open (Dev)** in addition to **EXIFmod Open**. The dev plug-in uses Lightroom’s **`LrShell.openPathsViaCommandLine`** to run **`/usr/bin/open -n -a <node_modules/electron/dist/Electron.app> --args --exifmod-from-lrc <absolute-repo-root>`** plus the image file. **`-n`** starts a short-lived second process so Electron can emit **`second-instance`** to the running app with full `argv`; without **`-n`**, macOS often only activates the app and the image path never reaches EXIFmod (see the Lightroom Classic SDK `LrShell` reference).
@@ -72,6 +72,6 @@ User-facing behavior is in [docs/product.md](product.md). This section covers ho
 
 | Document                                                | Contents                                                  |
 | ------------------------------------------------------- | --------------------------------------------------------- |
-| [docs/product.md](product.md)                           | User-visible behavior and workflows                       |
+| [docs/user/](user/) (published [here](https://prettyoaktree.github.io/exifmod/docs/)) | User guide; [docs/product.md](product.md) is a short pointer        |
 | [docs/status-footer.md](status-footer.md)               | Status footer: conditions → lights → chevron → panel (keep in sync when adding features) |
 | [docs/exif-preset-mapping.md](exif-preset-mapping.md)   | EXIF tags, preset merge order, Film/Keywords, AI behavior |

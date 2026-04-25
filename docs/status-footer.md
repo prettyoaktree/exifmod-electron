@@ -7,7 +7,7 @@ Authoritative mapping of **runtime conditions** → **status lights** → **popo
 - **Auto-update** behavior or IPC.
 - A **new** persistent environment concern that belongs in the footer (add a row or a new segment table below).
 
-User-facing prose also belongs in [`docs/product.md`](product.md) and [`locales/`](../locales/); keep this file aligned with those when behavior changes.
+User-facing prose for the in-app experience belongs in [`locales/`](../locales/) and the [user guide](https://prettyoaktree.github.io/exifmod/docs/) (source: [`docs/user/`](user/)). Keep this file aligned with those when status-bar behavior or copy changes.
 
 ---
 
@@ -162,7 +162,7 @@ When you add a feature that touches runtime health, updates, or AI:
 2. **Does it need persistent surfacing?** → Prefer an existing segment + new **row** in its table; only add a **new segment** if it is independent, always relevant, and fits the shared pattern (§1).
 3. **Lights:** Assign **gray / green / amber / red / pulse** per §2; do not invent new colors without updating §2 and CSS variables.
 4. **Copy:** Add `locales/en.json` + `fr.json`; link keys in this doc if helpful.
-5. **User doc:** Update [`docs/product.md`](product.md) for visible behavior.
+5. **User doc:** Update the [user guide](https://prettyoaktree.github.io/exifmod/docs/) source under [`docs/user/`](user/) (and run `npm run site:build`) for user-visible behavior outside the status bar.
 6. **Tests:** Add or extend tests for any pure logic mapping phases → UI flags.
 
 ---

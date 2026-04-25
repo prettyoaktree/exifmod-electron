@@ -3,11 +3,11 @@
 Desktop app for editing image metadata using a preset catalog.
 
 - Requires **ExifTool** for reading and writing metadata.
-- Supports local AI models for generating image descriptions and keywords — see **[docs/product.md](docs/product.md)** for setup and configuration.
+- Supports local AI models for generating image descriptions and keywords — see the **[user guide (website)](https://prettyoaktree.github.io/exifmod/docs/ollama.html)** for setup.
 
 ## Public website
 
-The marketing landing page is published with **GitHub Pages** at **https://prettyoaktree.github.io/exifmod/**. Static source files are in [`website/`](website/) in this repository.
+The public site (marketing + **user guide**) is on **GitHub Pages** at **https://prettyoaktree.github.io/exifmod/** — the guide lives at **https://prettyoaktree.github.io/exifmod/docs/**. Source: [`website/`](website/) and [`docs/user/`](docs/user/); after editing the Markdown, run `npm run site:build` so `website/docs/` is updated.
 
 **`package.json` `homepage`** points at the [GitHub repository](https://github.com/prettyoaktree/exifmod#readme) for npm-style metadata; the `github.io` URL is the public site.
 
@@ -44,7 +44,7 @@ The installed app **checks GitHub Releases** for updates and **asks before downl
 
 ## Usage
 
-Open a folder of images, pick presets (camera, lens, film, author), adjust description and keywords, preview what would change, then write metadata into your files. See **[docs/product.md](docs/product.md)** for the full walkthrough.
+Open a folder of images, pick presets (camera, lens, film, author), adjust description and keywords, preview what would change, then write metadata into your files. See the **[user guide](https://prettyoaktree.github.io/exifmod/docs/)** (source: [`docs/user/`](docs/user/)) for the full walkthrough.
 
 ## Build From Source
 
@@ -65,9 +65,11 @@ npm run dev
 ## Documentation
 
 
-| Document                           | Contents                       |
-| ---------------------------------- | ------------------------------ |
-| [docs/product.md](docs/product.md) | Product behavior and workflows |
+| Document / URL | Contents |
+| -------------- | -------- |
+| [User guide on GitHub Pages](https://prettyoaktree.github.io/exifmod/docs/) | How to install, work with files & presets, Ollama, Lightroom (readable copy of [`docs/user/`](docs/user/)) |
+| [Release notes (user guide)](https://prettyoaktree.github.io/exifmod/docs/release-notes.html) | Major features and fixes by version — not every patch ([`docs/user/release-notes.md`](docs/user/release-notes.md)) |
+| [docs/product.md](docs/product.md) | Pointer to the user guide and `docs/user/` for contributors |
 
 
 ### For contributors and developers

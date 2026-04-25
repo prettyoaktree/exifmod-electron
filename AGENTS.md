@@ -15,7 +15,7 @@ Optional **Ollama** integration calls a **local** HTTP server (`ollamaDescribeIm
 | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [README.md](README.md)                                       | User-facing overview, install, dev quickstart, links to deeper docs                                                                                                 |
 | [docs/architecture.md](docs/architecture.md)                 | Technical layout, IPC/preload boundaries, packaging/releases pointers                                                                                                 |
-| [docs/product.md](docs/product.md)                           | User-visible behavior and workflows                                                                                                                                   |
+| [docs/user/](docs/user/) (published: [User guide on GitHub Pages](https://prettyoaktree.github.io/exifmod/docs/)) | User guide (source Markdown); [docs/product.md](docs/product.md) is a short pointer to the site and `docs/user/`. **Tone and structure:** [STYLEGUIDE.md](STYLEGUIDE.md) §5. |
 | [docs/exif-preset-mapping.md](docs/exif-preset-mapping.md)   | EXIF tags, preset merge order, Film/Keywords, AI behavior                                                                                                             |
 | [docs/status-footer.md](docs/status-footer.md)               | Bottom status bar: conditions → lights → panel copy and actions; **update when** changing startup health, Ollama surfacing, auto-update UX, or adding new footer segments |
 
@@ -24,7 +24,7 @@ Optional **Ollama** integration calls a **local** HTTP server (`ollamaDescribeIm
 
 **Shipping a release (agents):** follow the Cursor project skill [.cursor/skills/exifmod-release/SKILL.md](.cursor/skills/exifmod-release/SKILL.md) so `package.json` version, git tag `vX.Y.Z`, GitHub Release assets (updater + DMG), release notes, Homebrew cask, and staged **winget** manifests under `winget/manifests/` stay aligned.
 
-**Rule:** If you change something users see or EXIF/preset semantics, update [docs/product.md](docs/product.md) and/or [docs/exif-preset-mapping.md](docs/exif-preset-mapping.md) in the same change when appropriate. If you change **status footer** behavior or add environment checks that belong in the footer, update [docs/status-footer.md](docs/status-footer.md) in the same change.
+**Rule:** If you change something users see in the app or EXIF/preset **semantics**, update the user guide under [docs/user/](docs/user/) (and run `npm run site:build` so [website/docs/](website/docs/) matches), and/or [docs/exif-preset-mapping.md](docs/exif-preset-mapping.md) when the mapping doc is the right place. [docs/product.md](docs/product.md) stays a pointer unless you are only adjusting that index. Match voice and structure to [STYLEGUIDE.md](STYLEGUIDE.md) §5 (user guide) and §3 (user-facing docs in general). For **shipping** a release with **user-visible** headline changes, add or adjust [docs/user/release-notes.md](docs/user/release-notes.md) as described in STYLEGUIDE §5. If you change **status footer** behavior or add environment checks that belong in the footer, update [docs/status-footer.md](docs/status-footer.md) in the same change.
 
 ## Repository layout
 
@@ -38,6 +38,7 @@ Optional **Ollama** integration calls a **local** HTTP server (`ollamaDescribeIm
 | `src/renderer/`      | React UI (`App.tsx`, preset editor, panels)                                                                                                                                                                                                                                        |
 | `src/preload/`       | `contextBridge` → `window.exifmod` — **only** exposed API surface to the renderer                                                                                                                                                                                                  |
 | `src/shared/`        | Types, `exifLimits`, `filmKeywords`, i18n helpers — safe for main + renderer                                                                                                                                                                                                       |
+| `docs/user/`         | User guide **Markdown**; built to `website/docs/*.html` via `npm run site:build`                                                                                                                                                                                                    |
 | `locales/`           | Nested JSON (`ui.`*, `menu.`*, …)                                                                                                                                                                                                                                                  |
 
 
@@ -61,6 +62,7 @@ npm run dev          # electron-vite + Electron
 npm test             # vitest (+ locale key check); run after logic / i18n key changes
 npm run build:vite   # tsc + vite production build — default compile check (no packaging)
 npm run build        # full pipeline: tsc, vite build, electron-builder (packaging/signing)
+npm run site:build   # rebuild static user guide in website/docs/ from docs/user/
 ```
 
 **Agents:** Do **not** run `npm run build` (the full electron-builder pipeline) unless the user **explicitly** asks for a full build or release packaging. For verification, run `npm test` when behavior or shared helpers change, and `npm run build:vite` when you need a compile/typecheck without packaging.

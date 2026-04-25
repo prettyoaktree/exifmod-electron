@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Core workflow — EXIFmod</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/site.css" />
+</head>
+<body class="docs-body">
+  <nav>
+    <a href="../index.html" class="nav-logo">EXIF<span>mod</span></a>
+    <ul class="nav-links">
+      <li><a href="../index.html#how-it-works">How it works</a></li>
+      <li><a href="index.html" aria-current="page" aria-label="User guide (current page)">User guide</a></li>
+      <li><a href="../index.html#install" class="btn-nav">Download</a></li>
+    </ul>
+  </nav>
+  <div class="docs-page">
+  <aside class="docs-sidebar" aria-label="User guide table of contents">
+    <p class="docs-toc-subtitle" id="guide-toc">In this guide</p>
+    <nav class="docs-toc-chapters" aria-labelledby="guide-toc">
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+      <a href="workflow.html" class="is-active" aria-current="page">Core workflow</a>
+      <a href="presets.html">Presets and metadata</a>
+      <a href="ollama.html">Ollama and AI</a>
+      <a href="lightroom.html">Lightroom Classic</a>
+      <a href="release-notes.html">Release notes</a>
+    </nav>
+  </aside>
+  <main class="docs-wrap">
+  <article class="md-content">
+    <h1>Core workflow</h1>
+<ol>
+<li>Open a folder — you’ll see a list of supported image files.</li>
+<li>Select one or more files in the list.</li>
+<li>Review and edit metadata in the right-hand pane (use presets for camera, lens, film, author, and the other fields as needed).</li>
+<li>Preview EXIF changes (optional) — if you’re the type of person who finds comfort in a well-formed tag list, this feature is for you. You&#39;re welcome.</li>
+<li>Write pending changes — that applies your edits to the selected files.</li>
+</ol>
+<h2>File Formats</h2>
+<p>EXIFmod works with JPEG, TIFF, and common RAW files.</p>
+<ul>
+<li>RAW: metadata goes into an XMP sidecar file next to each original file (so your original is left alone in the usual RAW sense).</li>
+<li>JPEG and TIFF: metadata is written directly into the file. EXIFmod will prompt you to create a backup, if you&#39;d like.</li>
+</ul>
+
+  </article>
+</main>
+  </div>
+  <footer class="docs-foot">
+    <a href="../index.html">Home</a> ·
+    <a href="https://github.com/prettyoaktree/exifmod" target="_blank" rel="noopener noreferrer">GitHub</a> ·
+    <a href="https://github.com/prettyoaktree/exifmod/blob/main/docs/exif-preset-mapping.md" target="_blank" rel="noopener noreferrer">EXIF &amp; preset details (developers)</a>
+  </footer>
+</body>
+</html>
