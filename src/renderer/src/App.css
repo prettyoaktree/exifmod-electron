@@ -25,6 +25,8 @@
   /** Manage Presets slideout + preset modal + in-pane panel headers (keep in sync). */
   --shaded-panel-header-bg: linear-gradient(180deg, #eef2f7 0%, #e8edf4 100%);
   --shaded-panel-header-inset: inset 0 -1px 0 rgba(24, 24, 27, 0.06);
+  --pane-header-pad-y: 0.75rem;
+  --pane-header-pad-x: 1rem;
   --chrome-border: rgba(24, 24, 27, 0.1);
   --chrome-radius: 12px;
   font-family:
@@ -202,11 +204,26 @@ button.btn-primary.file-panel-open-folder:hover {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.75rem 1rem;
+  padding: var(--pane-header-pad-y) var(--pane-header-pad-x);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   background: var(--shaded-panel-header-bg);
   box-shadow: var(--shaded-panel-header-inset);
+}
+
+.file-panel:focus-within .file-panel-folder-row {
+  background: linear-gradient(
+    180deg,
+    rgba(37, 99, 235, 0.12) 0%,
+    rgba(37, 99, 235, 0.04) 100%
+  );
+  box-shadow:
+    inset 4px 0 0 var(--file-action-accent),
+    var(--shaded-panel-header-inset);
+}
+
+.file-panel:focus-within .file-panel-folder-row .panel-pane-title {
+  color: var(--file-action-accent);
 }
 
 .file-panel-folder-name {
@@ -478,15 +495,20 @@ button.btn-sm {
 
 .meta-panel > .meta-section:first-child .meta-section-head {
   margin: 0;
-  padding: 0.55rem 0.85rem;
+  padding: var(--pane-header-pad-y) var(--pane-header-pad-x);
+  background: var(--selection-header-bg);
+  box-shadow: var(--shaded-panel-header-inset);
+  border-bottom: 1px solid var(--border);
+}
+
+.meta-panel:focus-within > .meta-section:first-child .meta-section-head {
   background: var(--selection-header-bg);
   box-shadow:
     var(--selection-header-inset),
     var(--shaded-panel-header-inset);
-  border-bottom: 1px solid var(--border);
 }
 
-.meta-panel > .meta-section:first-child .meta-section-head .panel-pane-title {
+.meta-panel:focus-within > .meta-section:first-child .meta-section-head .panel-pane-title {
   color: var(--accent);
 }
 
@@ -496,7 +518,7 @@ button.btn-sm {
 }
 
 .meta-panel > .meta-section:first-child .meta-roving-block {
-  padding: 0.55rem 0.85rem 0.7rem;
+  padding: 0.55rem var(--pane-header-pad-x) 0.7rem;
 }
 
 .meta-section-head {
