@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>User guide — EXIFmod</title>
+  <title>Release notes — EXIFmod</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&amp;display=swap" rel="stylesheet" />
@@ -22,56 +22,32 @@
   <aside class="docs-sidebar" aria-label="User guide table of contents">
     <p class="docs-toc-subtitle" id="guide-toc">In this guide</p>
     <nav class="docs-toc-chapters" aria-labelledby="guide-toc">
-      <a href="index.html" class="is-active" aria-current="page">Overview</a>
+      <a href="index.html">Overview</a>
       <a href="getting-started.html">Getting started</a>
       <a href="workflow.html">Core workflow</a>
       <a href="presets.html">Presets and metadata</a>
       <a href="ollama.html">Ollama and AI</a>
       <a href="lightroom.html">Lightroom Classic</a>
-      <a href="release-notes.html">Release notes</a>
+      <a href="release-notes.html" class="is-active" aria-current="page">Release notes</a>
     </nav>
   </aside>
   <main class="docs-wrap">
-  <h1 class="doc-index-title">User guide</h1>
-  <p class="doc-index-lead">Everything you need to install EXIFmod, work with folders and presets, and use local AI or Lightroom—without the engineer jargon.</p>
-  <ol class="doc-toc" role="list">
-    <li>
-      <a href="getting-started.html">
-        <span class="toc-title">Getting started</span>
-        <span class="blurb">Overview, what you need, install (Releases, Homebrew, winget), and updates.</span>
-      </a>
-    </li>
-    <li>
-      <a href="workflow.html">
-        <span class="toc-title">Core workflow</span>
-        <span class="blurb">Open a folder, edit metadata, write — plus supported file types.</span>
-      </a>
-    </li>
-    <li>
-      <a href="presets.html">
-        <span class="toc-title">Presets and metadata</span>
-        <span class="blurb">The preset catalog and the metadata table, explained in plain terms.</span>
-      </a>
-    </li>
-    <li>
-      <a href="ollama.html">
-        <span class="toc-title">Ollama and AI</span>
-        <span class="blurb">Install Ollama, pull the default model, and optional tuning.</span>
-      </a>
-    </li>
-    <li>
-      <a href="lightroom.html">
-        <span class="toc-title">Lightroom Classic</span>
-        <span class="blurb">Lightroom Classic plugin and how to keep your edits safe.</span>
-      </a>
-    </li>
-    <li>
-      <a href="release-notes.html">
-        <span class="toc-title">Release notes</span>
-        <span class="blurb">Headline features and fixes by version — not every patch.</span>
-      </a>
-    </li>
-  </ol>
+  <article class="md-content">
+    <h1>Release notes</h1>
+<p>Headline changes in recent versions: major features and fixes that affect how you work in EXIFmod. Patch releases often include small fixes and polish that are not listed here. For the full list of every release, see <a href="https://github.com/prettyoaktree/exifmod/releases">EXIFmod on GitHub Releases</a>.</p>
+<h2>1.7.x</h2>
+<p><strong>1.7.0</strong> — Ollama: editable describe system prompt (with a reset if things go sideways), a faster and more reliable describe path, and file list / “Pending changes” copy in English and French.</p>
+<p><strong>1.7.1–1.7.3</strong> — Tighter Ollama describe output (shorter default prompt, less odd echoing in JSON) and clearer file list behavior: focus vs selection, a sturdier focus ring, and the metadata pane showing which files you’re editing.</p>
+<p><strong>1.7.5</strong> (and steps between) — Docs and website work, including the in-repo user guide that builds this site, plus routine fixes. Check GitHub Releases for the exact build per tag.</p>
+<h2>1.6.0</h2>
+<ul>
+<li>RAW files and XMP sidecar writing, with batch read/write and progress for larger folders.  </li>
+<li>Optional backup before writing, reopen last folder on launch, and more reliable preset/catalog matching and EXIF diff behavior.</li>
+</ul>
+<h2>Earlier versions</h2>
+<p>See <a href="https://github.com/prettyoaktree/exifmod/releases">Releases</a> for 1.5 and older.</p>
+
+  </article>
 </main>
   </div>
   <footer class="docs-foot">

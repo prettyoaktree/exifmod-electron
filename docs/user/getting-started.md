@@ -1,23 +1,50 @@
 # Getting started
 
-**EXIFmod** is a desktop app for photographers and editors who want **consistent EXIF metadata** (camera, lens, film, author, exposure, notes) across images using a **saved preset catalog**, then **write those values into the files**.
+Welcome!
 
-## Who it’s for
+EXIFmod is a desktop app for photographers and editors who want to quickly apply consistent EXIF metadata (camera, lens, film, author, exposure, notes) across one or more images. EXIFmod will not make your photos better, but it **will** make them easier for you to catalog and find.
 
-- You like using **saved combinations** (bodies, lenses, film, author) instead of typing the same fields over and over.
-- It works for **one photo** or a **whole folder**.
+## Why use it
+
+- A hybrid analog/digital workflow (aka "shoot on film, develop film, scan film, edit images on computer") usually results in files that are tagged with the equipment you (or the lab) used to **scan** the image, rather than the equipment you used to **make** the image. This can be very annoying when you are later trying to find those special images you've taken with that priceless Instamatic.
+- If you mostly shoot digital, but like to use adapted and/or vintage lenses, your digital camera will probably not add the right lens information to the file metadata. Worse still, it might even add the wrong one (actually, it will most likely add the wrong one.)
+- You tried using utilities like ExifTool to do this stuff, but you just couldn't handle the learning curve (no judgement).
 
 ## What you need
 
-- **ExifTool** — the installers below take care of this when you use Homebrew or winget; otherwise ExifTool has to be available for EXIFmod to read and write metadata.
-- **Optional: local AI** — for auto-generated descriptions and keywords, see [Ollama and AI](ollama.html). No cloud, no API key.
+- ExifTool (yes, the utility we just mentioned above.) It's really amazing. It's really difficult to use. It's also very reliable, which is why EXIFmod uses it behind the scenes to read and write metadata to your images. The installation instructions below will walk you through the process. 
+- Optional: local AI — for auto-generated descriptions and keywords, see [Ollama and AI](ollama.html). No cloud, no API key. When a description is off, you blame the local model. Win-win.
 
-## More help
+## Installation and updates
 
-- [Install and updates](install.html) — download, Homebrew, winget, updates.
-- [Core workflow](workflow.html) — open a folder, edit, write.
-- [Presets and metadata](presets.html) — the catalog and the metadata table.
-- [Ollama and AI](ollama.html) — set up Ollama and the default model.
-- [Lightroom Classic](lightroom.html) — plugin and how to stay safe with LrC.
+### GitHub Releases (aka The Source)
 
-**Developers / advanced:** tag names, merge rules, and implementation notes are in [exif-preset-mapping.md](https://github.com/prettyoaktree/exifmod/blob/main/docs/exif-preset-mapping.md) on GitHub — not a beginner doc.
+Download the installer for your platform from [GitHub Releases](https://github.com/prettyoaktree/exifmod/releases) and run it.
+
+- Mac: the app is signed and notarized (that just means macOS will actually allow you to run it without a frustrating trip to the Settings menu).
+- Windows: the app is not code-signed (it was too expensive), so the first time you run the installer or the app, Microsoft Defender SmartScreen might block it. If you trust this release (and you do), choose More info → Run anyway.
+
+### Mac — Homebrew
+
+If you use [Homebrew](https://brew.sh/):
+
+```bash
+brew tap prettyoaktree/homebrew-exifmod
+brew install --cask exifmod
+```
+
+Homebrew will install ExifTool if you need it. Cool!
+
+### Windows — winget
+
+In PowerShell, Command Prompt, or Terminal:
+
+```powershell
+winget install -e --id PrettyOakTree.EXIFmod
+```
+
+Winget will install ExifTool if you need it. Neat! SmartScreen can show up on first run — same as above, More info → Run anyway if you trust the app (you do).
+
+### Automatic Updates
+
+Once the app is installed, it will automagically update itself when there's a new version. Amazing!

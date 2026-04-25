@@ -10,33 +10,47 @@
   <link rel="stylesheet" href="../assets/site.css" />
 </head>
 <body class="docs-body">
-  <header class="docs-nav">
-    <a class="brand" href="../index.html">EXIF<span>mod</span></a>
-    <ul class="docs-nav-links">
-      <li><a href="../index.html">Home</a></li>
-      <li><a href="index.html">User guide</a></li>
-      <li><a href="https://github.com/prettyoaktree/exifmod/releases/latest" target="_blank" rel="noopener noreferrer">Download</a></li>
+  <nav>
+    <a href="../index.html" class="nav-logo">EXIF<span>mod</span></a>
+    <ul class="nav-links">
+      <li><a href="../index.html#how-it-works">How it works</a></li>
+      <li><a href="index.html" aria-current="page" aria-label="User guide (current page)">User guide</a></li>
+      <li><a href="../index.html#install" class="btn-nav">Download</a></li>
     </ul>
-  </header>
+  </nav>
+  <div class="docs-page">
+  <aside class="docs-sidebar" aria-label="User guide table of contents">
+    <p class="docs-toc-subtitle" id="guide-toc">In this guide</p>
+    <nav class="docs-toc-chapters" aria-labelledby="guide-toc">
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+      <a href="workflow.html" class="is-active" aria-current="page">Core workflow</a>
+      <a href="presets.html">Presets and metadata</a>
+      <a href="ollama.html">Ollama and AI</a>
+      <a href="lightroom.html">Lightroom Classic</a>
+      <a href="release-notes.html">Release notes</a>
+    </nav>
+  </aside>
   <main class="docs-wrap">
   <article class="md-content">
     <h1>Core workflow</h1>
 <ol>
-<li><strong>Open a folder</strong> — you’ll see a list of supported image files.</li>
-<li><strong>Select one or more files</strong> in the list.</li>
-<li><strong>Review and edit</strong> metadata in the right-hand pane (use presets for camera, lens, film, author, and the other fields as needed).</li>
-<li><strong>Preview EXIF changes</strong> (optional) — if you like seeing the exact tags that would be written, use this before you commit.</li>
-<li><strong>Write pending changes</strong> — that applies your edits to the selected files.</li>
+<li>Open a folder — you’ll see a list of supported image files.</li>
+<li>Select one or more files in the list.</li>
+<li>Review and edit metadata in the right-hand pane (use presets for camera, lens, film, author, and the other fields as needed).</li>
+<li>Preview EXIF changes (optional) — if you’re the type of person who finds comfort in a well-formed tag list, this feature is for you. You&#39;re welcome.</li>
+<li>Write pending changes — that applies your edits to the selected files.</li>
 </ol>
-<h2>Formats</h2>
-<p>EXIFmod works with <strong>JPEG</strong>, <strong>TIFF</strong>, and common <strong>RAW</strong> files.</p>
+<h2>File Formats</h2>
+<p>EXIFmod works with JPEG, TIFF, and common RAW files.</p>
 <ul>
-<li><strong>RAW:</strong> metadata goes into an <strong>XMP sidecar</strong> next to each file (so your original is left alone in the usual RAW sense).</li>
-<li><strong>JPEG / TIFF:</strong> metadata is written <strong>into the file</strong>. You can use an <strong>optional backup copy</strong> when the app offers it.</li>
+<li>RAW: metadata goes into an XMP sidecar file next to each original file (so your original is left alone in the usual RAW sense).</li>
+<li>JPEG and TIFF: metadata is written directly into the file. EXIFmod will prompt you to create a backup, if you&#39;d like.</li>
 </ul>
 
   </article>
 </main>
+  </div>
   <footer class="docs-foot">
     <a href="../index.html">Home</a> ·
     <a href="https://github.com/prettyoaktree/exifmod" target="_blank" rel="noopener noreferrer">GitHub</a> ·

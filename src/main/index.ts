@@ -1,7 +1,7 @@
 import './setAppName.js'
 import './setDevUserDataPath.js'
 import './cliPath.js'
-import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, Menu, shell } from 'electron'
 import { i18next, initMainI18n } from './i18n.js'
 import { localizePreflightIssues, localizeIssueLine } from './localizePreflight.js'
 import { localizeSkipReason, localizeMergeErrorMessage, localizeExportErrorMessage } from './localizeMerge.js'
@@ -503,6 +503,10 @@ function createWindow(): void {
         {
           label: i18next.t('menu.tutorial'),
           click: () => deliverTutorialStart({ firstRun: false })
+        },
+        {
+          label: i18next.t('menu.userGuide'),
+          click: () => void shell.openExternal('https://prettyoaktree.github.io/exifmod/docs/')
         },
         {
           label: i18next.t('menu.resetRememberedChoices'),

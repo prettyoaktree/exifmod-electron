@@ -68,6 +68,7 @@ npm run dev
 | Document / URL | Contents |
 | -------------- | -------- |
 | [User guide on GitHub Pages](https://prettyoaktree.github.io/exifmod/docs/) | How to install, work with files & presets, Ollama, Lightroom (readable copy of [`docs/user/`](docs/user/)) |
+| [Release notes (user guide)](https://prettyoaktree.github.io/exifmod/docs/release-notes.html) | Major features and fixes by version — not every patch ([`docs/user/release-notes.md`](docs/user/release-notes.md)) |
 | [docs/product.md](docs/product.md) | Pointer to the user guide and `docs/user/` for contributors |
 
 

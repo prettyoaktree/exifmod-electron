@@ -10,55 +10,86 @@
   <link rel="stylesheet" href="../assets/site.css" />
 </head>
 <body class="docs-body">
-  <header class="docs-nav">
-    <a class="brand" href="../index.html">EXIF<span>mod</span></a>
-    <ul class="docs-nav-links">
-      <li><a href="../index.html">Home</a></li>
-      <li><a href="index.html">User guide</a></li>
-      <li><a href="https://github.com/prettyoaktree/exifmod/releases/latest" target="_blank" rel="noopener noreferrer">Download</a></li>
+  <nav>
+    <a href="../index.html" class="nav-logo">EXIF<span>mod</span></a>
+    <ul class="nav-links">
+      <li><a href="../index.html#how-it-works">How it works</a></li>
+      <li><a href="index.html" aria-current="page" aria-label="User guide (current page)">User guide</a></li>
+      <li><a href="../index.html#install" class="btn-nav">Download</a></li>
     </ul>
-  </header>
+  </nav>
+  <div class="docs-page">
+  <aside class="docs-sidebar" aria-label="User guide table of contents">
+    <p class="docs-toc-subtitle" id="guide-toc">In this guide</p>
+    <nav class="docs-toc-chapters" aria-labelledby="guide-toc">
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+      <a href="workflow.html">Core workflow</a>
+      <a href="presets.html" class="is-active" aria-current="page">Presets and metadata</a>
+      <a href="ollama.html">Ollama and AI</a>
+      <a href="lightroom.html">Lightroom Classic</a>
+      <a href="release-notes.html">Release notes</a>
+    </nav>
+  </aside>
   <main class="docs-wrap">
   <article class="md-content">
     <h1>Presets and metadata</h1>
-<h2>Preset catalog</h2>
-<p>Open <strong>Manage Presets</strong> (gear icon in the Metadata pane) to <strong>create</strong>, <strong>edit</strong>, and <strong>delete</strong> presets. They’re grouped in four categories:</p>
+<h2>The preset catalog</h2>
+<p>Think of presets as &quot;bundles&quot; of EXIF metadata tags that can be applied in bulk. EXIFmod provides 4 types of preset categories: </p>
 <table>
 <thead>
 <tr>
 <th>Category</th>
-<th>What it’s for</th>
+<th>Presets in this category are used for...</th>
 </tr>
 </thead>
 <tbody><tr>
-<td><strong>Camera</strong></td>
-<td>Body make/model, fixed-lens vs interchangeable, lens mount, optional fixed shutter or aperture.</td>
+<td>Cameras</td>
+<td>Identifying camera bodies: make and model, fixed or interchangeable lenses, lens details (for fixed lenses), lens mount and adapters (for interchangeable lenses), fixed shutter and/or aperture (because we gotta support those Instamatics).</td>
 </tr>
 <tr>
-<td><strong>Lens</strong></td>
-<td>Lens make and model. If a mount is set, the picker can <strong>filter lenses</strong> to ones that make sense for the selected camera.</td>
+<td>Lenses</td>
+<td>Identifying standalone lenses: make and model, lens mount.</td>
 </tr>
 <tr>
-<td><strong>Film</strong></td>
-<td>Stock and ISO.</td>
+<td>Film Stocks</td>
+<td>Identifying film stocks: name and ISO/ASA rating (speed).</td>
 </tr>
 <tr>
-<td><strong>Author</strong></td>
-<td>Your name and an optional copyright line (the app adds a © year on each file when you use it).</td>
+<td>Authors</td>
+<td>Your name and optional copyright (the app adds a &quot; © year &quot; when you use that field because it loves saving you time).</td>
 </tr>
 </tbody></table>
-<p>On <strong>first launch</strong>, EXIFmod adds a few <strong>example presets</strong> so the UI isn’t empty. Change or delete them anytime.</p>
-<h2>Editing metadata (the table)</h2>
-<p>For one or more selected files, the metadata table shows:</p>
+<p>When you start EXIFmod for the first time, it will create a few sample presets to get you started. Change or remove them if you like.</p>
+<h3>Why include lens information in camera presets?</h3>
+<p>To save you time!</p>
 <ul>
-<li><strong>Attribute</strong> — the field name (camera, lens, film, and so on).</li>
-<li><strong>Current value</strong> — what’s in the file(s) now. With multiple files selected, you may see <strong>Multiple</strong> when the values don’t all match.</li>
-<li><strong>New value</strong> — for camera, lens, film, and author, you pick <strong>presets</strong>. For other fields you type the value. Changes stay <strong>pending</strong> until you write.</li>
-<li><strong>Remove</strong> — check this to <strong>clear</strong> that piece of metadata without replacing it (handy to strip junk from a scanner, for example).</li>
+<li>Fixed-lens cameras have only one lens (🤯), so we might as well stuff that lens information into the camera preset. Now, every time you select that Olympus XA camera preset, you are also tagging your file with its built-in Zuiko lens! Time, saved!</li>
+<li>Interchangeable-lens cameras can accept many lenses, but they might not be able to accept <strong>all</strong> the lenses you have. Specifying a lens mount in a camera preset will allow EXIFmod to filter the lens preset list to only show compatible lenses. This can make your workflow much faster if you regularly use multiple systems. </li>
+<li>OK... but adapters exist... right? Right! If you mark an interchangeable-lens camera preset with &quot;Accepts Adapters&quot;, EXIFmod will stop filtering the lens preset list. Only do this for camera bodies with which you regularly use adapters.</li>
+</ul>
+<h2>Creating presets</h2>
+<h3>... from scratch</h3>
+<ol>
+<li>Open Manage Presets, pick Camera, Lens, Film, or Author, and use the + button next to the category title.</li>
+<li>The editor opens for a new preset: name it, fill the fields, save. Required fields that are missing are called out in the editor.</li>
+</ol>
+<h3>... from an existing preset (duplicate)</h3>
+<p>In Manage Presets, use the copy button to duplicate an existing preset. This can save you lots of time when you are building your catalog. Keep in mind that each preset must have a unique name, and must not be completely identical to any other preset (different presets can share some attributes (e.g. &quot;make&quot;), but they can&#39;t share <strong>all</strong> attributes.)</p>
+<h3>... from a selected file’s current metadata</h3>
+<p>If you already have files that you previously tagged with camera, lens, or author information, and you want to carry over this data into EXIFmod, you can select a single file and use the + button to have EXIFmod draft a new preset from the data in the file! If the + button is not there, the file may already match a catalog entry, or more than one file is selected.</p>
+<h2>Editing other metadata attributes</h2>
+<p>Additional metadata attributes can be edited with EXIFmod. These do not use presets because they tend to be unique per image. That being said, they can <strong>still be applied in bulk</strong> if you select multiple files.</p>
+<ul>
+<li>Shutter speed - specified as a number of seconds or a fraction of a second, e.g. &quot;2&quot; for 2 seconds, or &quot;1/125&quot; for... you get it.</li>
+<li>Aperture - specified as an f-number, e.g. &quot;1.4&quot;, &quot;2&quot;, &quot;2.8&quot;, &quot;4&quot;, etc.</li>
+<li>Description - manually enter an image description, or use a local AI model to generate based on image content.</li>
+<li>Keywords - ditto.</li>
 </ul>
 
   </article>
 </main>
+  </div>
   <footer class="docs-foot">
     <a href="../index.html">Home</a> ·
     <a href="https://github.com/prettyoaktree/exifmod" target="_blank" rel="noopener noreferrer">GitHub</a> ·

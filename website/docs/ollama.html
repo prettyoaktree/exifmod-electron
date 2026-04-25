@@ -10,47 +10,58 @@
   <link rel="stylesheet" href="../assets/site.css" />
 </head>
 <body class="docs-body">
-  <header class="docs-nav">
-    <a class="brand" href="../index.html">EXIF<span>mod</span></a>
-    <ul class="docs-nav-links">
-      <li><a href="../index.html">Home</a></li>
-      <li><a href="index.html">User guide</a></li>
-      <li><a href="https://github.com/prettyoaktree/exifmod/releases/latest" target="_blank" rel="noopener noreferrer">Download</a></li>
+  <nav>
+    <a href="../index.html" class="nav-logo">EXIF<span>mod</span></a>
+    <ul class="nav-links">
+      <li><a href="../index.html#how-it-works">How it works</a></li>
+      <li><a href="index.html" aria-current="page" aria-label="User guide (current page)">User guide</a></li>
+      <li><a href="../index.html#install" class="btn-nav">Download</a></li>
     </ul>
-  </header>
+  </nav>
+  <div class="docs-page">
+  <aside class="docs-sidebar" aria-label="User guide table of contents">
+    <p class="docs-toc-subtitle" id="guide-toc">In this guide</p>
+    <nav class="docs-toc-chapters" aria-labelledby="guide-toc">
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+      <a href="workflow.html">Core workflow</a>
+      <a href="presets.html">Presets and metadata</a>
+      <a href="ollama.html" class="is-active" aria-current="page">Ollama and AI</a>
+      <a href="lightroom.html">Lightroom Classic</a>
+      <a href="release-notes.html">Release notes</a>
+    </nav>
+  </aside>
   <main class="docs-wrap">
   <article class="md-content">
     <h1>Ollama and AI</h1>
-<p>If you want <strong>short descriptions and keyword ideas</strong> from an image, EXIFmod can use a <strong>local</strong> model so nothing is sent to a random cloud. That’s done with <strong><a href="https://ollama.com/">Ollama</a></strong> — the same stack many people use to run open models on their own machine.</p>
-<p>Out of the box, EXIFmod expects a model called <strong><code>gemma4</code></strong>, which is tuned for a good mix of image understanding and speed on typical hardware.</p>
+<p>If you want to get descriptions and keyword ideas from an image, EXIFmod can use a local AI model to generate them for you (nothing is sent to a random cloud!) That’s done with <a href="https://ollama.com/">Ollama</a> — a nifty app that many smart people (like you!) use to run AI models on their own machines.</p>
+<p>Out of the box, EXIFmod expects a model called <code>gemma4</code>, which is made by Google, and is tuned for a good mix of image understanding and speed on typical hardware. You can experiment with other models (see below), but things will probably break because the amount of testing that was done with other models is exactly zero.</p>
 <h2>1. Install Ollama</h2>
 <ul>
-<li><p><strong>Any platform:</strong> get the installer from <strong><a href="https://ollama.com/">ollama.com</a></strong> and follow their steps.</p>
-</li>
-<li><p><strong>Mac with Homebrew:</strong> you can also run:</p>
-<pre><code class="language-bash">brew install ollama
+<li>Any platform: get the installer from <a href="https://ollama.com/">ollama.com</a> and follow their steps.</li>
+<li>Mac with Homebrew: you can also run:<pre><code class="language-bash">brew install ollama
 </code></pre>
-<p>(If the formula name ever changes, check Ollama’s current install page.)</p>
 </li>
 </ul>
-<p>Ollama needs to be <strong>running</strong> on your machine. Usually that means the <code>ollama</code> service. EXIFmod talks to it on the default local address. If the app finds the <code>ollama</code> tool but the server isn’t up, you may get a nudge to start it — you can also run <code>ollama serve</code> yourself in a terminal if you like doing things by hand.</p>
+<p>Ollama needs to be running on your machine for EXIFmod to be able to talk to it. If the app finds the <code>ollama</code> app but the server isn’t up, you may get a nudge to start it — you can also run <code>ollama serve</code> yourself in a terminal if you like doing things by hand.</p>
 <h2>2. Pull the default model</h2>
 <p>In a terminal:</p>
 <pre><code class="language-bash">ollama pull gemma4
 </code></pre>
-<p>That downloads the model EXIFmod’s defaults expect. It can take a while the first time, depending on your connection.</p>
-<h2>3. Using it inside EXIFmod</h2>
-<p>Once Ollama is up and the model is pulled, use the in-app <strong>AI</strong> controls to generate or refine <strong>descriptions</strong> and <strong>keywords</strong> from the current image. If the wording feels too short, long, generic, or specific, you can adjust the <strong>system prompt</strong> in the app <strong>carefully</strong> — a bad prompt can make the output worse. If you break it, EXIFmod can <strong>reset the system prompt to the default</strong>.</p>
-<h2>Advanced (optional)</h2>
+<p>That command downloads the model EXIFmod was actually tested with. The first download can take a while and can be large (several gigs). It might be worth it, even just for the giggles.</p>
+<h2>3. Using AI inside EXIFmod</h2>
+<p>Once Ollama is up and the model is pulled, use the in-app AI button (it looks kinda sparkly) to generate or refine descriptions and keywords from the current image. If the wording feels too short, too long, too generic, or too specific, you can adjust the system prompt in the app...  <strong>carefully!</strong> — a bad prompt can make the output sound like a furniture catalog (not a bad thing if you photograph for a furniture catalog... but not everyone does). If you break it, EXIFmod can reset the system prompt to the default. Phew!</p>
+<h2>Advanced stuff</h2>
 <p>You usually don’t need this.</p>
 <ul>
-<li>If you use a <strong>different model name</strong>, you can set the environment variable <strong><code>EXIFMOD_OLLAMA_MODEL</code></strong> before starting EXIFmod.</li>
-<li>If Ollama listens on a <strong>non-default host or port</strong>, use <strong><code>EXIFMOD_OLLAMA_HOST</code></strong>.</li>
+<li>If you use a different model name, you can set the environment variable <code>EXIFMOD_OLLAMA_MODEL</code> before starting EXIFmod.</li>
+<li>If Ollama listens on a non-default host or port, use <code>EXIFMOD_OLLAMA_HOST</code>.</li>
 </ul>
-<p>Only change these if you know why you’re changing them. Everyone else is fine with the defaults above.</p>
+<p>Only change these if you know why you’re changing them. Everyone else is fine with the defaults above. Also, while you are welcome to try this, it will probably not work (system prompts may need to be tuned per model and the developer did not have time to do this).</p>
 
   </article>
 </main>
+  </div>
   <footer class="docs-foot">
     <a href="../index.html">Home</a> ·
     <a href="https://github.com/prettyoaktree/exifmod" target="_blank" rel="noopener noreferrer">GitHub</a> ·

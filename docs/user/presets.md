@@ -1,23 +1,49 @@
 # Presets and metadata
 
-## Preset catalog
+## The preset catalog
 
-Open **Manage Presets** (gear icon in the Metadata pane) to **create**, **edit**, and **delete** presets. They’re grouped in four categories:
+Think of presets as "bundles" of EXIF metadata tags that can be applied in bulk. EXIFmod provides 4 types of preset categories: 
 
-| Category  | What it’s for |
-| --------- | ------------------------------------------------------------------ |
-| **Camera** | Body make/model, fixed-lens vs interchangeable, lens mount, optional fixed shutter or aperture. |
-| **Lens**   | Lens make and model. If a mount is set, the picker can **filter lenses** to ones that make sense for the selected camera. |
-| **Film**   | Stock and ISO. |
-| **Author** | Your name and an optional copyright line (the app adds a © year on each file when you use it). |
 
-On **first launch**, EXIFmod adds a few **example presets** so the UI isn’t empty. Change or delete them anytime.
+| Category    | Presets in this category are used for...                                                                                                                                                                                                       |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cameras     | Identifying camera bodies: make and model, fixed or interchangeable lenses, lens details (for fixed lenses), lens mount and adapters (for interchangeable lenses), fixed shutter and/or aperture (because we gotta support those Instamatics). |
+| Lenses      | Identifying standalone lenses: make and model, lens mount.                                                                                                                                                                                     |
+| Film Stocks | Identifying film stocks: name and ISO/ASA rating (speed).                                                                                                                                                                                      |
+| Authors     | Your name and optional copyright (the app adds a " © year " when you use that field because it loves saving you time).                                                                                                                         |
 
-## Editing metadata (the table)
 
-For one or more selected files, the metadata table shows:
+When you start EXIFmod for the first time, it will create a few sample presets to get you started. Change or remove them if you like.
 
-- **Attribute** — the field name (camera, lens, film, and so on).
-- **Current value** — what’s in the file(s) now. With multiple files selected, you may see **Multiple** when the values don’t all match.
-- **New value** — for camera, lens, film, and author, you pick **presets**. For other fields you type the value. Changes stay **pending** until you write.
-- **Remove** — check this to **clear** that piece of metadata without replacing it (handy to strip junk from a scanner, for example).
+### Why include lens information in camera presets?
+
+To save you time!
+
+- Fixed-lens cameras have only one lens (🤯), so we might as well stuff that lens information into the camera preset. Now, every time you select that Olympus XA camera preset, you are also tagging your file with its built-in Zuiko lens! Time, saved!
+- Interchangeable-lens cameras can accept many lenses, but they might not be able to accept **all** the lenses you have. Specifying a lens mount in a camera preset will allow EXIFmod to filter the lens preset list to only show compatible lenses. This can make your workflow much faster if you regularly use multiple systems. 
+- OK... but adapters exist... right? Right! If you mark an interchangeable-lens camera preset with "Accepts Adapters", EXIFmod will stop filtering the lens preset list. Only do this for camera bodies with which you regularly use adapters.
+
+## Creating presets
+
+### ... from scratch
+
+1. Open Manage Presets, pick Camera, Lens, Film, or Author, and use the + button next to the category title.
+2. The editor opens for a new preset: name it, fill the fields, save. Required fields that are missing are called out in the editor.
+
+### ... from an existing preset (duplicate)
+
+In Manage Presets, use the copy button to duplicate an existing preset. This can save you lots of time when you are building your catalog. Keep in mind that each preset must have a unique name, and must not be completely identical to any other preset (different presets can share some attributes (e.g. "make"), but they can't share **all** attributes.)
+
+### ... from a selected file’s current metadata
+
+If you already have files that you previously tagged with camera, lens, or author information, and you want to carry over this data into EXIFmod, you can select a single file and use the + button to have EXIFmod draft a new preset from the data in the file! If the + button is not there, the file may already match a catalog entry, or more than one file is selected.
+
+## Editing other metadata attributes
+
+Additional metadata attributes can be edited with EXIFmod. These do not use presets because they tend to be unique per image. That being said, they can **still be applied in bulk** if you select multiple files.
+
+- Shutter speed - specified as a number of seconds or a fraction of a second, e.g. "2" for 2 seconds, or "1/125" for... you get it.
+- Aperture - specified as an f-number, e.g. "1.4", "2", "2.8", "4", etc.
+- Description - manually enter an image description, or use a local AI model to generate based on image content.
+- Keywords - ditto.
+

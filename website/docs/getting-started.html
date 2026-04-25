@@ -10,40 +10,67 @@
   <link rel="stylesheet" href="../assets/site.css" />
 </head>
 <body class="docs-body">
-  <header class="docs-nav">
-    <a class="brand" href="../index.html">EXIF<span>mod</span></a>
-    <ul class="docs-nav-links">
-      <li><a href="../index.html">Home</a></li>
-      <li><a href="index.html">User guide</a></li>
-      <li><a href="https://github.com/prettyoaktree/exifmod/releases/latest" target="_blank" rel="noopener noreferrer">Download</a></li>
+  <nav>
+    <a href="../index.html" class="nav-logo">EXIF<span>mod</span></a>
+    <ul class="nav-links">
+      <li><a href="../index.html#how-it-works">How it works</a></li>
+      <li><a href="index.html" aria-current="page" aria-label="User guide (current page)">User guide</a></li>
+      <li><a href="../index.html#install" class="btn-nav">Download</a></li>
     </ul>
-  </header>
+  </nav>
+  <div class="docs-page">
+  <aside class="docs-sidebar" aria-label="User guide table of contents">
+    <p class="docs-toc-subtitle" id="guide-toc">In this guide</p>
+    <nav class="docs-toc-chapters" aria-labelledby="guide-toc">
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html" class="is-active" aria-current="page">Getting started</a>
+      <a href="workflow.html">Core workflow</a>
+      <a href="presets.html">Presets and metadata</a>
+      <a href="ollama.html">Ollama and AI</a>
+      <a href="lightroom.html">Lightroom Classic</a>
+      <a href="release-notes.html">Release notes</a>
+    </nav>
+  </aside>
   <main class="docs-wrap">
   <article class="md-content">
     <h1>Getting started</h1>
-<p><strong>EXIFmod</strong> is a desktop app for photographers and editors who want <strong>consistent EXIF metadata</strong> (camera, lens, film, author, exposure, notes) across images using a <strong>saved preset catalog</strong>, then <strong>write those values into the files</strong>.</p>
-<h2>Who it’s for</h2>
+<p>Welcome!</p>
+<p>EXIFmod is a desktop app for photographers and editors who want to quickly apply consistent EXIF metadata (camera, lens, film, author, exposure, notes) across one or more images. EXIFmod will not make your photos better, but it <strong>will</strong> make them easier for you to catalog and find.</p>
+<h2>Why use it</h2>
 <ul>
-<li>You like using <strong>saved combinations</strong> (bodies, lenses, film, author) instead of typing the same fields over and over.</li>
-<li>It works for <strong>one photo</strong> or a <strong>whole folder</strong>.</li>
+<li>A hybrid analog/digital workflow (aka &quot;shoot on film, develop film, scan film, edit images on computer&quot;) usually results in files that are tagged with the equipment you (or the lab) used to <strong>scan</strong> the image, rather than the equipment you used to <strong>make</strong> the image. This can be very annoying when you are later trying to find those special images you&#39;ve taken with that priceless Instamatic.</li>
+<li>If you mostly shoot digital, but like to use adapted and/or vintage lenses, your digital camera will probably not add the right lens information to the file metadata. Worse still, it might even add the wrong one (actually, it will most likely add the wrong one.)</li>
+<li>You tried using utilities like ExifTool to do this stuff, but you just couldn&#39;t handle the learning curve (no judgement).</li>
 </ul>
 <h2>What you need</h2>
 <ul>
-<li><strong>ExifTool</strong> — the installers below take care of this when you use Homebrew or winget; otherwise ExifTool has to be available for EXIFmod to read and write metadata.</li>
-<li><strong>Optional: local AI</strong> — for auto-generated descriptions and keywords, see <a href="ollama.html">Ollama and AI</a>. No cloud, no API key.</li>
+<li>ExifTool (yes, the utility we just mentioned above.) It&#39;s really amazing. It&#39;s really difficult to use. It&#39;s also very reliable, which is why EXIFmod uses it behind the scenes to read and write metadata to your images. The installation instructions below will walk you through the process. </li>
+<li>Optional: local AI — for auto-generated descriptions and keywords, see <a href="ollama.html">Ollama and AI</a>. No cloud, no API key. When a description is off, you blame the local model. Win-win.</li>
 </ul>
-<h2>More help</h2>
+<h2>Installation and updates</h2>
+<h3>GitHub Releases (aka The Source)</h3>
+<p>Download the installer for your platform from <a href="https://github.com/prettyoaktree/exifmod/releases">GitHub Releases</a> and run it.</p>
 <ul>
-<li><a href="install.html">Install and updates</a> — download, Homebrew, winget, updates.</li>
-<li><a href="workflow.html">Core workflow</a> — open a folder, edit, write.</li>
-<li><a href="presets.html">Presets and metadata</a> — the catalog and the metadata table.</li>
-<li><a href="ollama.html">Ollama and AI</a> — set up Ollama and the default model.</li>
-<li><a href="lightroom.html">Lightroom Classic</a> — plugin and how to stay safe with LrC.</li>
+<li>Mac: the app is signed and notarized (that just means macOS will actually allow you to run it without a frustrating trip to the Settings menu).</li>
+<li>Windows: the app is not code-signed (it was too expensive), so the first time you run the installer or the app, Microsoft Defender SmartScreen might block it. If you trust this release (and you do), choose More info → Run anyway.</li>
 </ul>
-<p><strong>Developers / advanced:</strong> tag names, merge rules, and implementation notes are in <a href="https://github.com/prettyoaktree/exifmod/blob/main/docs/exif-preset-mapping.md">exif-preset-mapping.md</a> on GitHub — not a beginner doc.</p>
+<h3>Mac — Homebrew</h3>
+<p>If you use <a href="https://brew.sh/">Homebrew</a>:</p>
+<pre><code class="language-bash">brew tap prettyoaktree/homebrew-exifmod
+brew install --cask exifmod
+</code></pre>
+<p>Homebrew will install ExifTool if you need it. Cool!</p>
+<h3>Windows — winget</h3>
+<p>In PowerShell, Command Prompt, or Terminal:</p>
+<pre><code class="language-powershell">winget install -e --id PrettyOakTree.EXIFmod
+</code></pre>
+<p>Winget will install ExifTool if you need it. Neat! SmartScreen can show up on first run — same as above, More info → Run anyway if you trust the app (you do).</p>
+<h3>Automatic Updates</h3>
+<p>Once the app is installed, it will automagically update itself when there&#39;s a new version. Amazing!</p>
 
   </article>
 </main>
+  </div>
   <footer class="docs-foot">
     <a href="../index.html">Home</a> ·
     <a href="https://github.com/prettyoaktree/exifmod" target="_blank" rel="noopener noreferrer">GitHub</a> ·

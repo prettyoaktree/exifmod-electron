@@ -116,13 +116,66 @@ Keep user-facing content first. Agent sections go at the end and must be clearly
 
 ---
 
-## 5. Known issues to fix when editing
+## 5. User guide — `docs/user/` and GitHub Pages
+
+The install-and-use story on **[the public site](https://prettyoaktree.github.io/exifmod/docs/)** is built from **Markdown in [`docs/user/`](docs/user/)** via `npm run site:build` (output: [`website/docs/`](website/docs/)). Treat this as its own product surface, not a dump of `README` paragraphs.
+
+**Voice**
+
+- **Conversational and nontechnical.** Write for photographers and editors, not implementers. Use direct address ("you") and plain language; avoid internal jargon (`src/…` paths, IPC names, merge-order internals).
+- **Personality-forward is allowed.** Dry humor, playful asides, and mild sarcasm are acceptable in normal workflow text when instructions remain clear.
+- **Safety first in risky moments.** For data loss, overwrite behavior, security prompts (SmartScreen, notarization, permissions), and restore/recovery steps: make the action explicit first; humor may follow, but must not obscure the instruction.
+- **Commands and env vars** are fine when the user is the one typing them; frame optional tuning as clearly optional. Deep implementation detail belongs in **[`docs/exif-preset-mapping.md`](docs/exif-preset-mapping.md)** (GitHub) or the doc site footer link, not the middle of a how-to.
+
+**Emphasis and readability**
+
+- **Bold is a scan aid, not a quota.** Use bold for control names, key outcomes, and warnings. Repeated bolding across a section is fine when it improves scanning.
+- **Avoid visual noise.** Do not bold full sentences, multiple adjacent fragments in the same sentence, or punctuation for effect.
+- **Lists should still scan.** Prefer short bullets, but 2-3 sentence bullets are acceptable when they cover one coherent action or warning.
+- **Break true walls of text.** Split bullets/paragraphs when they combine unrelated actions, safety notes, and examples in one block. Use a subheading if needed.
+
+**Structure**
+
+- **No “More help”** blocks that only duplicate the sidebar/TOC. Chapter-level navigation is the **In this guide** list; don’t add a second link farm to the same pages in the body.
+- **No duplicate install guide** in multiple files: keep one clear install path in context (e.g. merged into **Getting started** as in this repo).
+- **English** for `docs/user/` unless the project later adds a deliberate i18n pass for the static site.
+
+**Examples (for consistency)**
+
+- **Good (voice + clarity):** "SmartScreen may appear on first run. If you trust this release, choose **More info → Run anyway**. Yes, Windows is being dramatic."
+- **Bad (clarity buried by joke):** "Windows will probably panic; click around until it works."
+- **Good (bolding):** "Use **Manage Presets**, then choose **Camera** or **Lens**."
+- **Bad (over-bolding):** "**Use** **Manage Presets** and **then** **choose** **Camera** **or** **Lens**."
+- **Good (longer bullet allowed):** A two-sentence bullet that explains one workflow caveat and its immediate action.
+- **Bad (wall bullet):** One bullet that mixes setup steps, troubleshooting, and three side notes.
+
+**Rule precedence**
+
+- For files under **`docs/user/`**, this section (**§5**) is authoritative for tone and presentation.
+- Use **§3 (User-facing docs)** as baseline guidance when it does not conflict with §5.
+- If §3 and §5 conflict, **follow §5** for `docs/user/`.
+
+**Release notes** ([`docs/user/release-notes.md`](docs/user/release-notes.md))
+
+- **Purpose:** A short, user-readable summary of **major** additions and fixes by version line — not a duplicate of every GitHub Release or every commit.
+- **What to add:** Notable user-visible features, important bug classes, or workflow changes. **Omit** routine patches, internal refactors, dependency bumps, and doc-only nits unless they meaningfully change what users do or see.
+- **When to update:** As part of shipping a **minor** or **major** release, or when a **patch** includes something users would actually look for in “what changed” (e.g. a big Ollama or Lightroom fix). When in doubt, use the [GitHub release notes](https://github.com/prettyoaktree/exifmod/releases) as the full source of truth and only mirror **headlines** here.
+- **Link** to GitHub Releases at the top of the page for the complete list.
+
+**Process**
+
+- After you change any `docs/user/*.md`, run **`npm run site:build`** and commit the updated `website/docs/*.html` with the Markdown (the GitHub Pages workflow also runs the build, but the repo should stay consistent for local preview and diffs).
+- The global user-facing rules in **§3 (User-facing docs)** still apply; this section adds **only** what’s specific to the `docs/user/` + Pages pipeline.
+
+---
+
+## 6. Known issues to fix when editing
 
 - Any "Agent:" or "For agents:" section in a `README.md` that has grown beyond a few paragraphs should be refactored into a separate `AGENTS.md`.
 
 ---
 
-## 6. Markdown hygiene
+## 7. Markdown hygiene
 
 Use these rules in **internal / agent** docs (and anywhere links must render reliably):
 

@@ -10,33 +10,47 @@
   <link rel="stylesheet" href="../assets/site.css" />
 </head>
 <body class="docs-body">
-  <header class="docs-nav">
-    <a class="brand" href="../index.html">EXIF<span>mod</span></a>
-    <ul class="docs-nav-links">
-      <li><a href="../index.html">Home</a></li>
-      <li><a href="index.html">User guide</a></li>
-      <li><a href="https://github.com/prettyoaktree/exifmod/releases/latest" target="_blank" rel="noopener noreferrer">Download</a></li>
+  <nav>
+    <a href="../index.html" class="nav-logo">EXIF<span>mod</span></a>
+    <ul class="nav-links">
+      <li><a href="../index.html#how-it-works">How it works</a></li>
+      <li><a href="index.html" aria-current="page" aria-label="User guide (current page)">User guide</a></li>
+      <li><a href="../index.html#install" class="btn-nav">Download</a></li>
     </ul>
-  </header>
+  </nav>
+  <div class="docs-page">
+  <aside class="docs-sidebar" aria-label="User guide table of contents">
+    <p class="docs-toc-subtitle" id="guide-toc">In this guide</p>
+    <nav class="docs-toc-chapters" aria-labelledby="guide-toc">
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+      <a href="workflow.html">Core workflow</a>
+      <a href="presets.html">Presets and metadata</a>
+      <a href="ollama.html">Ollama and AI</a>
+      <a href="lightroom.html" class="is-active" aria-current="page">Lightroom Classic</a>
+      <a href="release-notes.html">Release notes</a>
+    </nav>
+  </aside>
   <main class="docs-wrap">
   <article class="md-content">
     <h1>Lightroom Classic</h1>
-<p>EXIFmod ships a small <strong>Lightroom Classic</strong> plugin (<strong>Mac only</strong> for now). Install it from the app’s <strong>Help</strong> menu.</p>
-<p>In Lightroom, select a file in the library, then use <strong>Library → Plug-in Extras → Open in EXIFmod</strong> to jump straight to that file in EXIFmod.</p>
+<p>EXIFmod ships with a small Lightroom Classic plugin (Mac only for now). You can install it from the app’s Help menu.</p>
+<p>In Lightroom, select a file in the library, then use Library → Plug-in Extras → Open in EXIFmod to jump straight to that file in EXIFmod.</p>
 <h2>Important: don’t lose Lightroom’s work</h2>
-<p>Lightroom leans on metadata to remember your edits. If another app rewrites the same file’s metadata, Lightroom can get confused and you can <strong>lose edits</strong> if you’re not careful.</p>
-<p><strong>Best approach</strong></p>
+<p>Lightroom leans on metadata to remember your edits. If another app rewrites the same file’s metadata, Lightroom can get confused and you can lose edits if you’re not careful.</p>
+<p>Best approach</p>
 <ul>
-<li>Use EXIFmod <strong>before</strong> you do heavy Develop work, when you can. For example: import scans → EXIFmod for metadata → <strong>resync the folder in LrC</strong> → then your usual convert-with-NLP / edit flow.</li>
+<li>Use EXIFmod before you do heavy Develop work, when you can. For example: import scans → EXIFmod for metadata → resync the folder in LrC → then your usual convert-with-NLP / edit flow.</li>
 </ul>
-<p><strong>If the photo is already developed in Lightroom</strong></p>
+<p>If the photo is already developed in Lightroom</p>
 <ul>
-<li>Before you use EXIFmod, make a <strong>Develop snapshot</strong> (⌘N in Develop on a Mac) for each image you care about. When you’re done in EXIFmod, <strong>resync the folder</strong> in LrC, <strong>load metadata from files</strong> if Lightroom asks, then <strong>reapply the snapshots</strong> as needed. You might still need to nudge rotation, but your edits should come back.</li>
+<li>Before you use EXIFmod, make a Develop snapshot (⌘N in Develop on a Mac) for each image you care about. When you’re done in EXIFmod, resync the folder in LrC, load metadata from files if Lightroom asks, then reapply the snapshots as needed. You might still need to nudge rotation, but your edits should come back.</li>
 </ul>
-<p>This sounds fussy, but it’s a lot calmer than rebuilding edits from scratch.</p>
+<p>This sounds fussy, but it’s a lot calmer than having Lightroom give you the silent treatment.</p>
 
   </article>
 </main>
+  </div>
   <footer class="docs-foot">
     <a href="../index.html">Home</a> ·
     <a href="https://github.com/prettyoaktree/exifmod" target="_blank" rel="noopener noreferrer">GitHub</a> ·

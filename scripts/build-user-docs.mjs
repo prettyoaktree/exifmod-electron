@@ -22,12 +22,7 @@ const PAGES = [
   {
     slug: 'getting-started',
     file: 'getting-started.md',
-    blurb: 'What EXIFmod is, who it’s for, and where to go next.'
-  },
-  {
-    slug: 'install',
-    file: 'install.md',
-    blurb: 'Download, Homebrew, winget, and how updates work.'
+    blurb: 'Overview, what you need, install (Releases, Homebrew, winget), and updates.'
   },
   {
     slug: 'workflow',
@@ -48,10 +43,21 @@ const PAGES = [
     slug: 'lightroom',
     file: 'lightroom.md',
     blurb: 'Lightroom Classic plugin and how to keep your edits safe.'
+  },
+  {
+    slug: 'release-notes',
+    file: 'release-notes.md',
+    blurb: 'Headline features and fixes by version — not every patch.'
   }
 ]
 
-function docShell({ title, mainInner }) {
+/**
+ * @param {object} o
+ * @param {string} o.title
+ * @param {string} o.mainInner
+ * @param {string} o.chaptersNavHtml
+ */
+function docShell({ title, mainInner, chaptersNavHtml }) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -64,15 +70,23 @@ function docShell({ title, mainInner }) {
   <link rel="stylesheet" href="${R}/assets/site.css" />
 </head>
 <body class="docs-body">
-  <header class="docs-nav">
-    <a class="brand" href="${R}/index.html">EXIF<span>mod</span></a>
-    <ul class="docs-nav-links">
-      <li><a href="${R}/index.html">Home</a></li>
-      <li><a href="index.html">User guide</a></li>
-      <li><a href="https://github.com/prettyoaktree/exifmod/releases/latest" target="_blank" rel="noopener noreferrer">Download</a></li>
+  <nav>
+    <a href="${R}/index.html" class="nav-logo">EXIF<span>mod</span></a>
+    <ul class="nav-links">
+      <li><a href="${R}/index.html#how-it-works">How it works</a></li>
+      <li><a href="index.html" aria-current="page" aria-label="User guide (current page)">User guide</a></li>
+      <li><a href="${R}/index.html#install" class="btn-nav">Download</a></li>
     </ul>
-  </header>
+  </nav>
+  <div class="docs-page">
+  <aside class="docs-sidebar" aria-label="User guide table of contents">
+    <p class="docs-toc-subtitle" id="guide-toc">In this guide</p>
+    <nav class="docs-toc-chapters" aria-labelledby="guide-toc">
+${chaptersNavHtml}
+    </nav>
+  </aside>
   ${mainInner}
+  </div>
   <footer class="docs-foot">
     <a href="${R}/index.html">Home</a> ·
     <a href="https://github.com/prettyoaktree/exifmod" target="_blank" rel="noopener noreferrer">GitHub</a> ·
@@ -99,8 +113,36 @@ function readMarkdown(relFile) {
   return readFileSync(p, 'utf8')
 }
 
+/**
+ * @param {string} current
+ * @param {Map<string, string>} chapterLabels - slug -> title
+ */
+function buildChaptersNav(current, chapterLabels) {
+  const lines = [
+    `      <a href="index.html"${
+      current === 'index' ? ' class="is-active" aria-current="page"' : ''
+    }>Overview</a>`
+  ]
+  for (const p of PAGES) {
+    const label = chapterLabels.get(p.slug) ?? p.slug
+    const isActive = current === p.slug
+    lines.push(
+      `      <a href="${p.slug}.html"${
+        isActive ? ' class="is-active" aria-current="page"' : ''
+      }>${escapeHtml(label)}</a>`
+    )
+  }
+  return lines.join('\n')
+}
+
 function main() {
   mkdirSync(OUT, { recursive: true })
+  const chapterLabels = new Map(
+    PAGES.map((p) => {
+      const m = readMarkdown(p.file).match(/^#\s+(.+)$/m)
+      return [p.slug, m ? m[1].trim() : p.slug]
+    })
+  )
 
   for (const page of PAGES) {
     const raw = readMarkdown(page.file)
@@ -109,7 +151,6 @@ function main() {
       .split('-')
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(' ')
-    // Prefer first # line as title
     const m = raw.match(/^#\s+(.+)$/m)
     const pageTitle = m ? m[1].trim() : title
     const inner = `<main class="docs-wrap">
@@ -117,7 +158,11 @@ function main() {
     ${html}
   </article>
 </main>`
-    const out = docShell({ title: pageTitle, mainInner: inner })
+    const out = docShell({
+      title: pageTitle,
+      mainInner: inner,
+      chaptersNavHtml: buildChaptersNav(page.slug, chapterLabels)
+    })
     writeFileSync(join(OUT, `${page.slug}.html`), out, 'utf8')
   }
 
@@ -127,7 +172,7 @@ function main() {
     const t = m ? m[1].trim() : p.slug
     return `    <li>
       <a href="${p.slug}.html">
-        <strong>${escapeHtml(t)}</strong>
+        <span class="toc-title">${escapeHtml(t)}</span>
         <span class="blurb">${escapeHtml(p.blurb)}</span>
       </a>
     </li>`
@@ -143,8 +188,11 @@ ${tocItems}
 
   writeFileSync(
     join(OUT, 'index.html'),
-    docShell({ title: 'User guide', mainInner: indexMain }),
-    'utf8'
+    docShell({
+      title: 'User guide',
+      mainInner: indexMain,
+      chaptersNavHtml: buildChaptersNav('index', chapterLabels)
+    })
   )
 
   console.log(
