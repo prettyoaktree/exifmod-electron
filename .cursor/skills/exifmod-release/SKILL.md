@@ -6,7 +6,8 @@ description: >-
   updater metadata, release notes, Homebrew cask bump, and winget-pkgs manifest
   bump (staged under winget/manifests/). Use when the user asks to release,
   ship, tag, bump version, publish GitHub release, or cut a patch/minor/major
-  for EXIFmod.
+  for EXIFmod. For user-guide release-notes edits, follow
+  .cursor/skills/exifmod-user-docs/SKILL.md.
 ---
 
 # EXIFmod release (exifmod)
@@ -42,7 +43,7 @@ Copy and tick through:
    - **Windows:** `EXIFmod-<version>-setup.exe` (NSIS), `EXIFmod-<version>-setup.exe.sha256` (from Windows CI), `latest.yml`, and related blockmap files from electron-builder
    - Under `releases/download/v<version>/` (not an untagged draft URL) — see [maintainer.md](maintainer.md) § Release checklist.
 7. [ ] **Release notes**: create or edit the GitHub release for `vX.Y.Z` with highlights and commit range since the previous tag (repo convention in [AGENTS.md](AGENTS.md)).
-7b. [ ] **User guide — release notes** (optional but recommended for user-visible work): if `vX.Y.Z` has **headline** changes end users would notice, add a short entry to [docs/user/release-notes.md](../../../docs/user/release-notes.md) per [STYLEGUIDE.md](../../../STYLEGUIDE.md) §5 (not a full changelog; link GitHub for detail). Then `npm run site:build` and commit updated [website/docs/](../../../website/docs/) on `main` so the [docs site](https://prettyoaktree.github.io/exifmod/docs/release-notes.html) matches.
+7b. [ ] **User guide — release notes** (optional but recommended for user-visible work): if `vX.Y.Z` has **headline** changes end users would notice, follow [`.cursor/skills/exifmod-user-docs/SKILL.md`](../exifmod-user-docs/SKILL.md) when updating [docs/user/release-notes.md](../../../docs/user/release-notes.md): keep entries sorted newest -> oldest, run `npm run site:build`, and commit matching [website/docs/](../../../website/docs/) output so the [docs site](https://prettyoaktree.github.io/exifmod/docs/release-notes.html) stays in sync.
 8. [ ] **Publish the GitHub release** (not a draft): after assets and notes are in place, confirm `isDraft` is false and clear draft if needed:
    - `gh release view vX.Y.Z --json isDraft,isLatest`
    - If `isDraft` is true: `gh release edit vX.Y.Z --draft=false`
