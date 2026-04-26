@@ -219,6 +219,9 @@ button.btn-primary.file-panel-open-folder:hover {
   padding: var(--pane-header-pad-y) var(--pane-header-pad-x);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 2;
   background: var(--shaded-panel-header-bg);
   box-shadow: var(--shaded-panel-header-inset);
 }
@@ -639,7 +642,9 @@ table.mapping tbody tr.metadata-text-row--pending {
 .meta-panel > .meta-section:first-child {
   flex: 1 1 0;
   min-height: 0;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 0;
   border-bottom: 1px solid var(--border);
 }
@@ -647,6 +652,7 @@ table.mapping tbody tr.metadata-text-row--pending {
 .meta-panel > .meta-section:first-child .meta-section-head {
   margin: 0;
   padding: var(--pane-header-pad-y) var(--pane-header-pad-x);
+  flex-shrink: 0;
   background: var(--selection-header-bg);
   box-shadow: var(--shaded-panel-header-inset);
   border-bottom: 1px solid var(--border);
@@ -669,6 +675,11 @@ table.mapping tbody tr.metadata-text-row--pending {
 }
 
 .meta-panel > .meta-section:first-child .meta-roving-block {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 0.55rem var(--pane-header-pad-x) 0.7rem;
 }
 
