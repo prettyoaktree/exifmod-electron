@@ -390,16 +390,29 @@ export function diffToAttributeHighlights(diff: Record<string, unknown>): DiffAt
     switch (k) {
       case 'ExposureTime':
       case 'ShutterSpeedValue':
+      // Composite:ShutterSpeed, EXIF:ShutterSpeed, etc. (local part after the last `:`)
+      case 'ShutterSpeed':
         h.shutter = true
         break
       case 'FNumber':
       case 'ApertureValue':
+      // Some toolchains surface aperture under this local name
+      case 'Aperture':
         h.aperture = true
         break
       case 'ImageDescription':
         h.notes = true
         break
+      // XMP / IPTC local names (after `ns:…`) when diffs use those keys
+      case 'Description':
+      case 'Caption-Abstract':
+        h.notes = true
+        break
       case 'Keywords':
+        h.keywords = true
+        break
+      case 'Subject':
+      case 'HierarchicalSubject':
         h.keywords = true
         break
       case 'ISO':

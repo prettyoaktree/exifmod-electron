@@ -2,7 +2,7 @@
 
 1. Open a folder — you’ll see a list of supported image files.
 2. Select one or more files in the list.
-3. Review and edit metadata in the right-hand pane (use presets for camera, lens, film, author, and the other fields as needed).
+3. Review and edit metadata in the right-hand pane (use presets for camera, lens, film, author, and the other fields as needed). Your pending changes will be indicated in the file list as icons.
 4. Preview EXIF changes (optional) — if you’re the type of person who finds comfort in a well-formed tag list, this feature is for you. You're welcome.
 5. Write pending changes — that applies your edits to the selected files.
 
