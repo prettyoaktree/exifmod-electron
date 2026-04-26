@@ -2,6 +2,10 @@
 
 Headline changes in recent versions: major features and fixes that affect how you work in EXIFmod. Patch releases often include small fixes and polish that are not listed here. For the full list of every release, see [EXIFmod on GitHub Releases](https://github.com/prettyoaktree/exifmod/releases).
 
+## 1.8.1
+
+**1.8.1** — File list keyboard navigation now takes over cleanly after mouse selection, while keyboard multi-select with Space still works as expected. Preset-applied rows now use the same red “pending write” treatment as other real metadata changes, and metadata table column headers are easier to scan.
+
 ## 1.8.0
 
 **1.8.0** — Metadata pane overhaul: **Presets**, **Shutter & Aperture**, and **Description & Keywords** as subsections in one table, with shared **Current value** and **New value** columns and a single sticky column header. Pending work in the file list uses per-category icons. **New preset from metadata…** replaces the small **+** in the preset picker. After you save a new preset, other open files that already match it update without a manual refresh. The highlight for an active catalog choice is visually distinct from “pending write” rows. User guide and website screenshots refreshed.
