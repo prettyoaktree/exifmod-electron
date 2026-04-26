@@ -52,7 +52,12 @@ export function buildApplyCommand(exiftoolPath: string, filePath: string, exifDa
   for (const [key, value] of Object.entries(data)) {
     if (Array.isArray(value)) {
       if (value.length === 0 && key === 'Keywords') {
-        cmd.push(`-${key}=`)
+        cmd.push(`-${key}=`, '-XMP-dc:Subject=')
+      } else if (key === 'Keywords') {
+        const vals = value.map((v) => String(v)).filter((v) => v.trim() !== '')
+        if (vals.length > 0) {
+          cmd.push('-sep', ', ', `-XMP-dc:Subject=${vals.join(', ')}`)
+        }
       } else {
         for (const item of value) {
           cmd.push(`-${key}=${item}`)
@@ -77,11 +82,16 @@ export function buildApplySidecarCommand(
 ): string[] {
   const data = sanitizeWritePayload(exifData)
   const outXmp = sidecarXmpPath(rawFilePath)
-  const cmd = [exiftoolPath, '-P', '-charset', 'EXIF=utf8']
+  const cmd = [exiftoolPath, '-overwrite_original', '-P', '-charset', 'EXIF=utf8']
   for (const [key, value] of Object.entries(data)) {
     if (Array.isArray(value)) {
       if (value.length === 0 && key === 'Keywords') {
-        cmd.push(`-${key}=`)
+        cmd.push(`-${key}=`, '-XMP-dc:Subject=')
+      } else if (key === 'Keywords') {
+        const vals = value.map((v) => String(v)).filter((v) => v.trim() !== '')
+        if (vals.length > 0) {
+          cmd.push('-sep', ', ', `-XMP-dc:Subject=${vals.join(', ')}`)
+        }
       } else {
         for (const item of value) {
           cmd.push(`-${key}=${item}`)
@@ -91,7 +101,7 @@ export function buildApplySidecarCommand(
       cmd.push(`-${key}=${value}`)
     }
   }
-  cmd.push('-DigitalSourceType=', '-DigitalSourceFileType=', '-o', outXmp, rawFilePath)
+  cmd.push('-DigitalSourceType=', '-DigitalSourceFileType=', outXmp)
   return cmd
 }
 

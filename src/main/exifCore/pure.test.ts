@@ -48,8 +48,9 @@ describe('buildApplyCommand', () => {
     expect(cmd).toContain('-overwrite_original')
     expect(cmd).toContain('-P')
     expect(cmd).toContain('-Make=M')
-    expect(cmd).toContain('-Keywords=a')
-    expect(cmd).toContain('-Keywords=b')
+    expect(cmd).toContain('-sep')
+    expect(cmd).toContain(', ')
+    expect(cmd).toContain('-XMP-dc:Subject=a, b')
     expect(cmd).toContain('-DigitalSourceType=')
     expect(cmd[cmd.length - 1]).toBe('/tmp/a.jpg')
   })
@@ -57,18 +58,25 @@ describe('buildApplyCommand', () => {
   it('emits Keywords= when Keywords is an empty array (delete)', () => {
     const cmd = buildApplyCommand('/bin/exiftool', '/tmp/a.jpg', { Keywords: [] })
     expect(cmd).toContain('-Keywords=')
+    expect(cmd).toContain('-XMP-dc:Subject=')
   })
 })
 
 describe('buildApplySidecarCommand', () => {
-  it('writes to sidecar xmp without overwrite_original', () => {
+  it('writes directly to sidecar xmp target', () => {
     const cmd = buildApplySidecarCommand('/bin/exiftool', '/tmp/raw.nef', { Make: 'Nikon' })
     expect(cmd[0]).toBe('/bin/exiftool')
-    expect(cmd).not.toContain('-overwrite_original')
-    expect(cmd).toContain('-o')
+    expect(cmd).toContain('-overwrite_original')
+    expect(cmd).not.toContain('-o')
     expect(cmd).toContain('/tmp/raw.xmp')
-    expect(cmd[cmd.length - 1]).toBe('/tmp/raw.nef')
+    expect(cmd[cmd.length - 1]).toBe('/tmp/raw.xmp')
     expect(cmd).toContain('-Make=Nikon')
+  })
+
+  it('writes keyword arrays via xmp subject list syntax', () => {
+    const cmd = buildApplySidecarCommand('/bin/exiftool', '/tmp/raw.nef', { Keywords: ['film', 'Acme Film Stock'] })
+    expect(cmd).toContain('-sep')
+    expect(cmd).toContain('-XMP-dc:Subject=film, Acme Film Stock')
   })
 })
 

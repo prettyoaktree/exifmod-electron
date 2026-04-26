@@ -753,7 +753,8 @@ function setupIpc(): void {
         const b = createPreWriteBackupCopy(filePath)
         if (!b.ok) throw new Error(b.error)
       }
-      const args = isRawImagePath(filePath)
+      const isRaw = isRawImagePath(filePath)
+      const args = isRaw
         ? buildApplySidecarCommand(tool, filePath, payload)
         : buildApplyCommand(tool, filePath, payload)
       const { stderr, code } = await spawnExiftool(args, { timeoutMs: 120_000 })
@@ -765,14 +766,17 @@ function setupIpc(): void {
   ipcMain.handle(
     'exif:applyBatch',
     async (
-      _e,
+      event,
       items: Array<{ path: string; payload: Record<string, unknown>; backupFirst?: boolean }>
     ) => {
       const tool = resolveExiftoolPath()
       if (!tool) throw new Error(i18next.t('ipc.exiftoolNotFound'))
       const results: Array<{ path: string; ok: boolean; error?: string }> = []
+      const total = items.length
+      let done = 0
       for (const it of items) {
         try {
+          const isRaw = isRawImagePath(it.path)
           if (it.backupFirst && isRasterInFileWritePath(it.path)) {
             const b = createPreWriteBackupCopy(it.path)
             if (!b.ok) {
@@ -780,7 +784,7 @@ function setupIpc(): void {
               continue
             }
           }
-          const args = isRawImagePath(it.path)
+          const args = isRaw
             ? buildApplySidecarCommand(tool, it.path, it.payload)
             : buildApplyCommand(tool, it.path, it.payload)
           const { stderr, code } = await spawnExiftool(args, { timeoutMs: 120_000 })
@@ -795,6 +799,9 @@ function setupIpc(): void {
             ok: false,
             error: e instanceof Error ? e.message : String(e)
           })
+        } finally {
+          done += 1
+          event.sender.send('exif:applyBatchProgress', { done, total, path: it.path })
         }
       }
       return results

@@ -1,5 +1,6 @@
 import { execFileSync, spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
+import { basename } from 'node:path'
 import { exiftoolHasSettingsMeansAdobeCrsDevelop } from '../shared/adobeDevelop.js'
 import { getExiftoolPathCandidates } from './exifCore/constants.js'
 import { isRawImagePath, sidecarXmpPath } from './exifCore/imagePaths.js'
@@ -39,9 +40,30 @@ export function validateExiftool(exiftoolPath?: string): string | null {
 function parseExifJsonFirstRow(text: string): Record<string, unknown> {
   const parsed = JSON.parse(text) as unknown
   if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0] !== null) {
-    return parsed[0] as Record<string, unknown>
+    return normalizeKeywordAliases(parsed[0] as Record<string, unknown>)
   }
   return {}
+}
+
+function normalizeKeywordAliases(row: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...row }
+  const subject = out['Subject'] ?? out['XMP:Subject'] ?? out['XMP-dc:Subject']
+  const keywords = out['Keywords']
+  if (Array.isArray(subject)) {
+    const subjectVals = subject.map((v) => String(v).trim()).filter(Boolean)
+    if (subjectVals.length > 0) {
+      const kwArray = Array.isArray(keywords) ? keywords.map((v) => String(v).trim()).filter(Boolean) : []
+      const kwString = typeof keywords === 'string' ? keywords.trim() : ''
+      if (kwArray.length <= 1 && (!kwString || kwString.toLowerCase() === 'film')) {
+        out['Keywords'] = subjectVals
+      }
+    }
+  } else if (typeof subject === 'string' && subject.trim()) {
+    if (keywords == null || String(keywords).trim() === '') {
+      out['Keywords'] = subject.trim()
+    }
+  }
+  return out
 }
 
 export function readExifMetadata(exiftoolPath: string, filePath: string): Promise<Record<string, unknown>> {
@@ -91,7 +113,8 @@ export async function readExifMetadataMerged(exiftoolPath: string, filePath: str
   if (!existsSync(xmp)) return primary
   try {
     const sidecar = await readExifMetadata(exiftoolPath, xmp)
-    return mergeRawWithSidecar(primary, sidecar, String(primary['SourceFile'] ?? filePath))
+    const merged = mergeRawWithSidecar(primary, sidecar, String(primary['SourceFile'] ?? filePath))
+    return merged
   } catch {
     return primary
   }
@@ -156,7 +179,7 @@ async function readExifMetadataBatchChunk(
     const p = filePaths[i]!
     const rawRow =
       i < rows.length && typeof rows[i] === 'object' && rows[i] !== null
-        ? ({ ...(rows[i] as Record<string, unknown>) } as Record<string, unknown>)
+        ? normalizeKeywordAliases({ ...(rows[i] as Record<string, unknown>) } as Record<string, unknown>)
         : {}
     rawRow['SourceFile'] = p
     let merged = rawRow

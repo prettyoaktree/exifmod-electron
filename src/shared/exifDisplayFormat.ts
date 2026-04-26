@@ -44,6 +44,8 @@ export function formatFnumberForUi(value: unknown): string {
   if (typeof value === 'string') {
     const t = value.trim()
     if (!t) return ''
+    const lower = t.toLowerCase()
+    if (lower === 'undef' || lower === 'undefined' || lower === 'nan') return ''
     const n = Number(t)
     if (Number.isFinite(n)) return formatFnumberForUi(n)
     return t
