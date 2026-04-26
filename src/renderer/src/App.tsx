@@ -2311,12 +2311,12 @@ export function App(): React.ReactElement {
                     <th className="meta-mapping-floating-thead__attr" scope="col">
                       <span className="sr-only">{t('ui.attribute')}</span>
                     </th>
-                    <th scope="col">{t('ui.currentValue')}</th>
+                    <th className="meta-mapping-strong-head" scope="col">{t('ui.currentValue')}</th>
                     <th className="mapping-col-arrow-head" aria-hidden>
                       <span className="sr-only">{t('ui.mappingArrowToNew')}</span>
                     </th>
-                    <th scope="col">{t('ui.newValue')}</th>
-                    <th className="mapping-col-remove-head" scope="col">
+                    <th className="meta-mapping-strong-head" scope="col">{t('ui.newValue')}</th>
+                    <th className="mapping-col-remove-head meta-mapping-strong-head" scope="col">
                       {t('ui.removeColumn')}
                     </th>
                   </tr>
@@ -2368,7 +2368,7 @@ export function App(): React.ReactElement {
                     return (
                       <tr
                         key={cat}
-                        className={id != null && (cat !== 'Lens' || lensFilter.state !== 'disabled') ? 'has-staged-assignment' : undefined}
+                        className={pendingAttributeHighlights[cat] ? 'metadata-text-row--pending' : undefined}
                       >
                         <td>
                           <span className="meta-row-label-with-icon">
