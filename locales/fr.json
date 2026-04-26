@@ -278,6 +278,9 @@
   "presetEditor": {
     "tableAttribute": "Attribut",
     "tableValue": "Valeur",
+    "sectionCatalog": "Catalogue",
+    "sectionImageMetadata": "Métadonnées d’image",
+    "presetNameHint": "Ce libellé sert uniquement au catalogue et à la liste d’attribution. Il n’est pas enregistré dans les fichiers en tant que tag EXIF.",
     "titleNew": "Nouveau préréglage {{category}}",
     "titleEdit": "Modifier le préréglage {{category}}",
     "name": "Nom du préréglage",

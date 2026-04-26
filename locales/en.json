@@ -278,6 +278,9 @@
   "presetEditor": {
     "tableAttribute": "Attribute",
     "tableValue": "Value",
+    "sectionCatalog": "Catalog",
+    "sectionImageMetadata": "Image Metadata",
+    "presetNameHint": "This label is only for your catalog and the Assign list. It is not written to files as an EXIF tag.",
     "titleNew": "New {{category}} Preset",
     "titleEdit": "Edit {{category}} Preset",
     "name": "Preset Name",

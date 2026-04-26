@@ -9,7 +9,7 @@ import {
   normalizeFilmPresetPayloadForMerge,
   stripFilmStockSuffix
 } from './filmKeywords.js'
-import { keywordValuesFromMetadata, metadataFirstTag } from './exifMetadataTags.js'
+import { keywordValuesFromMetadata } from './exifMetadataTags.js'
 import { presetPayloadSatisfiedByFileMetadata } from './exifPayloadDiff.js'
 import type { CameraMetadata, ConfigCatalog } from './types.js'
 

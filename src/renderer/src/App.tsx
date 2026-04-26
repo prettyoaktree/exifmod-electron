@@ -2534,40 +2534,40 @@ export function App(): React.ReactElement {
                 <div className="meta-section-label-row">
                   <div className="meta-subsection-head">
                     <h2 className="meta-subsection-title">{t('ui.sectionTextFields')}</h2>
-                  </div>
-                  <div className="meta-subsection-ai-anchor">
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      className={[
-                        'btn-ai-spark meta-inline-icon-btn',
-                        (ollamaSession === 'checking' || ollamaSession === 'launching') && !aiDescribeBusy
-                          ? 'btn-ai-spark--ollama-launching'
-                          : '',
-                        ollamaSession === 'ready' && !aiDescribeBusy ? 'btn-ai-spark--ollama-ready' : '',
-                        aiDescribeBusy ? 'btn-ai-spark--loading' : ''
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
-                      aria-busy={
-                        !!aiDescribeBusy || ollamaSession === 'checking' || ollamaSession === 'launching'
-                      }
-                      disabled={aiButtonDisabled}
-                      title={aiButtonTitle}
-                      aria-label={aiButtonTitle}
-                      onClick={() => void onAiButtonClick()}
-                    >
-                      {aiDescribeBusy ? (
-                        <span className="btn-ai-spark-loading">{aiDescribeBusyLabel}</span>
-                      ) : (
-                        <svg className="btn-ai-spark-icon" viewBox="0 0 24 24" aria-hidden focusable="false">
-                          <path
-                            fill="currentColor"
-                            d="M12 2l1.2 4.2L17.4 7.4l-4.2 1.2L12 12.8l-1.2-4.2L6.6 7.4l4.2-1.2L12 2zm7 8l.8 2.8 2.8.8-2.8.8L19 17.4l-.8-2.8-2.8-.8 2.8-.8L19 10zM6 14l.6 2.2 2.2.6-2.2.6L6 19.8l-.6-2.2-2.2-.6 2.2-.6L6 14z"
-                          />
-                        </svg>
-                      )}
-                    </button>
+                    <div className="meta-subsection-ai-anchor">
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        className={[
+                          'btn-ai-spark meta-inline-icon-btn',
+                          (ollamaSession === 'checking' || ollamaSession === 'launching') && !aiDescribeBusy
+                            ? 'btn-ai-spark--ollama-launching'
+                            : '',
+                          ollamaSession === 'ready' && !aiDescribeBusy ? 'btn-ai-spark--ollama-ready' : '',
+                          aiDescribeBusy ? 'btn-ai-spark--loading' : ''
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        aria-busy={
+                          !!aiDescribeBusy || ollamaSession === 'checking' || ollamaSession === 'launching'
+                        }
+                        disabled={aiButtonDisabled}
+                        title={aiButtonTitle}
+                        aria-label={aiButtonTitle}
+                        onClick={() => void onAiButtonClick()}
+                      >
+                        {aiDescribeBusy ? (
+                          <span className="btn-ai-spark-loading">{aiDescribeBusyLabel}</span>
+                        ) : (
+                          <svg className="btn-ai-spark-icon" viewBox="0 0 24 24" aria-hidden focusable="false">
+                            <path
+                              fill="currentColor"
+                              d="M12 2l1.2 4.2L17.4 7.4l-4.2 1.2L12 12.8l-1.2-4.2L6.6 7.4l4.2-1.2L12 2zm7 8l.8 2.8 2.8.8-2.8.8L19 17.4l-.8-2.8-2.8-.8 2.8-.8L19 10zM6 14l.6 2.2 2.2.6-2.2.6L6 19.8l-.6-2.2-2.2-.6 2.2-.6L6 14z"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <table className="mapping mapping-slim mapping-desc-kw">
