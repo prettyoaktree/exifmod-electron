@@ -6,7 +6,6 @@ import {
   buildLensPresetDraft,
   canonicalCameraMakeModel,
   canonicalLensMakeModel,
-  catalogHasPresetName,
   computeAutoFillPresetIds,
   filmCurrentDisplayForStaging,
   filmDisplayCandidateFromMetadata,
@@ -86,12 +85,6 @@ describe('inferUniqueLensMount', () => {
   })
 })
 
-describe('catalogHasPresetName', () => {
-  it('is case-insensitive', () => {
-    expect(catalogHasPresetName(['None', 'Canon P'], 'canon p')).toBe(true)
-  })
-})
-
 describe('matchStateForCameraCategory', () => {
   const cat = emptyCatalog({
     camera_values: ['None', 'Canon P'],
@@ -101,13 +94,25 @@ describe('matchStateForCameraCategory', () => {
   it('matches existing preset', () => {
     expect(matchStateForCameraCategory(cat, [{ Make: 'Canon', Model: 'Canon P' }])).toEqual({ kind: 'matched' })
   })
-  it('matches when preset display name differs but payload identity matches EXIF', () => {
+  it('matches when preset display name differs but payload matches EXIF', () => {
     const renamed = emptyCatalog({
       camera_values: ['None', 'My preset'],
       camera_identity_by_name: { 'My preset': 'Canon P' },
       camera_payload_by_name: { None: {}, 'My preset': { Make: 'Canon', Model: 'Canon P' } }
     })
     expect(matchStateForCameraCategory(renamed, [{ Make: 'Canon', Model: 'Canon P' }])).toEqual({ kind: 'matched' })
+  })
+  it('ignores a misleading list label: earlier row name can equal EXIF string but wrong payload; later row wins', () => {
+    const misleading = emptyCatalog({
+      camera_values: ['None', 'Canon P', 'My cool camera'],
+      camera_payload_by_name: {
+        None: {},
+        'Canon P': { Make: 'FED', Model: 'FED 1' },
+        'My cool camera': { Make: 'Canon', Model: 'Canon P' }
+      },
+      camera_identity_by_name: { 'Canon P': 'FED 1', 'My cool camera': 'Canon P' }
+    })
+    expect(matchStateForCameraCategory(misleading, [{ Make: 'Canon', Model: 'Canon P' }])).toEqual({ kind: 'matched' })
   })
   it('unmatched yields draft', () => {
     const r = matchStateForCameraCategory(cat, [{ Make: 'FED', Model: 'FED 1' }])

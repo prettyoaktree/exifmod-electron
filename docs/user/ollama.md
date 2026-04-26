@@ -26,7 +26,7 @@ That command downloads the model EXIFmod was actually tested with. The first dow
 
 ## 3. Using AI inside EXIFmod
 
-Once Ollama is up and the model is pulled, use the in-app AI button (it looks kinda sparkly) to generate or refine descriptions and keywords from the current image. If the wording feels too short, too long, too generic, or too specific, you can adjust the system prompt in the app...  **carefully!** — a bad prompt can make the output sound like a furniture catalog (not a bad thing if you photograph for a furniture catalog... but not everyone does). If you break it, EXIFmod can reset the system prompt to the default. Phew!
+Once Ollama is up and the model is pulled, use the **AI** button in the **Description & Keywords** section of the metadata pane (it looks kinda sparkly) to generate or refine descriptions and keywords from the current image. If the wording feels too short, too long, too generic, or too specific, you can adjust the system prompt in the app… **carefully!** — a bad prompt can make the output sound like a furniture catalog (not a bad thing if you photograph for a furniture catalog... but not everyone does). If you break it, EXIFmod can reset the system prompt to the default. Phew!
 
 ## Advanced stuff
 

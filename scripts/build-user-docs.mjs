@@ -32,7 +32,7 @@ const PAGES = [
   {
     slug: 'presets',
     file: 'presets.md',
-    blurb: 'The preset catalog and the metadata table, explained in plain terms.'
+    blurb: 'The preset catalog, how the metadata sections fit together, and the shared current → new layout.'
   },
   {
     slug: 'ollama',

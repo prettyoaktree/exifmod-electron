@@ -73,9 +73,14 @@ import { truncateMiddle } from './format/truncateMiddle.js'
 import { StatusFooter, type ApplicationPhase } from './StatusFooter.js'
 import type { UpdaterUiPayload } from '@shared/updaterUi.js'
 import { getStagingPaths } from '@shared/stagingPaths.js'
+import { diffHighlightsToIconCategories } from '@shared/pendingIconCategories.js'
 import { measureTextWidthCanvas, pickMetadataHeadingText } from './metadataHeading.js'
+import { CategoryIcon, type MetaCategory } from './CategoryIcon.js'
 
 const CATS: Cat[] = ['Camera', 'Lens', 'Film', 'Author']
+
+/** Reserved internal name for the synthetic “new preset from metadata” combo row. */
+const PRESET_OPTION_NEW_FROM_FILE = '\uE000__EXIFMOD_NEW_FROM_FILE__'
 
 const CAT_I18N: Record<Cat, 'category.camera' | 'category.lens' | 'category.film' | 'category.author'> = {
   Camera: 'category.camera',
@@ -306,10 +311,48 @@ const FILE_LIST_AREA_MAX_PCT = 82
 export function App(): React.ReactElement {
   const { t } = useTranslation()
   const noneDisplay = t('ui.doNotModify')
+  const newFromFileLabel = t('ui.newPresetFromMetadata')
   const emptyCurrentDisplay = t('ui.currentValueEmpty')
-  const internalToDisplay = (name: string): string => (name === 'None' ? noneDisplay : name)
-  const displayToInternal = (text: string): string => (text === noneDisplay ? 'None' : text)
+  const internalToDisplay = (name: string): string => {
+    if (name === 'None') return noneDisplay
+    if (name === PRESET_OPTION_NEW_FROM_FILE) return newFromFileLabel
+    return name
+  }
+  const displayToInternal = (text: string): string => {
+    if (text === newFromFileLabel) return PRESET_OPTION_NEW_FROM_FILE
+    if (text === noneDisplay) return 'None'
+    return text
+  }
   const catLabel = (cat: Cat): string => t(CAT_I18N[cat])
+
+  const catToIconCategory = (cat: Cat): MetaCategory => {
+    if (cat === 'Camera') return 'camera'
+    if (cat === 'Lens') return 'lens'
+    if (cat === 'Film') return 'film'
+    return 'author'
+  }
+
+  const labelForMetaCategory = (c: MetaCategory): string => {
+    switch (c) {
+      case 'camera':
+        return t('category.camera')
+      case 'lens':
+        return t('category.lens')
+      case 'film':
+        return t('category.film')
+      case 'author':
+        return t('category.author')
+      case 'shutter':
+        return t('ui.shutterSpeed')
+      case 'aperture':
+        return t('ui.apertureFStop')
+      case 'desc':
+        return t('ui.notesImageDescription')
+      case 'keywords':
+      default:
+        return t('ui.keywordsLabel')
+    }
+  }
 
   const [applicationPhase, setApplicationPhase] = useState<ApplicationPhase>('verifying')
   const [applicationMessages, setApplicationMessages] = useState<string[]>([])
@@ -344,6 +387,7 @@ export function App(): React.ReactElement {
     targetPaths?: string[]
   } | null>(null)
   const [suggestedLensMountsList, setSuggestedLensMountsList] = useState<string[]>([])
+  const [recentlySavedPreset, setRecentlySavedPreset] = useState<{ id: number; category: Cat } | null>(null)
   const [managePresetsOpen, setManagePresetsOpen] = useState(false)
   const [deletePresetConfirm, setDeletePresetConfirm] = useState<null | { id: number; cat: Cat; name: string }>(null)
   const [clearUnusedLensMountConfirm, setClearUnusedLensMountConfirm] = useState<string | null>(null)
@@ -438,7 +482,7 @@ export function App(): React.ReactElement {
   const suggestedLensMountsRef = useRef(suggestedLensMountsList)
   suggestedLensMountsRef.current = suggestedLensMountsList
 
-  /** After `readMetadata` + pending baseline/autofill merge for the current `stagingKey` (avoids flashing "Do Not Modify" before preset match). */
+  /** After `readMetadata` + pending baseline for the current `stagingKey` (avoids flashing "No change" before UI is ready). */
   const [metadataSyncedStagingKey, setMetadataSyncedStagingKey] = useState<string | null>(null)
 
   const bindMetaRef = useCallback((index: number) => (el: HTMLElement | null) => {
@@ -615,6 +659,34 @@ export function App(): React.ReactElement {
     if (!api?.suggestedLensMounts || !catalog) return
     void api.suggestedLensMounts().then(setSuggestedLensMountsList)
   }, [catalog])
+
+  /**
+   * After creating a preset, rematch files with no explicit assignment in that category.
+   * This updates match highlighting immediately for files that already satisfy the new preset.
+   */
+  useEffect(() => {
+    if (!recentlySavedPreset || !catalog || files.length === 0) return
+    const { id, category } = recentlySavedPreset
+    const idKey = idKeyForCategory(category)
+    const clearKey = categoryToClearKey(category)
+    setPendingByPath((prev) => {
+      let changed = false
+      const next = { ...prev }
+      for (const path of files) {
+        const pk = pathKey(path)
+        const row = next[pk] ?? emptyPending()
+        if ((row[idKey] as number | null) != null || row[clearKey]) continue
+        const md = metadataByPath[pk] ?? {}
+        const inferFilm = inferCategoryValues(md, catalog.film_values).Film ?? ''
+        const suggested = computeAutoFillPresetIds(catalog, md, inferFilm, suggestedLensMountsList, {})
+        if ((suggested[idKey] as number | null) !== id) continue
+        next[pk] = { ...row, [idKey]: id, [clearKey]: false }
+        changed = true
+      }
+      return changed ? next : prev
+    })
+    setRecentlySavedPreset(null)
+  }, [recentlySavedPreset, catalog, files, metadataByPath, suggestedLensMountsList])
 
   useEffect(() => {
     const api = window.exifmod
@@ -821,15 +893,18 @@ export function App(): React.ReactElement {
     return () => ro.disconnect()
   }, [stagingHeadingBaseNames, t])
 
+  /** Merge write-diff highlights for every file in the session (same scope as the file list + Write / preview), not
+   *  only the metadata staging set—otherwise pending changes on a non-staged file show chips in the list but the
+   *  metadata rows (including Description, Keywords, Shutter, Aperture) do not get pending styling. */
   const pendingAttributeHighlights = useMemo(() => {
     let acc = emptyDiffAttributeHighlights()
-    for (const path of stagingPaths) {
+    for (const path of files) {
       const diff = writeDiffByPath[pathKey(path)]
       if (!diff || Object.keys(diff).length === 0) continue
       acc = mergeDiffAttributeHighlights(acc, diffToAttributeHighlights(diff))
     }
     return acc
-  }, [stagingPaths, writeDiffByPath])
+  }, [files, writeDiffByPath])
 
   const formPending = useMemo(
     () => mergePendingStateForNewValueUi(stagingPaths, pendingByPath),
@@ -916,18 +991,6 @@ export function App(): React.ReactElement {
         }
       }
       if (cancelled) return
-      const cat = catalogRef.current
-      const mounts = suggestedLensMountsRef.current
-      const autofillSkips =
-        cat != null && stagingPaths.length > 1 ? multiSelectAutofillSkips(cat, stagingPaths, meta) : {}
-      const skipAllPresetMatch =
-        stagingPaths.length > 1 &&
-        Boolean(
-          autofillSkips.camera &&
-            autofillSkips.lens &&
-            autofillSkips.film &&
-            autofillSkips.author
-        )
       setMetadataByPath((prev) => ({ ...prev, ...meta }))
       setPendingByPath((prev) => {
         const next = { ...prev }
@@ -939,22 +1002,11 @@ export function App(): React.ReactElement {
           const kw = keywordsFieldFromMetadata(md)
           const shouldReseedKeywords =
             row.keywordsText.trim() === '' || descriptiveSlicesEqual(row.keywordsText, row.keywordsBaseline)
-          let merged: PendingState = {
+          const merged: PendingState = {
             ...row,
             notesBaseline: desc,
             keywordsBaseline: kw,
             keywordsText: shouldReseedKeywords ? '' : row.keywordsText
-          }
-          if (cat != null && !skipAllPresetMatch) {
-            const inferFilm = inferCategoryValues(md, cat.film_values).Film ?? ''
-            const ids = computeAutoFillPresetIds(cat, md, inferFilm, mounts, autofillSkips)
-            merged = {
-              ...merged,
-              cameraId: autofillSkips.camera ? merged.cameraId : (merged.cameraId ?? ids.cameraId),
-              lensId: autofillSkips.lens ? merged.lensId : (merged.lensId ?? ids.lensId),
-              filmId: autofillSkips.film ? merged.filmId : (merged.filmId ?? ids.filmId),
-              authorId: autofillSkips.author ? merged.authorId : (merged.authorId ?? ids.authorId)
-            }
           }
           next[k] = merged
         }
@@ -966,52 +1018,6 @@ export function App(): React.ReactElement {
       cancelled = true
     }
   }, [stagingKey])
-
-  /** Auto-select New → preset ids when file metadata matches the catalog (camera-first FLC rules). Only fills null ids. */
-  useLayoutEffect(() => {
-    if (!catalog || !stagingPaths.length) return
-    const filmOpts = catalog.film_values
-    const autofillSkips =
-      stagingPaths.length > 1 ? multiSelectAutofillSkips(catalog, stagingPaths, metadataByPath) : {}
-    const skipAllPresetMatch =
-      stagingPaths.length > 1 &&
-      Boolean(
-        autofillSkips.camera &&
-          autofillSkips.lens &&
-          autofillSkips.film &&
-          autofillSkips.author
-      )
-    setPendingByPath((prev) => {
-      if (skipAllPresetMatch) return prev
-      const next = { ...prev }
-      let changed = false
-      for (const path of stagingPaths) {
-        const md = metadataByPath[pathKey(path)]
-        if (md == null) continue
-        const inferFilm = inferCategoryValues(md, filmOpts).Film ?? ''
-        const ids = computeAutoFillPresetIds(catalog, md, inferFilm, suggestedLensMountsList, autofillSkips)
-        const k = pathKey(path)
-        const row = next[k] ?? emptyPending()
-        const merged: PendingState = {
-          ...row,
-          cameraId: autofillSkips.camera ? row.cameraId : (row.cameraId ?? ids.cameraId),
-          lensId: autofillSkips.lens ? row.lensId : (row.lensId ?? ids.lensId),
-          filmId: autofillSkips.film ? row.filmId : (row.filmId ?? ids.filmId),
-          authorId: autofillSkips.author ? row.authorId : (row.authorId ?? ids.authorId)
-        }
-        if (
-          merged.cameraId !== row.cameraId ||
-          merged.lensId !== row.lensId ||
-          merged.filmId !== row.filmId ||
-          merged.authorId !== row.authorId
-        ) {
-          changed = true
-          next[k] = merged
-        }
-      }
-      return changed ? next : prev
-    })
-  }, [catalog, stagingKey, metadataByPath, stagingPaths, suggestedLensMountsList])
 
   useEffect(() => {
     if (selectedIndices.size > 1) {
@@ -1035,7 +1041,10 @@ export function App(): React.ReactElement {
   }, [stagingPaths, selectedIndices])
 
   const buildMergedPayloadForState = useCallback(
-    async (st: PendingState): Promise<{ payload: Record<string, unknown> | null; err: string | null }> => {
+    async (
+      st: PendingState,
+      filePath: string
+    ): Promise<{ payload: Record<string, unknown> | null; err: string | null }> => {
       const api = window.exifmod
       if (!api) return { payload: null, err: t('ui.preloadUnavailable') }
       try {
@@ -1045,7 +1054,14 @@ export function App(): React.ReactElement {
           author: st.authorId,
           film: st.filmId
         })
-        const camMeta = cameraMetaForPending(catalog, st.cameraId)
+        let effCam: number | null = st.cameraId
+        if (effCam == null && catalog) {
+          const md = metadataByPath[pathKey(filePath)] ?? {}
+          const inferFilm = inferCategoryValues(md, catalog.film_values).Film ?? ''
+          const sugg = computeAutoFillPresetIds(catalog, md, inferFilm, suggestedLensMountsList, {})
+          effCam = sugg.cameraId
+        }
+        const camMeta = cameraMetaForPending(catalog, effCam)
         const lockShutter = Boolean(camMeta?.locks_shutter)
         const lockAperture = Boolean(camMeta?.locks_aperture)
         if (!lockShutter && !st.clearShutter && st.exposureTime.trim()) {
@@ -1101,7 +1117,7 @@ export function App(): React.ReactElement {
         return { payload: null, err: String(e) }
       }
     },
-    [t, catalog]
+    [t, catalog, metadataByPath, suggestedLensMountsList]
   )
 
   /** Same “would write change anything?” rule as the Write button / preview (not debounced). */
@@ -1110,7 +1126,7 @@ export function App(): React.ReactElement {
     for (const path of files) {
       const st = pendingByPath[pathKey(path)]
       if (!st) continue
-      const { payload, err } = await buildMergedPayloadForState(st)
+      const { payload, err } = await buildMergedPayloadForState(st, path)
       if (err || !payload || Object.keys(payload).length === 0) continue
       const previewPayload = withCopyrightAsWrittenToExif(payload)
       const meta = metadataByPath[pathKey(path)] ?? {}
@@ -1159,7 +1175,7 @@ export function App(): React.ReactElement {
           const st = pendingByPath[pathKey(path)]
           if (!st) continue
           const pk = pathKey(path)
-          const { payload, err } = await buildMergedPayloadForState(st)
+          const { payload, err } = await buildMergedPayloadForState(st, path)
           if (cancelled) return
           const previewPayload = withCopyrightAsWrittenToExif(payload)
           if (err || !previewPayload || Object.keys(previewPayload).length === 0) {
@@ -1211,9 +1227,33 @@ export function App(): React.ReactElement {
     return filmCurrentDisplayForStaging(metas, inferFilms)
   }, [catalog, stagingPaths, metadataByPath])
 
+  /** Inferred catalog match from on-disk metadata (drives lens list + body locks when the user has not chosen an Assign preset). */
+  const suggestedPresetIdsForForm = useMemo(() => {
+    if (!catalog || !stagingPaths.length) {
+      return {
+        cameraId: null as number | null,
+        lensId: null as number | null,
+        filmId: null as number | null,
+        authorId: null as number | null
+      }
+    }
+    if (stagingPaths.length === 1) {
+      const path = stagingPaths[0]!
+      const md = metadataByPath[pathKey(path)] ?? {}
+      const inferFilm = inferCategoryValues(md, catalog.film_values).Film ?? ''
+      return computeAutoFillPresetIds(catalog, md, inferFilm, suggestedLensMountsList, {})
+    }
+    const autofillSkips = multiSelectAutofillSkips(catalog, stagingPaths, metadataByPath)
+    const p0 = stagingPaths[0]!
+    const md0 = metadataByPath[pathKey(p0)] ?? {}
+    const inferFilm0 = inferCategoryValues(md0, catalog.film_values).Film ?? ''
+    return computeAutoFillPresetIds(catalog, md0, inferFilm0, suggestedLensMountsList, autofillSkips)
+  }, [catalog, stagingPaths, metadataByPath, suggestedLensMountsList])
+
   const lensFilter = useMemo(() => {
     if (!catalog) return { allowed: [] as string[], state: 'readonly' as const }
-    const camName = presetNameForId(catalog, 'Camera', formPending.cameraId)
+    const effCam = formPending.cameraId ?? suggestedPresetIdsForForm.cameraId
+    const camName = presetNameForId(catalog, 'Camera', effCam)
     const camId = catalog.camera_file_map[camName]
     return filterLensValues(
       catalog.lens_values,
@@ -1222,7 +1262,7 @@ export function App(): React.ReactElement {
       catalog.camera_metadata_map,
       catalog.lens_metadata_map
     )
-  }, [catalog, formPending])
+  }, [catalog, formPending, suggestedPresetIdsForForm])
 
   const metadataPresetFromFile = useMemo(() => {
     const show: Record<Cat, boolean> = { Camera: false, Lens: false, Film: false, Author: false }
@@ -1266,9 +1306,10 @@ export function App(): React.ReactElement {
     return { show, draft }
   }, [catalog, stagingPaths, metadataByPath, suggestedLensMountsList, lensFilter.state])
 
+  const effectiveCameraIdForForm = formPending.cameraId ?? suggestedPresetIdsForForm.cameraId
   const cameraMetaForForm = useMemo(
-    () => cameraMetaForPending(catalog, formPending.cameraId),
-    [catalog, formPending.cameraId]
+    () => cameraMetaForPending(catalog, effectiveCameraIdForForm),
+    [catalog, effectiveCameraIdForForm]
   )
   const shutterLocked = Boolean(cameraMetaForForm?.locks_shutter)
   const apertureLocked = Boolean(cameraMetaForForm?.locks_aperture)
@@ -1461,6 +1502,20 @@ export function App(): React.ReactElement {
   const setCategoryPreset = (cat: Cat, displayName: string) => {
     if (!catalog) return
     const internal = displayToInternal(displayName)
+    if (internal === PRESET_OPTION_NEW_FROM_FILE) {
+      const draft = metadataPresetFromFile.draft[cat]
+      if (draft) {
+        setPresetEditor({
+          mode: 'new',
+          category: cat,
+          editId: null,
+          cloneFromId: null,
+          initialDraft: draft,
+          targetPaths: stagingPaths.length ? [...stagingPaths] : undefined
+        })
+      }
+      return
+    }
     const map =
       cat === 'Camera'
         ? catalog.camera_file_map
@@ -1588,7 +1643,7 @@ export function App(): React.ReactElement {
     for (const path of files) {
       const st = pendingByPath[pathKey(path)]
       if (!st) continue
-      const { payload, err } = await buildMergedPayloadForState(st)
+      const { payload, err } = await buildMergedPayloadForState(st, path)
       if (err) {
         alert(err)
         return
@@ -1953,11 +2008,6 @@ export function App(): React.ReactElement {
     [writeBackupRememberCheckbox]
   )
 
-  const canCopyNotesCurrent =
-    stagingPaths.length > 0 && notesCurrentLine !== t('ui.multiple') && notesCurrentLine.trim().length > 0
-  const canCopyKeywordsCurrent =
-    stagingPaths.length > 0 && keywordsCurrentLine !== t('ui.multiple') && keywordsCurrentLine.trim().length > 0
-
   const removeTitle = t('ui.removeFromImage')
 
   const canRemoveCamera = useMemo(() => {
@@ -2095,6 +2145,10 @@ export function App(): React.ReactElement {
                       const pk = pathKey(f)
                       const diffRow = writeDiffByPath[pk]
                       const hasPend = diffRow != null && Object.keys(diffRow).length > 0
+                      const pendingIconCategories = hasPend
+                        ? diffHighlightsToIconCategories(diffToAttributeHighlights(diffRow))
+                        : []
+                      const pendingListLabel = pendingIconCategories.map((c) => labelForMetaCategory(c)).join(', ')
                       return (
                         <li
                           key={f}
@@ -2109,7 +2163,22 @@ export function App(): React.ReactElement {
                           <span className="file-list-name" title={base}>
                             {displayName}
                           </span>
-                          {hasPend ? <span className="badge">{t('ui.pending')}</span> : null}
+                          {hasPend ? (
+                            <div
+                              className="file-pending-icons"
+                              aria-label={t('ui.fileListPendingChangesAria', { list: pendingListLabel })}
+                            >
+                              {pendingIconCategories.map((c) => (
+                                <span
+                                  key={`${f}-${c}`}
+                                  className="file-pending-icon-chip"
+                                  title={labelForMetaCategory(c)}
+                                >
+                                  <CategoryIcon category={c} size={11} />
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
                         </li>
                       )
                     })}
@@ -2199,24 +2268,37 @@ export function App(): React.ReactElement {
               onFocus={onMetaRovingBlockFocus}
               onKeyDown={onMetaFieldsKeyDown}
             >
-              <table className="mapping mapping-slim">
+              <table className="mapping mapping-slim mapping-desc-kw">
                 <colgroup>
                   <col className="mapping-col-attribute" />
                   <col className="mapping-col-current" />
-                  <col className="mapping-col-copy" />
+                  <col className="mapping-col-arrow" />
                   <col className="mapping-col-new" />
                   <col className="mapping-col-remove" />
                 </colgroup>
                 <thead>
                   <tr>
-                    <th>{t('ui.attribute')}</th>
-                    <th>{t('ui.currentValue')}</th>
-                    <th className="mapping-col-copy-head" aria-hidden="true" />
-                    <th>{t('ui.newValue')}</th>
-                    <th className="mapping-col-remove-head">{t('ui.removeColumn')}</th>
+                    <th className="meta-mapping-floating-thead__attr" scope="col">
+                      <span className="sr-only">{t('ui.attribute')}</span>
+                    </th>
+                    <th scope="col">{t('ui.currentValue')}</th>
+                    <th className="mapping-col-arrow-head" aria-hidden>
+                      <span className="sr-only">{t('ui.mappingArrowToNew')}</span>
+                    </th>
+                    <th scope="col">{t('ui.newValue')}</th>
+                    <th className="mapping-col-remove-head" scope="col">
+                      {t('ui.removeColumn')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
+                  <tr className="meta-mapping-section-subhead">
+                    <th scope="colgroup" colSpan={5}>
+                      <div className="meta-mapping-subhead-cell">
+                        <span className="meta-subsection-title">{t('ui.sectionPresets')}</span>
+                      </div>
+                    </th>
+                  </tr>
                   {CATS.map((cat, idx) => {
                     const id = formPending[idKeyForCategory(cat)] as number | null
                     let name = catalog ? presetNameForId(catalog, cat, id) : 'None'
@@ -2238,63 +2320,65 @@ export function App(): React.ReactElement {
                             : catalog?.author_values
                     const ck = categoryToClearKey(cat)
                     const currentValueText = cat === 'Film' ? filmCurrentLine : inferredRow[cat]
-                    const presetFromFileDraft = metadataPresetFromFile.draft[cat]
+                    const sk = idKeyForCategory(cat)
+                    const suggestedId = suggestedPresetIdsForForm[sk]
+                    const suggestedName =
+                      catalog && suggestedId != null ? presetNameForId(catalog, cat, suggestedId) : 'None'
+                    const lineStr = String(currentValueText ?? '').trim()
+                    const isMulti = currentValueText === 'Multiple'
+                    /** Catalog-suggested id is only set when file metadata already matches a preset; do not compare
+                     *  raw on-disk line to the preset *display* name (e.g. "Alon Yaffe" vs "Me"). */
+                    const inFileFullMatch =
+                      !isMulti && lineStr.length > 0 && suggestedId != null
+                    const baseOpts = (options ?? ['None']).filter((o) => o !== 'None')
+                    const comboOptions =
+                      metadataPresetFromFile.show[cat] && metadataPresetFromFile.draft[cat]
+                        ? ['None', PRESET_OPTION_NEW_FROM_FILE, ...baseOpts]
+                        : ['None', ...baseOpts]
                     return (
-                      <tr key={cat}>
-                        <td>{catLabel(cat)}</td>
+                      <tr
+                        key={cat}
+                        className={id != null && (cat !== 'Lens' || lensFilter.state !== 'disabled') ? 'has-staged-assignment' : undefined}
+                      >
                         <td>
-                          <span
-                            className={
-                              currentValueText === 'Multiple' || !String(currentValueText ?? '').trim()
-                                ? 'meta-current-value-muted'
-                                : undefined
-                            }
-                          >
-                            {currentValueText === 'Multiple'
-                              ? t('ui.multiple')
-                              : String(currentValueText ?? '').trim() || emptyCurrentDisplay}
+                          <span className="meta-row-label-with-icon">
+                            <CategoryIcon category={catToIconCategory(cat)} size={13} />
+                            {catLabel(cat)}
                           </span>
                         </td>
-                        <td className="mapping-col-copy-cell">
-                          {metadataPresetFromFile.show[cat] && presetFromFileDraft ? (
-                            <button
-                              type="button"
-                              tabIndex={-1}
-                              className="meta-inline-icon-btn meta-create-preset-from-exif-btn"
-                              title={t('ui.createPresetFromMetadataTitle')}
-                              aria-label={t('ui.createPresetFromMetadataAria')}
-                              onClick={() => {
-                                setPresetEditor({
-                                  mode: 'new',
-                                  category: cat,
-                                  editId: null,
-                                  cloneFromId: null,
-                                  initialDraft: presetFromFileDraft,
-                                  targetPaths: stagingPaths.length ? [...stagingPaths] : undefined
-                                })
-                              }}
+                        <td>
+                          {isMulti ? (
+                            <span className="meta-current-value-muted">{t('ui.multiple')}</span>
+                          ) : !lineStr ? (
+                            <span className="meta-current-value-muted">{emptyCurrentDisplay}</span>
+                          ) : inFileFullMatch ? (
+                            <span
+                              className="in-file-chip in-file-chip--matched"
+                              title={t('ui.presetMatchedLabel', { name: suggestedName })}
                             >
-                              <svg
-                                className="meta-create-preset-from-exif-icon"
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                                aria-hidden
-                                focusable="false"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            </button>
-                          ) : null}
+                              <span aria-hidden>✓ </span>
+                              {suggestedName}
+                            </span>
+                          ) : (
+                            <div
+                              className="in-file-attrs"
+                              title={t('ui.inFileRawAttrs', { summary: lineStr })}
+                            >
+                              <span className="in-file-attr-pill" title={lineStr}>
+                                <span className="in-file-attr-val">{lineStr}</span>
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="mapping-col-arrow-cell" aria-hidden>
+                          <span className="meta-mapping-arrow" title={t('ui.mappingArrowToNew')}>
+                            →
+                          </span>
                         </td>
                         <td className="mapping-col-new-combo-cell">
                           <MetadataPresetCombo
                             ref={bindMetaRef(idx)}
-                            options={options ?? ['None']}
+                            options={comboOptions}
                             valueInternal={name}
                             valueDisplay={presetNewValueUiReady ? internalToDisplay(name) : ''}
                             toDisplay={internalToDisplay}
@@ -2330,8 +2414,29 @@ export function App(): React.ReactElement {
                       </tr>
                     )
                   })}
-                  <tr>
-                    <td>{t('ui.shutterSpeed')}</td>
+                </tbody>
+                <tbody>
+                  <tr className="meta-mapping-section-subhead">
+                    <th scope="colgroup" colSpan={5}>
+                      <div className="meta-mapping-subhead-cell">
+                        <span className="meta-subsection-title">{t('ui.sectionExifFields')}</span>
+                      </div>
+                    </th>
+                  </tr>
+                  <tr
+                    className={[
+                      'mapping-row--exif-field',
+                      pendingAttributeHighlights.shutter ? 'metadata-text-row--pending' : ''
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                  >
+                    <td>
+                      <span className="meta-row-label-with-icon">
+                        <CategoryIcon category="shutter" size={13} />
+                        {t('ui.shutterSpeed')}
+                      </span>
+                    </td>
                     <td>
                       <span
                         className={
@@ -2345,7 +2450,11 @@ export function App(): React.ReactElement {
                           : exposureCurrentDisplay || emptyCurrentDisplay}
                       </span>
                     </td>
-                    <td className="mapping-col-copy-cell" />
+                    <td className="mapping-col-arrow-cell" aria-hidden>
+                      <span className="meta-mapping-arrow" title={t('ui.mappingArrowToNew')}>
+                        →
+                      </span>
+                    </td>
                     <td>
                       <input
                         ref={bindMetaRef(4)}
@@ -2353,7 +2462,7 @@ export function App(): React.ReactElement {
                         className={[
                           'input',
                           shutterLocked ? 'input--neutral-value' : '',
-                          pendingAttributeHighlights.shutter ? 'meta-value-pending' : ''
+                          pendingAttributeHighlights.shutter && !shutterLocked ? 'meta-value-pending' : ''
                         ]
                           .filter(Boolean)
                           .join(' ')}
@@ -2381,8 +2490,20 @@ export function App(): React.ReactElement {
                       />
                     </td>
                   </tr>
-                  <tr>
-                    <td>{t('ui.apertureFStop')}</td>
+                  <tr
+                    className={[
+                      'mapping-row--exif-field',
+                      pendingAttributeHighlights.aperture ? 'metadata-text-row--pending' : ''
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                  >
+                    <td>
+                      <span className="meta-row-label-with-icon">
+                        <CategoryIcon category="aperture" size={13} />
+                        {t('ui.apertureFStop')}
+                      </span>
+                    </td>
                     <td>
                       <span
                         className={
@@ -2396,7 +2517,11 @@ export function App(): React.ReactElement {
                           : fnCurrentDisplay || emptyCurrentDisplay}
                       </span>
                     </td>
-                    <td className="mapping-col-copy-cell" />
+                    <td className="mapping-col-arrow-cell" aria-hidden>
+                      <span className="meta-mapping-arrow" title={t('ui.mappingArrowToNew')}>
+                        →
+                      </span>
+                    </td>
                     <td>
                       <input
                         ref={bindMetaRef(5)}
@@ -2404,7 +2529,7 @@ export function App(): React.ReactElement {
                         className={[
                           'input',
                           apertureLocked ? 'input--neutral-value' : '',
-                          pendingAttributeHighlights.aperture ? 'meta-value-pending' : ''
+                          pendingAttributeHighlights.aperture && !apertureLocked ? 'meta-value-pending' : ''
                         ]
                           .filter(Boolean)
                           .join(' ')}
@@ -2433,66 +2558,59 @@ export function App(): React.ReactElement {
                     </td>
                   </tr>
                 </tbody>
-              </table>
-
-              <div className="meta-notes-wrap meta-notes-wrap--tables">
-                <div className="meta-subsection-head">
-                  <h2 className="meta-subsection-title">{t('ui.descriptionAndKeywords')}</h2>
-                  <div className="meta-subsection-ai-anchor">
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      className={[
-                        'btn-ai-spark meta-inline-icon-btn',
-                        (ollamaSession === 'checking' || ollamaSession === 'launching') && !aiDescribeBusy
-                          ? 'btn-ai-spark--ollama-launching'
-                          : '',
-                        ollamaSession === 'ready' && !aiDescribeBusy ? 'btn-ai-spark--ollama-ready' : '',
-                        aiDescribeBusy ? 'btn-ai-spark--loading' : ''
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
-                      aria-busy={
-                        !!aiDescribeBusy || ollamaSession === 'checking' || ollamaSession === 'launching'
-                      }
-                      disabled={aiButtonDisabled}
-                      title={aiButtonTitle}
-                      aria-label={aiButtonTitle}
-                      onClick={() => void onAiButtonClick()}
-                    >
-                      {aiDescribeBusy ? (
-                        <span className="btn-ai-spark-loading">{aiDescribeBusyLabel}</span>
-                      ) : (
-                        <svg className="btn-ai-spark-icon" viewBox="0 0 24 24" aria-hidden focusable="false">
-                          <path
-                            fill="currentColor"
-                            d="M12 2l1.2 4.2L17.4 7.4l-4.2 1.2L12 12.8l-1.2-4.2L6.6 7.4l4.2-1.2L12 2zm7 8l.8 2.8 2.8.8-2.8.8L19 17.4l-.8-2.8-2.8-.8 2.8-.8L19 10zM6 14l.6 2.2 2.2.6-2.2.6L6 19.8l-.6-2.2-2.2-.6 2.2-.6L6 14z"
-                          />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-                </div>
-                <table className="mapping mapping-slim mapping-desc-kw">
-                  <colgroup>
-                    <col className="mapping-col-attribute" />
-                    <col className="mapping-col-current" />
-                    <col className="mapping-col-copy" />
-                    <col className="mapping-col-new" />
-                    <col className="mapping-col-remove" />
-                  </colgroup>
-                  <thead>
-                    <tr>
-                      <th>{t('ui.attribute')}</th>
-                      <th>{t('ui.currentValue')}</th>
-                      <th className="mapping-col-copy-head" aria-label={t('ui.copyColumn')}></th>
-                      <th>{t('ui.newValue')}</th>
-                      <th className="mapping-col-remove-head">{t('ui.removeColumn')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>{t('ui.notesImageDescription')}</td>
+                <tbody>
+                  <tr className="meta-mapping-section-subhead meta-mapping-section-subhead--with-tools">
+                    <th scope="colgroup" colSpan={5}>
+                      <div className="meta-mapping-subhead-cell meta-mapping-subhead-cell--with-tools">
+                        <div className="meta-mapping-subhead-tools">
+                          <span className="meta-subsection-title">{t('ui.sectionTextFields')}</span>
+                          <div className="meta-subsection-ai-anchor">
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              className={[
+                                'btn-ai-spark meta-inline-icon-btn',
+                                (ollamaSession === 'checking' || ollamaSession === 'launching') && !aiDescribeBusy
+                                  ? 'btn-ai-spark--ollama-launching'
+                                  : '',
+                                ollamaSession === 'ready' && !aiDescribeBusy ? 'btn-ai-spark--ollama-ready' : '',
+                                aiDescribeBusy ? 'btn-ai-spark--loading' : ''
+                              ]
+                                .filter(Boolean)
+                                .join(' ')}
+                              aria-busy={
+                                !!aiDescribeBusy || ollamaSession === 'checking' || ollamaSession === 'launching'
+                              }
+                              disabled={aiButtonDisabled}
+                              title={aiButtonTitle}
+                              aria-label={aiButtonTitle}
+                              onClick={() => void onAiButtonClick()}
+                            >
+                              {aiDescribeBusy ? (
+                                <span className="btn-ai-spark-loading">{aiDescribeBusyLabel}</span>
+                              ) : (
+                                <svg className="btn-ai-spark-icon" viewBox="0 0 24 24" aria-hidden focusable="false">
+                                  <path
+                                    fill="currentColor"
+                                    d="M12 2l1.2 4.2L17.4 7.4l-4.2 1.2L12 12.8l-1.2-4.2L6.6 7.4l4.2-1.2L12 2zm7 8l.8 2.8 2.8.8-2.8.8L19 17.4l-.8-2.8-2.8-.8 2.8-.8L19 10zM6 14l.6 2.2 2.2.6-2.2.6L6 19.8l-.6-2.2-2.2-.6 2.2-.6L6 14z"
+                                  />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </th>
+                  </tr>
+                  <tr
+                    className={pendingAttributeHighlights.notes ? 'metadata-text-row--pending' : undefined}
+                  >
+                      <td>
+                        <span className="meta-row-label-with-icon">
+                          <CategoryIcon category="desc" size={13} />
+                          {t('ui.notesImageDescription')}
+                        </span>
+                      </td>
                       <td>
                         <span
                           className={
@@ -2509,24 +2627,10 @@ export function App(): React.ReactElement {
                               : emptyCurrentDisplay}
                         </span>
                       </td>
-                      <td className="mapping-col-copy-cell">
-                        {canCopyNotesCurrent && !anyClearFlags.clearNotes ? (
-                          <button
-                            type="button"
-                            tabIndex={-1}
-                            className="meta-inline-icon-btn meta-copy-current-btn"
-                            title={t('ui.copyCurrentToNew', { row: t('ui.notesImageDescription') })}
-                            aria-label={t('ui.copyCurrentToNew', { row: t('ui.notesImageDescription') })}
-                            onClick={() => {
-                              const nextNotes = clampUtf8ByBytes(notesCurrentLine)
-                              updatePendingForPaths(staging, (s) => ({ ...s, notesText: nextNotes, clearNotes: false }))
-                            }}
-                          >
-                            <span className="meta-copy-current-glyph" aria-hidden>
-                              ⧉
-                            </span>
-                          </button>
-                        ) : null}
+                      <td className="mapping-col-arrow-cell" aria-hidden>
+                        <span className="meta-mapping-arrow" title={t('ui.mappingArrowToNew')}>
+                          →
+                        </span>
                       </td>
                       <td>
                         <textarea
@@ -2558,8 +2662,15 @@ export function App(): React.ReactElement {
                         />
                       </td>
                     </tr>
-                    <tr>
-                      <td>{t('ui.keywordsLabel')}</td>
+                    <tr
+                      className={pendingAttributeHighlights.keywords ? 'metadata-text-row--pending' : undefined}
+                    >
+                      <td>
+                        <span className="meta-row-label-with-icon">
+                          <CategoryIcon category="keywords" size={13} />
+                          {t('ui.keywordsLabel')}
+                        </span>
+                      </td>
                       <td>
                         <span
                           className={
@@ -2576,28 +2687,10 @@ export function App(): React.ReactElement {
                               : emptyCurrentDisplay}
                         </span>
                       </td>
-                      <td className="mapping-col-copy-cell">
-                        {canCopyKeywordsCurrent && !anyClearFlags.clearKeywords ? (
-                          <button
-                            type="button"
-                            tabIndex={-1}
-                            className="meta-inline-icon-btn meta-copy-current-btn"
-                            title={t('ui.copyCurrentToNew', { row: t('ui.keywordsLabel') })}
-                            aria-label={t('ui.copyCurrentToNew', { row: t('ui.keywordsLabel') })}
-                            onClick={() => {
-                              updatePendingForPaths(staging, (s) => ({
-                                ...s,
-                                keywordsText: formatDescriptiveKeywordsLine(keywordsCurrentLine),
-                                clearKeywords: false,
-                                clearFilm: false
-                              }))
-                            }}
-                          >
-                            <span className="meta-copy-current-glyph" aria-hidden>
-                              ⧉
-                            </span>
-                          </button>
-                        ) : null}
+                      <td className="mapping-col-arrow-cell" aria-hidden>
+                        <span className="meta-mapping-arrow" title={t('ui.mappingArrowToNew')}>
+                          →
+                        </span>
                       </td>
                       <td>
                         <textarea
@@ -2636,9 +2729,8 @@ export function App(): React.ReactElement {
                         />
                       </td>
                     </tr>
-                  </tbody>
-                </table>
-              </div>
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -2715,7 +2807,7 @@ export function App(): React.ReactElement {
               ref={commitButtonRef}
               type="button"
               tabIndex={MAIN_TAB_INDEX}
-              className="btn btn-pending-write"
+              className={['btn', 'btn-pending-write', hasPendingToWrite ? 'has-pending' : ''].filter(Boolean).join(' ')}
               disabled={!hasPendingToWrite}
               onClick={() => void openWriteConfirm()}
               onKeyDown={(e) => {
@@ -3303,6 +3395,7 @@ export function App(): React.ReactElement {
               [key]: payload.id,
               [clearKey]: false
             }))
+            setRecentlySavedPreset({ id: payload.id, category: payload.category })
             void reloadCatalog()
           }}
         />

@@ -422,7 +422,29 @@ export function PresetEditorModal(props: {
         </h3>
         <div className="modal-preset-editor-content">
           {err && <p className="preset-editor-error">{err}</p>}
-          <table className="mapping preset-modal-mapping">
+          <section className="preset-editor-identity-block" aria-labelledby="preset-editor-catalog-heading">
+            <h4 id="preset-editor-catalog-heading" className="preset-editor-section-heading">
+              {t('presetEditor.sectionCatalog')}
+            </h4>
+            <div className="preset-editor-identity-field">
+              <label className="preset-editor-identity-label" htmlFor="preset-editor-preset-name">
+                {t('presetEditor.name')}
+              </label>
+              <input
+                id="preset-editor-preset-name"
+                className="input"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <p className="preset-editor-identity-hint">{t('presetEditor.presetNameHint')}</p>
+          </section>
+          <section className="preset-editor-fields-section" aria-labelledby="preset-editor-metadata-heading">
+            <h4 id="preset-editor-metadata-heading" className="preset-editor-section-heading">
+              {t('presetEditor.sectionImageMetadata')}
+            </h4>
+            <table className="mapping preset-modal-mapping">
             <colgroup>
               <col className="preset-modal-col-field" />
               <col className="preset-modal-col-value" />
@@ -434,9 +456,6 @@ export function PresetEditorModal(props: {
               </tr>
             </thead>
             <tbody>
-              <PresetFieldRow label={t('presetEditor.name')}>
-                <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
-              </PresetFieldRow>
               {category === 'Camera' && (
                 <>
                   <PresetFieldRow label={t('presetEditor.make')}>
@@ -662,7 +681,8 @@ export function PresetEditorModal(props: {
                 </>
               )}
             </tbody>
-          </table>
+            </table>
+          </section>
         </div>
         <div className="modal-preset-editor-actions actions-row">
           <button type="button" className="btn btn-primary" onClick={() => void save()}>
