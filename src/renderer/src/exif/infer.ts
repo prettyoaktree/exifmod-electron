@@ -8,21 +8,16 @@ import type { ConfigCatalog } from '@shared/types.js'
 import {
   exposureTimeRawFromMetadata,
   fnumberRawFromMetadata,
+  keywordValuesFromMetadata,
   metadataFirstTag
 } from '@shared/exifMetadataTags.js'
 
 export { formatExposureTimeForUi, formatFnumberForUi } from '@shared/exifDisplayFormat.js'
-export { exposureTimeRawFromMetadata, fnumberRawFromMetadata, metadataFirstTag }
+export { exposureTimeRawFromMetadata, fnumberRawFromMetadata, keywordValuesFromMetadata, metadataFirstTag }
 
 /** Keywords as written in the main window field (comma-separated). */
 export function keywordsFieldFromMetadata(meta: Record<string, unknown>): string {
-  const k = meta['Keywords']
-  const arr: string[] =
-    typeof k === 'string'
-      ? k.split(/[,;]/).map((s) => s.trim()).filter(Boolean)
-      : Array.isArray(k)
-        ? k.map((v) => String(v).trim()).filter(Boolean)
-        : []
+  const arr = keywordValuesFromMetadata(meta)
   return formatKeywordsField(fitKeywordsForExif(arr))
 }
 
@@ -38,13 +33,7 @@ export function inferCategoryValues(
   meta: Record<string, unknown>,
   filmOptions: string[]
 ): Record<string, string> {
-  let keywords = meta['Keywords']
-  const keywordValues: string[] =
-    typeof keywords === 'string'
-      ? [keywords]
-      : Array.isArray(keywords)
-        ? keywords.map((v) => String(v))
-        : []
+  const keywordValues: string[] = keywordValuesFromMetadata(meta)
 
   const filmOpts = filmOptions.filter((o) => o !== 'None')
   let filmFromKeywords = ''
