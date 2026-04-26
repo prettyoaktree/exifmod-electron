@@ -9,6 +9,7 @@ import {
   normalizeFilmPresetPayloadForMerge,
   stripFilmStockSuffix
 } from './filmKeywords.js'
+import { keywordValuesFromMetadata, metadataFirstTag } from './exifMetadataTags.js'
 import { presetPayloadSatisfiedByFileMetadata } from './exifPayloadDiff.js'
 import type { CameraMetadata, ConfigCatalog } from './types.js'
 
@@ -101,10 +102,7 @@ export function lensDisplayNameForCatalog(meta: Record<string, unknown>): string
 
 /** Mirrors main `filmNameFromKeywords` (store.ts). */
 export function filmStockBaseNameFromMetadata(meta: Record<string, unknown>): string {
-  const keywords = meta['Keywords']
-  let values: string[] = []
-  if (typeof keywords === 'string') values = [keywords]
-  else if (Array.isArray(keywords)) values = keywords.map((v) => String(v))
+  const values = keywordValuesFromMetadata(meta)
   const hasFilmMarker = values.some((v) => v.trim().toLowerCase() === 'film')
   if (!hasFilmMarker) return ''
   for (const value of values) {
@@ -329,12 +327,16 @@ export function matchStateForFilmCategory(
     catalog.film_identity_by_name,
     display
   )
+  const satisfiedByPayload = catalog.film_values
+    .filter((name) => name !== 'None')
+    .find((name) => presetPayloadSatisfiedByFileMetadata('film', catalog.film_payload_by_name[name] ?? {}, metas[0]!)) ?? null
   if (
     filmName &&
     presetPayloadSatisfiedByFileMetadata('film', catalog.film_payload_by_name[filmName] ?? {}, metas[0]!)
   ) {
     return { kind: 'matched' }
   }
+  if (satisfiedByPayload) return { kind: 'matched' }
   return { kind: 'unmatched', displayName: display, draft: buildFilmPresetDraft(metas[0]!) }
 }
 
@@ -551,11 +553,19 @@ export function computeAutoFillPresetIds(
     const filmState = matchStateForFilmCategory(catalog, [meta], [inferFilmResolved])
     if (filmState.kind === 'matched') {
       const display = filmCurrentDisplayForStaging([meta], [inferFilmResolved]).trim()
-      const filmName = resolvePresetNameCoveringIdentity(
+      let filmName = resolvePresetNameCoveringIdentity(
         catalog.film_values,
         catalog.film_identity_by_name,
         display
       )
+      if (!filmName) {
+        filmName =
+          catalog.film_values
+            .filter((name) => name !== 'None')
+            .find((name) =>
+              presetPayloadSatisfiedByFileMetadata('film', catalog.film_payload_by_name[name] ?? {}, meta)
+            ) ?? null
+      }
       if (filmName) {
         const fid = catalog.film_file_map[filmName]
         filmId = fid ?? null

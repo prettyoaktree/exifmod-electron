@@ -27,6 +27,7 @@ export interface ExifmodApi {
   applyExifBatch: (
     items: Array<{ path: string; payload: Record<string, unknown>; backupFirst?: boolean }>
   ) => Promise<Array<{ path: string; ok: boolean; error?: string }>>
+  onApplyExifBatchProgress: (cb: (p: { done: number; total: number; path: string }) => void) => () => void
   createPreset: (input: CreatePresetInput) => Promise<number>
   updatePreset: (input: UpdatePresetInput) => Promise<number>
   deletePreset: (id: number) => Promise<void>

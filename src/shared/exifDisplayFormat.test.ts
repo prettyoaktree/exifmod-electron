@@ -29,4 +29,9 @@ describe('formatFnumberForUi', () => {
   it('formats decimals', () => {
     expect(formatFnumberForUi(2.8)).toBe('2.8')
   })
+  it('hides undefined-like exiftool strings', () => {
+    expect(formatFnumberForUi('undef')).toBe('')
+    expect(formatFnumberForUi(' undefined ')).toBe('')
+    expect(formatFnumberForUi('NaN')).toBe('')
+  })
 })
