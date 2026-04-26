@@ -36,7 +36,7 @@ In Manage Presets, use the copy button to duplicate an existing preset. This can
 
 ### ... from a selected file’s current metadata
 
-If you already have files that you previously tagged with camera, lens, or author information, and you want to carry over this data into EXIFmod, select **one** file. In the metadata pane, under **Presets**, open the **New value** list for a category. When **New preset from metadata…** is available, choose it to open the preset editor with fields filled from the file. If that option is not in the list, the file may already match a catalog entry, or you have more than one file selected. Until you pick a real preset, **No change** means you are not assigning catalog metadata for that row; use **Current value** to see what the image already contains.
+If you already have files that you previously tagged with camera, lens, or author information, you can carry over this data into EXIFmod. To do that, select a **single file**, open the **New value** dropdown list for the relevant category, and choose **New preset from metadata…** If that option is not in the list, the file may already match a catalog entry, or you have more than one file selected. 
 
 ## Editing other metadata attributes
 
