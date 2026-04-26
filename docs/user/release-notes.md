@@ -4,6 +4,8 @@ Headline changes in recent versions: major features and fixes that affect how yo
 
 ## 1.7.x
 
+**1.7.7** — More reliable film keyword handling for RAW files, and clearer batch write progress when you process a folder of images.
+
 **1.7.6** — User docs and website polish pass: refreshed style guidance, cleaner chapter structure, and a new **Help → User Guide** menu link that opens the published guide directly from the app.
 
 **1.7.5** (and steps between) — Docs and website work, including the in-repo user guide that builds this site, plus routine fixes. Check GitHub Releases for the exact build per tag.
