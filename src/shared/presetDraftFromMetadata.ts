@@ -145,30 +145,62 @@ export function inferUniqueLensMount(lensMake: string, suggestedMounts: readonly
   return hits[0]
 }
 
-export function catalogHasPresetName(values: readonly string[], candidate: string): boolean {
-  const c = candidate.trim().toLowerCase()
-  if (!c) return false
-  return values.some((v) => v !== 'None' && v.trim().toLowerCase() === c)
+/**
+ * First catalog row key in `*values` order whose saved preset **payload** already matches the file
+ * (see {@link presetPayloadSatisfiedByFileMetadata}). Does **not** use the user-visible preset name / label
+ * to decide—only the bundled EXIF. When more than one preset’s payload would satisfy the file, the
+ * earliest in list order wins (same as a linear scan).
+ */
+function firstMatchingCameraPresetName(
+  catalog: ConfigCatalog,
+  fileMetadata: Record<string, unknown>
+): string | null {
+  for (const name of catalog.camera_values) {
+    if (name === 'None') continue
+    if (presetPayloadSatisfiedByFileMetadata('camera', catalog.camera_payload_by_name[name] ?? {}, fileMetadata)) {
+      return name
+    }
+  }
+  return null
 }
 
-/**
- * True if some preset display name equals `exifDerived`, or a preset was saved under another name
- * whose payload identity (same derivation as from file metadata) equals `exifDerived`.
- */
-export function catalogCoversExifIdentity(
-  values: readonly string[],
-  identityByName: Record<string, string> | undefined,
-  exifDerived: string
-): boolean {
-  if (catalogHasPresetName(values, exifDerived)) return true
-  const x = exifDerived.trim().toLowerCase()
-  if (!x || !identityByName) return false
-  for (const name of values) {
+function firstMatchingLensPresetName(
+  catalog: ConfigCatalog,
+  fileMetadata: Record<string, unknown>
+): string | null {
+  for (const name of catalog.lens_values) {
     if (name === 'None') continue
-    const id = identityByName[name]?.trim().toLowerCase() ?? ''
-    if (id && id === x) return true
+    if (presetPayloadSatisfiedByFileMetadata('lens', catalog.lens_payload_by_name[name] ?? {}, fileMetadata)) {
+      return name
+    }
   }
-  return false
+  return null
+}
+
+function firstMatchingFilmPresetName(
+  catalog: ConfigCatalog,
+  fileMetadata: Record<string, unknown>
+): string | null {
+  for (const name of catalog.film_values) {
+    if (name === 'None') continue
+    if (presetPayloadSatisfiedByFileMetadata('film', catalog.film_payload_by_name[name] ?? {}, fileMetadata)) {
+      return name
+    }
+  }
+  return null
+}
+
+function firstMatchingAuthorPresetName(
+  catalog: ConfigCatalog,
+  fileMetadata: Record<string, unknown>
+): string | null {
+  for (const name of catalog.author_values) {
+    if (name === 'None') continue
+    if (presetPayloadSatisfiedByFileMetadata('author', catalog.author_payload_by_name[name] ?? {}, fileMetadata)) {
+      return name
+    }
+  }
+  return null
 }
 
 export function buildCameraPresetDraft(meta: Record<string, unknown>): PresetInitialDraft {
@@ -252,15 +284,7 @@ export function matchStateForCameraCategory(
   if (u === 'multiple') return { kind: 'multiple' }
   const displayName = displays[0]!.trim()
   if (!displayName) return { kind: 'no_data' }
-  const cameraName = resolvePresetNameCoveringIdentity(
-    catalog.camera_values,
-    catalog.camera_identity_by_name,
-    displayName
-  )
-  if (
-    cameraName &&
-    presetPayloadSatisfiedByFileMetadata('camera', catalog.camera_payload_by_name[cameraName] ?? {}, metas[0]!)
-  ) {
+  if (firstMatchingCameraPresetName(catalog, metas[0]!)) {
     return { kind: 'matched' }
   }
   return { kind: 'unmatched', displayName, draft: buildCameraPresetDraft(metas[0]!) }
@@ -277,15 +301,7 @@ export function matchStateForLensCategory(
   if (u === 'multiple') return { kind: 'multiple' }
   const displayName = displays[0]!.trim()
   if (!displayName) return { kind: 'no_data' }
-  const lensName = resolvePresetNameCoveringIdentity(
-    catalog.lens_values,
-    catalog.lens_identity_by_name,
-    displayName
-  )
-  if (
-    lensName &&
-    presetPayloadSatisfiedByFileMetadata('lens', catalog.lens_payload_by_name[lensName] ?? {}, metas[0]!)
-  ) {
+  if (firstMatchingLensPresetName(catalog, metas[0]!)) {
     return { kind: 'matched' }
   }
   return { kind: 'unmatched', displayName, draft: buildLensPresetDraft(metas[0]!, suggestedMounts) }
@@ -322,21 +338,9 @@ export function matchStateForFilmCategory(
   const display = filmCurrentDisplayForStaging(metas, inferFilmResolved)
   if (display === 'Multiple') return { kind: 'multiple' }
   if (!display.trim()) return { kind: 'no_data' }
-  const filmName = resolvePresetNameCoveringIdentity(
-    catalog.film_values,
-    catalog.film_identity_by_name,
-    display
-  )
-  const satisfiedByPayload = catalog.film_values
-    .filter((name) => name !== 'None')
-    .find((name) => presetPayloadSatisfiedByFileMetadata('film', catalog.film_payload_by_name[name] ?? {}, metas[0]!)) ?? null
-  if (
-    filmName &&
-    presetPayloadSatisfiedByFileMetadata('film', catalog.film_payload_by_name[filmName] ?? {}, metas[0]!)
-  ) {
+  if (firstMatchingFilmPresetName(catalog, metas[0]!)) {
     return { kind: 'matched' }
   }
-  if (satisfiedByPayload) return { kind: 'matched' }
   return { kind: 'unmatched', displayName: display, draft: buildFilmPresetDraft(metas[0]!) }
 }
 
@@ -347,43 +351,10 @@ export function matchStateForAuthorCategory(catalog: ConfigCatalog, metas: Recor
   if (u === 'multiple') return { kind: 'multiple' }
   const displayName = ids[0]!.trim()
   if (!displayName) return { kind: 'no_data' }
-  const authorName = resolvePresetNameCoveringIdentity(
-    catalog.author_values,
-    catalog.author_identity_by_name,
-    displayName
-  )
-  if (
-    authorName &&
-    presetPayloadSatisfiedByFileMetadata('author', catalog.author_payload_by_name[authorName] ?? {}, metas[0]!)
-  ) {
+  if (firstMatchingAuthorPresetName(catalog, metas[0]!)) {
     return { kind: 'matched' }
   }
   return { kind: 'unmatched', displayName, draft: buildAuthorPresetDraft(metas[0]!) }
-}
-
-/**
- * Which catalog preset row (display name) covers this EXIF-derived identity string
- * (same resolution as {@link catalogCoversExifIdentity}).
- */
-export function resolvePresetNameCoveringIdentity(
-  values: readonly string[],
-  identityByName: Record<string, string> | undefined,
-  exifDerived: string
-): string | null {
-  const x = exifDerived.trim().toLowerCase()
-  if (!x) return null
-  for (const name of values) {
-    if (name === 'None') continue
-    if (name.trim().toLowerCase() === x) return name
-  }
-  if (identityByName) {
-    for (const name of values) {
-      if (name === 'None') continue
-      const id = identityByName[name]?.trim().toLowerCase() ?? ''
-      if (id && id === x) return name
-    }
-  }
-  return null
 }
 
 /**
@@ -435,12 +406,7 @@ export function analyzeCameraFirstStaging(
     }
   }
 
-  const displayName = cameraDisplayNameForCatalog(metas[0]!).trim()
-  const presetName = resolvePresetNameCoveringIdentity(
-    catalog.camera_values,
-    catalog.camera_identity_by_name,
-    displayName
-  )
+  const presetName = firstMatchingCameraPresetName(catalog, metas[0]!)
   if (!presetName) {
     return {
       cameraLine,
@@ -535,12 +501,7 @@ export function computeAutoFillPresetIds(
   if (runLens) {
     const lensState = matchStateForLensCategory(catalog, [meta], suggestedMounts)
     if (lensState.kind === 'matched') {
-      const ld = lensDisplayNameForCatalog(meta).trim()
-      const lensName = resolvePresetNameCoveringIdentity(
-        catalog.lens_values,
-        catalog.lens_identity_by_name,
-        ld
-      )
+      const lensName = firstMatchingLensPresetName(catalog, meta)
       if (lensName) {
         const lid = catalog.lens_file_map[lensName]
         lensId = lid ?? null
@@ -552,20 +513,7 @@ export function computeAutoFillPresetIds(
   if (!skips?.film) {
     const filmState = matchStateForFilmCategory(catalog, [meta], [inferFilmResolved])
     if (filmState.kind === 'matched') {
-      const display = filmCurrentDisplayForStaging([meta], [inferFilmResolved]).trim()
-      let filmName = resolvePresetNameCoveringIdentity(
-        catalog.film_values,
-        catalog.film_identity_by_name,
-        display
-      )
-      if (!filmName) {
-        filmName =
-          catalog.film_values
-            .filter((name) => name !== 'None')
-            .find((name) =>
-              presetPayloadSatisfiedByFileMetadata('film', catalog.film_payload_by_name[name] ?? {}, meta)
-            ) ?? null
-      }
+      const filmName = firstMatchingFilmPresetName(catalog, meta)
       if (filmName) {
         const fid = catalog.film_file_map[filmName]
         filmId = fid ?? null
@@ -577,12 +525,7 @@ export function computeAutoFillPresetIds(
   if (!skips?.author) {
     const authorState = matchStateForAuthorCategory(catalog, [meta])
     if (authorState.kind === 'matched') {
-      const aid = authorIdentityFromMetadata(meta).trim()
-      const authorName = resolvePresetNameCoveringIdentity(
-        catalog.author_values,
-        catalog.author_identity_by_name,
-        aid
-      )
+      const authorName = firstMatchingAuthorPresetName(catalog, meta)
       if (authorName) {
         const id = catalog.author_file_map[authorName]
         authorId = id ?? null

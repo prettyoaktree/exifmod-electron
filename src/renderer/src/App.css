@@ -461,7 +461,8 @@ table.mapping td.mapping-col-arrow-cell {
   min-width: 0;
 }
 
-table.mapping tbody tr.has-staged-assignment {
+table.mapping tbody tr.has-staged-assignment,
+table.mapping tbody tr.metadata-text-row--pending {
   background: rgba(220, 38, 38, 0.04);
 }
 

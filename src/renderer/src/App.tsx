@@ -864,15 +864,18 @@ export function App(): React.ReactElement {
     return () => ro.disconnect()
   }, [stagingHeadingBaseNames, t])
 
+  /** Merge write-diff highlights for every file in the session (same scope as the file list + Write / preview), not
+   *  only the metadata staging set—otherwise pending changes on a non-staged file show chips in the list but the
+   *  metadata rows (including Description, Keywords, Shutter, Aperture) do not get pending styling. */
   const pendingAttributeHighlights = useMemo(() => {
     let acc = emptyDiffAttributeHighlights()
-    for (const path of stagingPaths) {
+    for (const path of files) {
       const diff = writeDiffByPath[pathKey(path)]
       if (!diff || Object.keys(diff).length === 0) continue
       acc = mergeDiffAttributeHighlights(acc, diffToAttributeHighlights(diff))
     }
     return acc
-  }, [stagingPaths, writeDiffByPath])
+  }, [files, writeDiffByPath])
 
   const formPending = useMemo(
     () => mergePendingStateForNewValueUi(stagingPaths, pendingByPath),
@@ -2286,8 +2289,10 @@ export function App(): React.ReactElement {
                       catalog && suggestedId != null ? presetNameForId(catalog, cat, suggestedId) : 'None'
                     const lineStr = String(currentValueText ?? '').trim()
                     const isMulti = currentValueText === 'Multiple'
+                    /** Catalog-suggested id is only set when file metadata already matches a preset; do not compare
+                     *  raw on-disk line to the preset *display* name (e.g. "Alon Yaffe" vs "Me"). */
                     const inFileFullMatch =
-                      !isMulti && lineStr.length > 0 && suggestedName !== 'None' && suggestedName === lineStr
+                      !isMulti && lineStr.length > 0 && suggestedId != null
                     const baseOpts = (options ?? ['None']).filter((o) => o !== 'None')
                     const comboOptions =
                       metadataPresetFromFile.show[cat] && metadataPresetFromFile.draft[cat]
@@ -2398,7 +2403,9 @@ export function App(): React.ReactElement {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
+                  <tr
+                    className={pendingAttributeHighlights.shutter ? 'metadata-text-row--pending' : undefined}
+                  >
                     <td>
                       <span className="meta-row-label-with-icon">
                         <CategoryIcon category="shutter" size={13} />
@@ -2430,7 +2437,7 @@ export function App(): React.ReactElement {
                         className={[
                           'input',
                           shutterLocked ? 'input--neutral-value' : '',
-                          pendingAttributeHighlights.shutter ? 'meta-value-pending' : ''
+                          pendingAttributeHighlights.shutter && !shutterLocked ? 'meta-value-pending' : ''
                         ]
                           .filter(Boolean)
                           .join(' ')}
@@ -2458,7 +2465,9 @@ export function App(): React.ReactElement {
                       />
                     </td>
                   </tr>
-                  <tr>
+                  <tr
+                    className={pendingAttributeHighlights.aperture ? 'metadata-text-row--pending' : undefined}
+                  >
                     <td>
                       <span className="meta-row-label-with-icon">
                         <CategoryIcon category="aperture" size={13} />
@@ -2490,7 +2499,7 @@ export function App(): React.ReactElement {
                         className={[
                           'input',
                           apertureLocked ? 'input--neutral-value' : '',
-                          pendingAttributeHighlights.aperture ? 'meta-value-pending' : ''
+                          pendingAttributeHighlights.aperture && !apertureLocked ? 'meta-value-pending' : ''
                         ]
                           .filter(Boolean)
                           .join(' ')}
@@ -2583,7 +2592,9 @@ export function App(): React.ReactElement {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
+                    <tr
+                      className={pendingAttributeHighlights.notes ? 'metadata-text-row--pending' : undefined}
+                    >
                       <td>
                         <span className="meta-row-label-with-icon">
                           <CategoryIcon category="desc" size={13} />
@@ -2641,7 +2652,9 @@ export function App(): React.ReactElement {
                         />
                       </td>
                     </tr>
-                    <tr>
+                    <tr
+                      className={pendingAttributeHighlights.keywords ? 'metadata-text-row--pending' : undefined}
+                    >
                       <td>
                         <span className="meta-row-label-with-icon">
                           <CategoryIcon category="keywords" size={13} />

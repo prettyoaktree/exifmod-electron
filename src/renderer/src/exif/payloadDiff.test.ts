@@ -117,6 +117,18 @@ describe('diffToAttributeHighlights', () => {
     )
   })
 
+  it('maps XMP / IPTC description and keyword local tag names to notes/keywords', () => {
+    expect(
+      diffToAttributeHighlights({ 'XMP:Description': 'x', 'XMP:Subject': ['a'], 'IPTC:Caption-Abstract': 'c' })
+    ).toEqual(expect.objectContaining({ notes: true, keywords: true }))
+  })
+
+  it('maps Composite / alternate exposure and aperture local tag names', () => {
+    expect(diffToAttributeHighlights({ 'Composite:ShutterSpeed': '1/60', Aperture: 1.4 })).toEqual(
+      expect.objectContaining({ shutter: true, aperture: true })
+    )
+  })
+
   it('merges OR across staged files', () => {
     const a = diffToAttributeHighlights({ Make: 'X' })
     const b = diffToAttributeHighlights({ ISO: 400 })

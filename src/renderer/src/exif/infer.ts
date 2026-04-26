@@ -1,6 +1,7 @@
 /** Infer mapping "current value" hints from exiftool -j metadata (simplified from Qt). */
 
 import { filmCurrentDisplayForStaging, type AutofillSkips } from '@shared/presetDraftFromMetadata.js'
+import { authorIdentityFromMetadata } from '@shared/authorIdentity.js'
 import { filmStockHintFromExifKeywords, formatKeywordsField } from '@shared/filmKeywords.js'
 import { clampUtf8ByBytes, fitKeywordsForExif } from '@shared/exifLimits.js'
 import type { ConfigCatalog } from '@shared/types.js'
@@ -99,7 +100,8 @@ export function inferCategoryValues(
     Camera: String(meta['Model'] ?? meta['Make'] ?? ''),
     Lens: String(lensModelHint),
     Film: filmFromKeywords,
-    Author: String(meta['Author Name'] ?? meta['Creator'] ?? meta['Artist'] ?? '')
+    /** Same source as catalog match / `matchStateForAuthorCategory` (XMP:Creator, Copyright, etc.). */
+    Author: authorIdentityFromMetadata(meta)
   }
 }
 
