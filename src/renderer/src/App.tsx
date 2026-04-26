@@ -1518,7 +1518,15 @@ export function App(): React.ReactElement {
         backupFirst: backupRaster && isRasterWriteInPlacePath(path)
       }))
       const firstBase = todo[0] ? todo[0].path.split(/[/\\]/).pop() ?? todo[0].path : ''
-      setCommitModal({ phase: 'writing', current: 1, total, fileBase: firstBase })
+      setCommitModal({ phase: 'writing', current: 0, total, fileBase: firstBase })
+      const stopBatchProgress = api.onApplyExifBatchProgress((p) => {
+        const base = p.path.split(/[/\\]/).pop() ?? p.path
+        setCommitModal((prev) =>
+          prev && prev.phase === 'writing'
+            ? { ...prev, current: p.done, total: p.total, fileBase: base }
+            : prev
+        )
+      })
       try {
         const results = await api.applyExifBatch(items)
         for (const r of results) {
@@ -1536,6 +1544,8 @@ export function App(): React.ReactElement {
         }
       } catch (e) {
         alert(unwrapIpcErrorMessage(e))
+      } finally {
+        stopBatchProgress()
       }
       if (successfulPaths.length > 0) {
         const metaUpdates: Record<string, Record<string, unknown>> = {}

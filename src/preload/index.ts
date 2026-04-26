@@ -47,6 +47,11 @@ const api = {
     ipcRenderer.invoke('exif:applyBatch', items) as Promise<
       Array<{ path: string; ok: boolean; error?: string }>
     >,
+  onApplyExifBatchProgress: (cb: (p: { done: number; total: number; path: string }) => void) => {
+    const fn = (_e: unknown, p: { done: number; total: number; path: string }): void => cb(p)
+    ipcRenderer.on('exif:applyBatchProgress', fn)
+    return () => ipcRenderer.removeListener('exif:applyBatchProgress', fn)
+  },
   createPreset: (input: CreatePresetInput) => ipcRenderer.invoke('presets:create', input) as Promise<number>,
   updatePreset: (input: UpdatePresetInput) => ipcRenderer.invoke('presets:update', input) as Promise<number>,
   deletePreset: (id: number) => ipcRenderer.invoke('presets:delete', id) as Promise<void>,

@@ -8,10 +8,11 @@ import { formatCopyrightForExif, withCopyrightAsWrittenToExif } from './copyrigh
 import { authorIdentityFromMetadata } from './authorIdentity.js'
 import { parseExposureTimeToSeconds } from './exifDisplayFormat.js'
 import { fitKeywordsForExif } from './exifLimits.js'
-import { normalizeFilmPresetPayloadForMerge, stripFilmStockSuffix } from './filmKeywords.js'
+import { extractFilmIdentityKeywords, normalizeFilmPresetPayloadForMerge, stripFilmStockSuffix } from './filmKeywords.js'
 import {
   exposureTimeRawFromMetadata,
   fnumberRawFromMetadata,
+  keywordValuesFromMetadata,
   metadataFirstTag
 } from './exifMetadataTags.js'
 import { scalarStringFromExiftoolJson } from './exiftoolJsonScalar.js'
@@ -51,20 +52,11 @@ function keywordMultisetNormalized(tokens: string[]): string[] {
 
 /** Keywords from exiftool -j (tag names vary by file). */
 function keywordsFromFileMeta(meta: Record<string, unknown>): string[] {
-  const candidates = [
-    'Keywords',
-    'EXIF:Keywords',
-    'IPTC:Keywords',
-    'XMP:Subject',
-    'Subject',
-    'MWG:Keywords'
-  ] as const
-  for (const c of candidates) {
-    const v = meta[c]
-    if (v == null || v === '') continue
-    return normalizeKeywordList(v)
-  }
-  return []
+  const merged = keywordValuesFromMetadata(meta)
+  if (merged.length > 0) return normalizeKeywordList(merged)
+  const mwg = meta['MWG:Keywords']
+  if (mwg == null || mwg === '') return []
+  return normalizeKeywordList(mwg)
 }
 
 /** Same effective keywords after fit (merge order can differ from on-disk order; compare case-insensitively). */
@@ -325,6 +317,22 @@ export function presetPayloadSatisfiedByFileMetadata(
     prepared = normalizeFilmPresetPayloadForMerge({ ...stripped })
   }
   const preview = withCopyrightAsWrittenToExif(prepared)
+  if (category === 'film') {
+    const copy = { ...preview }
+    const rawKw = copy['Keywords']
+    delete copy['Keywords']
+    if (!writePayloadMatchesFile(copy, fileMetadata)) return false
+    if (rawKw === undefined) return true
+    const proposedTokens = Array.isArray(rawKw)
+      ? rawKw.map((x) => String(x))
+      : typeof rawKw === 'string'
+        ? rawKw.split(/[,;]/).map((s) => s.trim()).filter(Boolean)
+        : []
+    const need = extractFilmIdentityKeywords(proposedTokens).map((x) => x.toLowerCase())
+    if (need.length === 0) return true
+    const have = extractFilmIdentityKeywords(keywordsFromFileMeta(fileMetadata)).map((x) => x.toLowerCase())
+    return need.every((token) => have.includes(token))
+  }
   return writePayloadMatchesFile(preview, fileMetadata)
 }
 

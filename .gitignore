@@ -5,3 +5,4 @@ release/
 *.log
 *.p8
 .cursor/plans/
+test/raw-test-images/
