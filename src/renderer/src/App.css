@@ -40,6 +40,18 @@
   background: var(--bg);
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -313,6 +325,144 @@ button.btn-sm {
   border-radius: 6px;
   background: var(--pending-badge-bg);
   color: var(--pending-badge-text);
+}
+
+.file-pending-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.file-pending-icon-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--pending-badge-bg);
+  color: var(--pending-badge-text);
+  flex-shrink: 0;
+}
+
+.file-pending-icon-chip .category-icon {
+  color: var(--pending-badge-text);
+}
+
+.category-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.meta-section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  padding: 8px 0 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+
+.meta-section-label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-bottom: 0.1rem;
+}
+
+.meta-section-label-row .meta-subsection-head {
+  margin-bottom: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.meta-row-label-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+}
+
+/** Arrow column between “current / in file” and “new / assign” (Approach D) */
+table.mapping th.mapping-col-arrow-head,
+table.mapping td.mapping-col-arrow-cell {
+  width: 1.5rem;
+  text-align: center;
+  padding-left: 0.1rem;
+  padding-right: 0.1rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.meta-mapping-arrow {
+  display: inline-block;
+  font-weight: 400;
+  user-select: none;
+}
+
+.in-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.in-file-chip--matched {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.in-file-attrs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.in-file-attr-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.65rem;
+  background: #f4f4f5;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 5px;
+  color: var(--text);
+  max-width: 100%;
+}
+
+.in-file-attr-tag {
+  color: var(--muted);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.in-file-attr-pill .in-file-attr-val {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+table.mapping tbody tr.has-staged-assignment {
+  background: rgba(220, 38, 38, 0.04);
 }
 
 .meta-panel select.input.meta-value-pending:not(:focus),
@@ -677,25 +827,25 @@ table.mapping {
 }
 
 table.mapping col.mapping-col-attribute {
-  width: 6.43rem;
+  width: 7.25rem;
 }
 
-table.mapping col.mapping-col-copy {
-  width: 2.6rem;
+table.mapping col.mapping-col-arrow {
+  width: 1.5rem;
 }
 
 table.mapping col.mapping-col-remove {
   width: 4.5rem;
 }
 
-/* Main + Description/Keywords tables share five columns: Attribute | Current | Action (copy / create preset) | New | Remove */
+/* Presets + fields: label+icon | Current or In file | → | New or Assign | Remove */
 table.mapping col.mapping-col-current,
 table.mapping col.mapping-col-new {
-  width: calc((100% - 6.43rem - 2.6rem - 4.5rem) / 2);
+  width: calc((100% - 7.25rem - 1.5rem - 4.5rem) / 2);
 }
 
-table.mapping th.mapping-col-copy-head,
-table.mapping td.mapping-col-copy-cell,
+table.mapping th.mapping-col-arrow-head,
+table.mapping td.mapping-col-arrow-cell,
 table.mapping th.mapping-col-remove-head,
 table.mapping td.mapping-col-remove-cell {
   text-align: center;
@@ -1017,6 +1167,19 @@ button.btn-pending-write:hover:not(:disabled) {
 
 button.btn-pending-write:disabled {
   box-shadow: none;
+}
+
+button.btn-pending-write.has-pending {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+  box-shadow: none;
+}
+
+button.btn-pending-write.has-pending:hover:not(:disabled) {
+  background: #991b1b;
+  border-color: #991b1b;
+  color: #fff;
 }
 
 button.btn-clear-pending:disabled,
