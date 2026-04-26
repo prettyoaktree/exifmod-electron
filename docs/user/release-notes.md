@@ -4,6 +4,8 @@ Headline changes in recent versions: major features and fixes that affect how yo
 
 ## 1.7.x
 
+**1.7.8** — Metadata pane refresh: **Presets**, **EXIF fields**, and **Text fields** in separate sections; **In file** vs **Assign (optional)** so catalog choices are explicit; per-category icons for pending work in the file list; and **New preset from metadata…** in the assign list (replacing the small **+** control). Description and keywords use the same “current → new” layout as exposure fields, without a separate one-click “copy current” control—you can still copy in the system as needed.
+
 **1.7.7** — More reliable film keyword handling for RAW files, and clearer batch write progress when you process a folder of images.
 
 **1.7.6** — User docs and website polish pass: refreshed style guidance, cleaner chapter structure, and a new **Help → User Guide** menu link that opens the published guide directly from the app.
