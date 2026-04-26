@@ -27,6 +27,14 @@
   --shaded-panel-header-inset: inset 0 -1px 0 rgba(24, 24, 27, 0.06);
   --pane-header-pad-y: 0.75rem;
   --pane-header-pad-x: 1rem;
+  /** File list row block — metadata sticky `thead` matches this for cross-pane alignment. */
+  --file-list-row-pad-y: 0.5rem;
+  --file-list-row-fz: 0.8125rem;
+  --file-list-row-lh: 1.25;
+  --file-list-row-content-h: calc(var(--file-list-row-fz) * var(--file-list-row-lh));
+  --file-list-row-height: calc(
+    var(--file-list-row-pad-y) + var(--file-list-row-pad-y) + var(--file-list-row-content-h)
+  );
   --chrome-border: rgba(24, 24, 27, 0.1);
   --chrome-radius: 12px;
   font-family:
@@ -286,9 +294,11 @@ button.btn-sm {
 }
 
 .file-list-row {
-  padding: 0.5rem 1rem;
+  padding: var(--file-list-row-pad-y) 1rem;
   cursor: pointer;
-  font-size: 0.8125rem;
+  font-size: var(--file-list-row-fz);
+  line-height: var(--file-list-row-lh);
+  min-height: var(--file-list-row-height);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -298,6 +308,7 @@ button.btn-sm {
   transition: background-color 0.12s ease;
   -webkit-user-select: none;
   user-select: none;
+  box-sizing: border-box;
 }
 
 .file-list-row:hover {
@@ -359,32 +370,6 @@ button.btn-sm {
   align-items: center;
   flex-shrink: 0;
   color: var(--muted);
-}
-
-.meta-section-label {
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--muted);
-  padding: 8px 0 4px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 2px;
-}
-
-.meta-section-label-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 0.4rem;
-  margin-bottom: 0.1rem;
-}
-
-.meta-section-label-row .meta-subsection-head {
-  margin-bottom: 0;
-  padding-left: 0;
-  padding-right: 0;
 }
 
 .meta-row-label-with-icon {
@@ -478,19 +463,6 @@ table.mapping tbody tr.metadata-text-row--pending {
   box-shadow: 0 0 0 1px var(--pending-control-ring);
 }
 
-/** Description/keywords subsection: heading with AI control beside it. */
-.meta-subsection-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
-  margin-bottom: 0.28rem;
-  padding: 0.28rem 0.28rem 0.28rem 0;
-  width: 100%;
-  box-sizing: border-box;
-  overflow: visible;
-}
-
 .meta-subsection-ai-anchor {
   display: flex;
   align-items: center;
@@ -581,7 +553,7 @@ table.mapping tbody tr.metadata-text-row--pending {
   white-space: nowrap;
 }
 
-.meta-notes-wrap .notes-area--keywords {
+table.mapping.mapping-desc-kw .notes-area--keywords {
   min-height: 2.25rem;
 }
 
@@ -772,22 +744,12 @@ table.mapping tbody tr.metadata-text-row--pending {
   outline: none;
 }
 
-.meta-notes-wrap {
-  margin-top: 0.4rem;
-  padding-top: 0.4rem;
-  border-top: 1px solid var(--border);
-}
-
 /* Tighter than global `.notes-area { min-height: 88px }` — less vertical scroll in metadata pane */
-.meta-notes-wrap .notes-area {
+table.mapping.mapping-desc-kw .notes-area {
   min-height: 3.25rem;
   padding: 0.35rem 0.5rem;
   font-size: 0.8125rem;
   line-height: 1.35;
-}
-
-.meta-notes-wrap--tables {
-  margin-top: 0.45rem;
 }
 
 .notes-area.notes-area--in-table {
@@ -915,18 +877,212 @@ table.mapping thead th {
   padding-bottom: 0.28rem;
 }
 
+/** Single metadata mapping table: sticky column header */
+.meta-roving-block > .mapping > thead {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+}
+
+/**
+ * Sticky column header: same “section bar” treatment as `tr.meta-mapping-section-subhead`
+ * (no visible Attribute label — `meta-mapping-floating-thead__attr` is `sr-only`).
+ */
+.meta-roving-block > .mapping > thead th {
+  --meta-mapping-subhead-h: 2.08rem;
+  min-height: var(--meta-mapping-subhead-h);
+  height: var(--meta-mapping-subhead-h);
+  padding: 0 0.3rem;
+  line-height: 1;
+  vertical-align: middle;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  text-align: left;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #fafbfc 0%, #f1f3f5 100%);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.meta-roving-block > .mapping > thead th:first-child {
+  padding-left: 0;
+}
+
+.meta-roving-block > .mapping > thead th:last-child {
+  padding-right: 0;
+}
+
+.meta-roving-block > .mapping > thead th.mapping-col-arrow-head,
+.meta-roving-block > .mapping > thead th.mapping-col-remove-head {
+  text-align: center;
+}
+
+/**
+ * Section subheads: tbody rows with th[scope=colgroup] (Presets / shutter+aperture / description+keywords).
+ * `th` stays `table-cell` so colspan spans the table; flex lives in `.meta-mapping-subhead-cell`.
+ */
+.meta-roving-block .mapping tr.meta-mapping-section-subhead th {
+  /* Short bar; must exceed subhead-scoped AI control + borders (see .meta-mapping-subhead-tools). */
+  --meta-mapping-subhead-h: 2.08rem;
+  display: table-cell;
+  text-align: left;
+  vertical-align: middle;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  height: var(--meta-mapping-subhead-h);
+  min-height: var(--meta-mapping-subhead-h);
+  padding: 0 var(--pane-header-pad-x);
+  line-height: 1;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #fafbfc 0%, #f1f3f5 100%);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+/**
+ * Fills the colspan `th` and provides flex centering without breaking table layout
+ * (do not set `display: flex` on the `th` itself).
+ */
+.meta-roving-block .mapping .meta-mapping-subhead-cell {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  height: 100%;
+  min-height: var(--meta-mapping-subhead-h, 2.08rem);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/**
+ * Same flex context as a simple subhead, but the flex child is a full-width tools row
+ * (title + AI) so the row is vertically centered in the `th`.
+ */
+.meta-roving-block .mapping .meta-mapping-subhead-cell--with-tools {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  height: 100%;
+  min-height: var(--meta-mapping-subhead-h, 2.08rem);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.meta-roving-block .mapping .meta-mapping-subhead-cell--with-tools .meta-mapping-subhead-tools {
+  min-height: 0;
+}
+
+.meta-roving-block .mapping .meta-mapping-section-subhead th .meta-subsection-title,
+.meta-roving-block .mapping .meta-mapping-subhead-cell .meta-subsection-title {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  margin: 0;
+  display: block;
+  align-self: center;
+}
+
+/** First section subhead: avoid double rule under the one shared thead (keep same height as other subheads) */
+.meta-roving-block .mapping > tbody:first-of-type > tr.meta-mapping-section-subhead th {
+  border-top: none;
+  box-shadow: none;
+}
+
+/** Description & keywords: title + AI in one subhead cell */
+.meta-mapping-subhead-tools {
+  display: flex;
+  flex-direction: row;
+  flex: 1 1 auto;
+  align-items: center;
+  align-self: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.meta-mapping-subhead-tools .meta-subsection-title {
+  display: block;
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: left;
+  align-self: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/** Match AI control to the shorter subhead row; keep optically aligned with the label. */
+.meta-mapping-subhead-tools .meta-subsection-ai-anchor {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(12rem, 50%);
+  align-self: center;
+  line-height: 0;
+}
+
+/**
+ * Default `.meta-inline-icon-btn` is 2.25rem — taller than the subhead content box (borders + height),
+ * so the label and icon could not sit on the same optical center. Shrink the control in this row only.
+ */
+.meta-mapping-subhead-tools .btn-ai-spark.meta-inline-icon-btn {
+  width: 1.75rem;
+  height: 1.75rem;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+}
+
+.meta-mapping-subhead-tools .meta-inline-icon-btn .btn-ai-spark-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.meta-mapping-subhead-tools .meta-subsection-ai-anchor > .btn-ai-spark.btn-ai-spark--loading {
+  min-height: 1.75rem;
+  min-width: 0;
+  max-width: 100%;
+  width: auto;
+  box-sizing: border-box;
+  padding: 0 0.32rem;
+}
+
+/**
+ * Long “Generating (n/m)…” must not widen past the subhead; parent caps width, ellipsis the label.
+ */
+.meta-mapping-subhead-tools .btn-ai-spark--loading .btn-ai-spark-loading {
+  min-width: 0;
+  max-width: 100%;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 table.mapping tbody tr:last-child td {
   border-bottom: none;
 }
 
 /* Shutter + aperture: match preset combo control height; keep Current on one line so the row doesn’t grow */
-table.mapping:not(.mapping-desc-kw) tbody tr:nth-last-child(-n + 2) > td:nth-child(2) {
+table.mapping tbody tr.mapping-row--exif-field > td:nth-child(2) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-table.mapping:not(.mapping-desc-kw) tbody tr:nth-last-child(-n + 2) input.input {
+table.mapping tbody tr.mapping-row--exif-field input.input {
   box-sizing: border-box;
   height: 2.25rem;
   min-height: 2.25rem;

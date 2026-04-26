@@ -2239,8 +2239,7 @@ export function App(): React.ReactElement {
               onFocus={onMetaRovingBlockFocus}
               onKeyDown={onMetaFieldsKeyDown}
             >
-              <div className="meta-section-label">{t('ui.sectionPresets')}</div>
-              <table className="mapping mapping-slim">
+              <table className="mapping mapping-slim mapping-desc-kw">
                 <colgroup>
                   <col className="mapping-col-attribute" />
                   <col className="mapping-col-current" />
@@ -2250,18 +2249,27 @@ export function App(): React.ReactElement {
                 </colgroup>
                 <thead>
                   <tr>
-                    <th scope="col">{t('ui.attribute')}</th>
-                    <th scope="col">{t('ui.inFileColumnHeader')}</th>
+                    <th className="meta-mapping-floating-thead__attr" scope="col">
+                      <span className="sr-only">{t('ui.attribute')}</span>
+                    </th>
+                    <th scope="col">{t('ui.currentValue')}</th>
                     <th className="mapping-col-arrow-head" aria-hidden>
                       <span className="sr-only">{t('ui.mappingArrowToNew')}</span>
                     </th>
-                    <th scope="col">{t('ui.assignColumnHeader')}</th>
+                    <th scope="col">{t('ui.newValue')}</th>
                     <th className="mapping-col-remove-head" scope="col">
                       {t('ui.removeColumn')}
                     </th>
                   </tr>
                 </thead>
                 <tbody>
+                  <tr className="meta-mapping-section-subhead">
+                    <th scope="colgroup" colSpan={5}>
+                      <div className="meta-mapping-subhead-cell">
+                        <span className="meta-subsection-title">{t('ui.sectionPresets')}</span>
+                      </div>
+                    </th>
+                  </tr>
                   {CATS.map((cat, idx) => {
                     const id = formPending[idKeyForCategory(cat)] as number | null
                     let name = catalog ? presetNameForId(catalog, cat, id) : 'None'
@@ -2378,33 +2386,21 @@ export function App(): React.ReactElement {
                     )
                   })}
                 </tbody>
-              </table>
-
-              <div className="meta-section-label">{t('ui.sectionExifFields')}</div>
-              <table className="mapping mapping-slim">
-                <colgroup>
-                  <col className="mapping-col-attribute" />
-                  <col className="mapping-col-current" />
-                  <col className="mapping-col-arrow" />
-                  <col className="mapping-col-new" />
-                  <col className="mapping-col-remove" />
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th scope="col">{t('ui.attribute')}</th>
-                    <th scope="col">{t('ui.currentValue')}</th>
-                    <th className="mapping-col-arrow-head" aria-hidden>
-                      <span className="sr-only">{t('ui.mappingArrowToNew')}</span>
-                    </th>
-                    <th scope="col">{t('ui.newValue')}</th>
-                    <th className="mapping-col-remove-head" scope="col">
-                      {t('ui.removeColumn')}
+                <tbody>
+                  <tr className="meta-mapping-section-subhead">
+                    <th scope="colgroup" colSpan={5}>
+                      <div className="meta-mapping-subhead-cell">
+                        <span className="meta-subsection-title">{t('ui.sectionExifFields')}</span>
+                      </div>
                     </th>
                   </tr>
-                </thead>
-                <tbody>
                   <tr
-                    className={pendingAttributeHighlights.shutter ? 'metadata-text-row--pending' : undefined}
+                    className={[
+                      'mapping-row--exif-field',
+                      pendingAttributeHighlights.shutter ? 'metadata-text-row--pending' : ''
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
                   >
                     <td>
                       <span className="meta-row-label-with-icon">
@@ -2466,7 +2462,12 @@ export function App(): React.ReactElement {
                     </td>
                   </tr>
                   <tr
-                    className={pendingAttributeHighlights.aperture ? 'metadata-text-row--pending' : undefined}
+                    className={[
+                      'mapping-row--exif-field',
+                      pendingAttributeHighlights.aperture ? 'metadata-text-row--pending' : ''
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
                   >
                     <td>
                       <span className="meta-row-label-with-icon">
@@ -2528,73 +2529,53 @@ export function App(): React.ReactElement {
                     </td>
                   </tr>
                 </tbody>
-              </table>
-
-              <div className="meta-notes-wrap meta-notes-wrap--tables">
-                <div className="meta-section-label-row">
-                  <div className="meta-subsection-head">
-                    <h2 className="meta-subsection-title">{t('ui.sectionTextFields')}</h2>
-                    <div className="meta-subsection-ai-anchor">
-                      <button
-                        type="button"
-                        tabIndex={-1}
-                        className={[
-                          'btn-ai-spark meta-inline-icon-btn',
-                          (ollamaSession === 'checking' || ollamaSession === 'launching') && !aiDescribeBusy
-                            ? 'btn-ai-spark--ollama-launching'
-                            : '',
-                          ollamaSession === 'ready' && !aiDescribeBusy ? 'btn-ai-spark--ollama-ready' : '',
-                          aiDescribeBusy ? 'btn-ai-spark--loading' : ''
-                        ]
-                          .filter(Boolean)
-                          .join(' ')}
-                        aria-busy={
-                          !!aiDescribeBusy || ollamaSession === 'checking' || ollamaSession === 'launching'
-                        }
-                        disabled={aiButtonDisabled}
-                        title={aiButtonTitle}
-                        aria-label={aiButtonTitle}
-                        onClick={() => void onAiButtonClick()}
-                      >
-                        {aiDescribeBusy ? (
-                          <span className="btn-ai-spark-loading">{aiDescribeBusyLabel}</span>
-                        ) : (
-                          <svg className="btn-ai-spark-icon" viewBox="0 0 24 24" aria-hidden focusable="false">
-                            <path
-                              fill="currentColor"
-                              d="M12 2l1.2 4.2L17.4 7.4l-4.2 1.2L12 12.8l-1.2-4.2L6.6 7.4l4.2-1.2L12 2zm7 8l.8 2.8 2.8.8-2.8.8L19 17.4l-.8-2.8-2.8-.8 2.8-.8L19 10zM6 14l.6 2.2 2.2.6-2.2.6L6 19.8l-.6-2.2-2.2-.6 2.2-.6L6 14z"
-                            />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <table className="mapping mapping-slim mapping-desc-kw">
-                  <colgroup>
-                    <col className="mapping-col-attribute" />
-                    <col className="mapping-col-current" />
-                    <col className="mapping-col-arrow" />
-                    <col className="mapping-col-new" />
-                    <col className="mapping-col-remove" />
-                  </colgroup>
-                  <thead>
-                    <tr>
-                      <th scope="col">{t('ui.attribute')}</th>
-                      <th scope="col">{t('ui.currentValue')}</th>
-                      <th className="mapping-col-arrow-head" aria-hidden>
-                        <span className="sr-only">{t('ui.mappingArrowToNew')}</span>
-                      </th>
-                      <th scope="col">{t('ui.newValue')}</th>
-                      <th className="mapping-col-remove-head" scope="col">
-                        {t('ui.removeColumn')}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      className={pendingAttributeHighlights.notes ? 'metadata-text-row--pending' : undefined}
-                    >
+                <tbody>
+                  <tr className="meta-mapping-section-subhead meta-mapping-section-subhead--with-tools">
+                    <th scope="colgroup" colSpan={5}>
+                      <div className="meta-mapping-subhead-cell meta-mapping-subhead-cell--with-tools">
+                        <div className="meta-mapping-subhead-tools">
+                          <span className="meta-subsection-title">{t('ui.sectionTextFields')}</span>
+                          <div className="meta-subsection-ai-anchor">
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              className={[
+                                'btn-ai-spark meta-inline-icon-btn',
+                                (ollamaSession === 'checking' || ollamaSession === 'launching') && !aiDescribeBusy
+                                  ? 'btn-ai-spark--ollama-launching'
+                                  : '',
+                                ollamaSession === 'ready' && !aiDescribeBusy ? 'btn-ai-spark--ollama-ready' : '',
+                                aiDescribeBusy ? 'btn-ai-spark--loading' : ''
+                              ]
+                                .filter(Boolean)
+                                .join(' ')}
+                              aria-busy={
+                                !!aiDescribeBusy || ollamaSession === 'checking' || ollamaSession === 'launching'
+                              }
+                              disabled={aiButtonDisabled}
+                              title={aiButtonTitle}
+                              aria-label={aiButtonTitle}
+                              onClick={() => void onAiButtonClick()}
+                            >
+                              {aiDescribeBusy ? (
+                                <span className="btn-ai-spark-loading">{aiDescribeBusyLabel}</span>
+                              ) : (
+                                <svg className="btn-ai-spark-icon" viewBox="0 0 24 24" aria-hidden focusable="false">
+                                  <path
+                                    fill="currentColor"
+                                    d="M12 2l1.2 4.2L17.4 7.4l-4.2 1.2L12 12.8l-1.2-4.2L6.6 7.4l4.2-1.2L12 2zm7 8l.8 2.8 2.8.8-2.8.8L19 17.4l-.8-2.8-2.8-.8 2.8-.8L19 10zM6 14l.6 2.2 2.2.6-2.2.6L6 19.8l-.6-2.2-2.2-.6 2.2-.6L6 14z"
+                                  />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </th>
+                  </tr>
+                  <tr
+                    className={pendingAttributeHighlights.notes ? 'metadata-text-row--pending' : undefined}
+                  >
                       <td>
                         <span className="meta-row-label-with-icon">
                           <CategoryIcon category="desc" size={13} />
@@ -2719,9 +2700,8 @@ export function App(): React.ReactElement {
                         />
                       </td>
                     </tr>
-                  </tbody>
-                </table>
-              </div>
+                </tbody>
+              </table>
             </div>
           </div>
 
