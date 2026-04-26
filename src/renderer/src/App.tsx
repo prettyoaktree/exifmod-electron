@@ -473,6 +473,10 @@ export function App(): React.ReactElement {
   const openFolderPrimaryRef = useRef<HTMLButtonElement>(null)
   const rowRefs = useRef<(HTMLLIElement | null)[]>([])
   const selectionAnchorRef = useRef<number | null>(null)
+  /** True after a row click changed selection; arrow keys then take ownership (collapse multi-select, sync single row). */
+  const fileListSelectionFromPointerRef = useRef(false)
+  /** True after Space toggled list selection; arrows only move focus until a row click or bulk select clears this. */
+  const fileListKeyboardSpaceSelectionRef = useRef(false)
   const metaFieldRefs = useRef<Array<HTMLElement | null>>(Array.from({ length: META_FIELD_COUNT }, () => null))
   const pendingByPathRef = useRef(pendingByPath)
   pendingByPathRef.current = pendingByPath
@@ -776,6 +780,8 @@ export function App(): React.ReactElement {
 
         setOpenedFolderPath(openedFolder)
         setFiles(list)
+        fileListSelectionFromPointerRef.current = false
+        fileListKeyboardSpaceSelectionRef.current = false
         setSelectedIndices(new Set())
         setCurrentIndex(list.length ? selectIndex : null)
         setMetadataByPath({})
@@ -1323,11 +1329,15 @@ export function App(): React.ReactElement {
       : formPending.fNumberText
 
   const selectAllFiles = useCallback(() => {
+    fileListSelectionFromPointerRef.current = false
+    fileListKeyboardSpaceSelectionRef.current = false
     setSelectedIndices(new Set(files.map((_, i) => i)))
     if (files.length) setCurrentIndex(0)
   }, [files])
 
   const selectNoneFiles = useCallback(() => {
+    fileListSelectionFromPointerRef.current = false
+    fileListKeyboardSpaceSelectionRef.current = false
     setSelectedIndices(new Set())
     setCurrentIndex(null)
   }, [])
@@ -1386,6 +1396,8 @@ export function App(): React.ReactElement {
     const list = await api.listImagesInDir(dir)
     setOpenedFolderPath(dir)
     setFiles(list)
+    fileListSelectionFromPointerRef.current = false
+    fileListKeyboardSpaceSelectionRef.current = false
     setSelectedIndices(new Set())
     setCurrentIndex(list.length ? 0 : null)
     setMetadataByPath({})
@@ -1426,6 +1438,7 @@ export function App(): React.ReactElement {
   }, [])
 
   const onRowClick = (i: number, ev: React.MouseEvent) => {
+    fileListKeyboardSpaceSelectionRef.current = false
     if (ev.shiftKey) {
       const anchor = selectionAnchorRef.current ?? currentIndex ?? i
       const lo = Math.min(anchor, i)
@@ -1434,6 +1447,7 @@ export function App(): React.ReactElement {
       for (let j = lo; j <= hi; j++) range.add(j)
       setSelectedIndices(range)
       setCurrentIndex(i)
+      fileListSelectionFromPointerRef.current = true
       return
     }
     if (ev.ctrlKey || ev.metaKey) {
@@ -1445,11 +1459,13 @@ export function App(): React.ReactElement {
       })
       setCurrentIndex(i)
       selectionAnchorRef.current = i
+      fileListSelectionFromPointerRef.current = true
       return
     }
     selectionAnchorRef.current = i
     setCurrentIndex(i)
     setSelectedIndices(new Set([i]))
+    fileListSelectionFromPointerRef.current = true
   }
 
   const onFileListKeyDown = (e: React.KeyboardEvent<HTMLUListElement>) => {
@@ -1457,6 +1473,8 @@ export function App(): React.ReactElement {
       e.preventDefault()
       const n = files.length
       if (!n) return
+      fileListSelectionFromPointerRef.current = false
+      fileListKeyboardSpaceSelectionRef.current = true
       const i = currentIndex != null ? currentIndex : 0
       setSelectedIndices((prev) => {
         const next = new Set(prev)
@@ -1472,19 +1490,31 @@ export function App(): React.ReactElement {
     const n = files.length
     if (!n) return
     e.preventDefault()
-    setCurrentIndex((cur) => {
-      let next: number
-      if (cur == null) {
-        next = e.key === 'ArrowDown' ? 0 : n - 1
-      } else if (e.key === 'ArrowDown') {
-        next = Math.min(cur + 1, n - 1)
-      } else {
-        next = Math.max(cur - 1, 0)
+    const cur = currentIndex
+    let next: number
+    if (cur == null) {
+      next = e.key === 'ArrowDown' ? 0 : n - 1
+    } else if (e.key === 'ArrowDown') {
+      next = Math.min(cur + 1, n - 1)
+    } else {
+      next = Math.max(cur - 1, 0)
+    }
+    const fromPointer = fileListSelectionFromPointerRef.current
+    const spaceShaped = fileListKeyboardSpaceSelectionRef.current
+    if (fromPointer) {
+      setSelectedIndices(new Set([next]))
+      selectionAnchorRef.current = next
+      fileListSelectionFromPointerRef.current = false
+    } else if (!spaceShaped) {
+      if (selectedIndices.size <= 1) {
+        setSelectedIndices(new Set([next]))
+        selectionAnchorRef.current = next
       }
-      requestAnimationFrame(() => {
-        rowRefs.current[next]?.scrollIntoView({ block: 'nearest' })
-      })
-      return next
+      // else: multi-select (e.g. Select all) — arrows only move current row
+    }
+    setCurrentIndex(next)
+    requestAnimationFrame(() => {
+      rowRefs.current[next]?.scrollIntoView({ block: 'nearest' })
     })
   }
 
