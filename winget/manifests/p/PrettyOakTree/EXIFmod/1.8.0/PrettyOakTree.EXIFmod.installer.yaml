@@ -23,7 +23,7 @@ Installers:
   - Architecture: x64
     Scope: user
     InstallerUrl: https://github.com/prettyoaktree/exifmod/releases/download/v1.8.0/EXIFmod-1.8.0-setup.exe
-    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+    InstallerSha256: e5a95f4821cab3a0ad05c7ad8e4249e3529ad7a1c9bddbb1fb0be651e2484fe0
     RequireExplicitUpgrade: true
 ManifestType: installer
 ManifestVersion: 1.9.0
