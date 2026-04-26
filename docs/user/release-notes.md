@@ -2,9 +2,11 @@
 
 Headline changes in recent versions: major features and fixes that affect how you work in EXIFmod. Patch releases often include small fixes and polish that are not listed here. For the full list of every release, see [EXIFmod on GitHub Releases](https://github.com/prettyoaktree/exifmod/releases).
 
-## 1.7.x
+## 1.8.0
 
-**1.7.8** — Metadata pane refresh: **Presets**, **Shutter & Aperture**, and **Description & Keywords** in separate subsections of one table with shared column headers (**Current value** and **New value**); per-category icons for pending work in the file list; and **New preset from metadata…** in the preset list (replacing the small **+** control). Description and keywords use the same “current → new” layout as exposure fields, without a separate one-click “copy current” control—you can still copy in the system as needed.
+**1.8.0** — Metadata pane overhaul: **Presets**, **Shutter & Aperture**, and **Description & Keywords** as subsections in one table, with shared **Current value** and **New value** columns and a single sticky column header. Pending work in the file list uses per-category icons. **New preset from metadata…** replaces the small **+** in the preset picker. After you save a new preset, other open files that already match it update without a manual refresh. The highlight for an active catalog choice is visually distinct from “pending write” rows. User guide and website screenshots refreshed.
+
+## 1.7.x
 
 **1.7.7** — More reliable film keyword handling for RAW files, and clearer batch write progress when you process a folder of images.
 
