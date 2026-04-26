@@ -893,18 +893,18 @@ export function App(): React.ReactElement {
     return () => ro.disconnect()
   }, [stagingHeadingBaseNames, t])
 
-  /** Merge write-diff highlights for every file in the session (same scope as the file list + Write / preview), not
-   *  only the metadata staging set—otherwise pending changes on a non-staged file show chips in the list but the
-   *  metadata rows (including Description, Keywords, Shutter, Aperture) do not get pending styling. */
+  /** OR-merge write-diff highlights for the metadata staging set only (`stagingPaths`: current file(s) in the
+   *  pane), so row pending styling matches per-file file-list chips. Multi-select: a row is highlighted if any
+   *  staged file has a pending change for that attribute. */
   const pendingAttributeHighlights = useMemo(() => {
     let acc = emptyDiffAttributeHighlights()
-    for (const path of files) {
+    for (const path of stagingPaths) {
       const diff = writeDiffByPath[pathKey(path)]
       if (!diff || Object.keys(diff).length === 0) continue
       acc = mergeDiffAttributeHighlights(acc, diffToAttributeHighlights(diff))
     }
     return acc
-  }, [files, writeDiffByPath])
+  }, [stagingPaths, writeDiffByPath])
 
   const formPending = useMemo(
     () => mergePendingStateForNewValueUi(stagingPaths, pendingByPath),
