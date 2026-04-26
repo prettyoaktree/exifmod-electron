@@ -6,3 +6,4 @@ release/
 *.p8
 .cursor/plans/
 test/raw-test-images/
+test/jpg-tiff-test-images/
