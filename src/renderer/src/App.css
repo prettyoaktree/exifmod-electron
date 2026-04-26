@@ -449,7 +449,14 @@ table.mapping td.mapping-col-arrow-cell {
   min-width: 0;
 }
 
-table.mapping tbody tr.has-staged-assignment,
+/**
+ * Preset rows: “New value” is set to a catalog choice (incl. auto-matched) — not necessarily a write diff.
+ * Use a light accent wash so it doesn’t read as the same “pending / would change” red as real diffs.
+ */
+table.mapping tbody tr.has-staged-assignment {
+  background: rgba(var(--accent-rgb), 0.07);
+}
+
 table.mapping tbody tr.metadata-text-row--pending {
   background: rgba(220, 38, 38, 0.04);
 }

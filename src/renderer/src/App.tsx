@@ -387,6 +387,7 @@ export function App(): React.ReactElement {
     targetPaths?: string[]
   } | null>(null)
   const [suggestedLensMountsList, setSuggestedLensMountsList] = useState<string[]>([])
+  const [recentlySavedPreset, setRecentlySavedPreset] = useState<{ id: number; category: Cat } | null>(null)
   const [managePresetsOpen, setManagePresetsOpen] = useState(false)
   const [deletePresetConfirm, setDeletePresetConfirm] = useState<null | { id: number; cat: Cat; name: string }>(null)
   const [clearUnusedLensMountConfirm, setClearUnusedLensMountConfirm] = useState<string | null>(null)
@@ -658,6 +659,34 @@ export function App(): React.ReactElement {
     if (!api?.suggestedLensMounts || !catalog) return
     void api.suggestedLensMounts().then(setSuggestedLensMountsList)
   }, [catalog])
+
+  /**
+   * After creating a preset, rematch files with no explicit assignment in that category.
+   * This updates match highlighting immediately for files that already satisfy the new preset.
+   */
+  useEffect(() => {
+    if (!recentlySavedPreset || !catalog || files.length === 0) return
+    const { id, category } = recentlySavedPreset
+    const idKey = idKeyForCategory(category)
+    const clearKey = categoryToClearKey(category)
+    setPendingByPath((prev) => {
+      let changed = false
+      const next = { ...prev }
+      for (const path of files) {
+        const pk = pathKey(path)
+        const row = next[pk] ?? emptyPending()
+        if ((row[idKey] as number | null) != null || row[clearKey]) continue
+        const md = metadataByPath[pk] ?? {}
+        const inferFilm = inferCategoryValues(md, catalog.film_values).Film ?? ''
+        const suggested = computeAutoFillPresetIds(catalog, md, inferFilm, suggestedLensMountsList, {})
+        if ((suggested[idKey] as number | null) !== id) continue
+        next[pk] = { ...row, [idKey]: id, [clearKey]: false }
+        changed = true
+      }
+      return changed ? next : prev
+    })
+    setRecentlySavedPreset(null)
+  }, [recentlySavedPreset, catalog, files, metadataByPath, suggestedLensMountsList])
 
   useEffect(() => {
     const api = window.exifmod
@@ -3366,6 +3395,7 @@ export function App(): React.ReactElement {
               [key]: payload.id,
               [clearKey]: false
             }))
+            setRecentlySavedPreset({ id: payload.id, category: payload.category })
             void reloadCatalog()
           }}
         />
