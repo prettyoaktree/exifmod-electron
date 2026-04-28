@@ -46,4 +46,3 @@ Additional metadata attributes can be edited with EXIFmod. These do not use pres
 - Aperture - specified as an f-number, e.g. "1.4", "2", "2.8", "4", etc.
 - Description - manually enter an image description, or use a local AI model to generate based on image content.
 - Keywords - ditto.
-

@@ -4,15 +4,15 @@ Headline changes in recent versions: major features and fixes that affect how yo
 
 ## 1.8.5
 
-**1.8.5** — **Film roll logs:** create an Excel (`.xlsx`) shot log from the app, fill it in your spreadsheet, then import it into a folder of scans and map any unknown preset names when prompted. **Logbook JSON** exports also import: rows align to your file list by file name (matching the base name, ignoring extension) or by frame number where names do not line up. The file list gets a **Clear pending changes** command on the context menu, and the folder shortcut hint stays accurate.
+**Film roll logs:** you can now create an Excel shot log from the app and use it to track your shots. When you're done shooting and developing, import your log back into EXIFmod to automatically tag your photos. If you're using the **Logbook** app on your phone, you can export your shot log to JSON and then import it to EXIFmod for quick tagging.
 
 ## 1.8.1
 
-**1.8.1** — File list keyboard navigation now takes over cleanly after mouse selection, while keyboard multi-select with Space still works as expected. Preset-applied rows now use the same red “pending write” treatment as other real metadata changes, and metadata table column headers are easier to scan.
+**F**ixed issues with keyboard navigation and app layout.
 
 ## 1.8.0
 
-**1.8.0** — Metadata pane overhaul: **Presets**, **Shutter & Aperture**, and **Description & Keywords** as subsections in one table, with shared **Current value** and **New value** columns and a single sticky column header. Pending work in the file list uses per-category icons. **New preset from metadata…** replaces the small **+** in the preset picker. After you save a new preset, other open files that already match it update without a manual refresh. The highlight for an active catalog choice is visually distinct from “pending write” rows. User guide and website screenshots refreshed.
+Metadata pane overhaul: cleaner layout, clearer workflow, fancy icons to show you which updates are pending, lots of other quality-of-life improvements.
 
 ## 1.7.x
 
