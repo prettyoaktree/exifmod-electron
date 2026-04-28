@@ -37,54 +37,23 @@
 <ol>
 <li>Open a folder — you’ll see a list of supported image files.</li>
 <li>Select one or more files in the list.</li>
-<li>Review and edit metadata in the right-hand pane (use presets for camera, lens, film, author, and the other fields as needed). Your pending changes will be indicated in the file list as icons. To clear pending edits for a subset of files only (without the confirmation used by <strong>Clear Pending Changes</strong> for the whole folder), right-click a row and choose <strong>Clear Pending Changes</strong> from the menu, or focus the list and press <strong>C</strong>: with several files selected, every selected file is reset; otherwise the sole selected or focused file is reset.</li>
+<li>Review and edit metadata in the right-hand pane.</li>
 <li>Preview EXIF changes (optional) — if you’re the type of person who finds comfort in a well-formed tag list, this feature is for you. You&#39;re welcome.</li>
 <li>Write pending changes — that applies your edits to the selected files.</li>
 </ol>
-<h2>Film Roll Log Workflow (XLSX and Logbook JSON)</h2>
-<p>You can use EXIFmod to create and import a shot log as an <strong>Excel</strong> workbook (<code>.xlsx</code>) or import a <strong>Logbook</strong> export as <strong>JSON</strong> (array of frame objects).</p>
-<h3>Excel (<code>.xlsx</code>)</h3>
-<ol>
-<li>Create a film roll log from EXIFmod.</li>
-<li>Choose a log name, camera preset, optional lens preset, film stock preset, optional author preset, and frame count.</li>
-<li>EXIFmod saves an <code>.xlsx</code> file to your chosen location.</li>
-<li>Fill out shutter/aperture/description/keywords values in your spreadsheet app.</li>
-<li>Back in EXIFmod, open the folder that contains the scanned images for that roll.</li>
-<li>Import the <code>.xlsx</code> log and match any unknown preset names if prompted.</li>
-<li>Review pending changes, then write when you&#39;re ready.</li>
-</ol>
-<p>You can add more rows to the spreadsheet later if your roll has more exposures.</p>
-<h3>Logbook JSON (<code>.json</code>)</h3>
-<ol>
-<li>Export or save your roll as a JSON <strong>array</strong> (one object per frame) from Logbook or a compatible tool.</li>
-<li>In EXIFmod, open the folder whose file list order should match the roll (the same order as in the file list).</li>
-<li>Choose <strong>Import Film Roll Log…</strong> and pick the <code>.json</code> file.</li>
-<li>Resolve any unknown preset names if prompted, then review pending changes and write when you&#39;re ready.</li>
-</ol>
-<p><strong>Field mapping (Logbook → EXIFmod):</strong></p>
-<ul>
-<li><strong>DocumentName</strong> → film stock preset for the whole roll (must be the same on every frame, after trimming; otherwise import fails).</li>
-<li><strong>Notes</strong> → per-image description (pending text). Logbook’s <strong>Description</strong> field is not used.</li>
-<li><strong>Make</strong> / <strong>Model</strong> → camera preset name (combined). <strong>LensMake</strong> / <strong>LensModel</strong> → optional lens preset.</li>
-<li><strong>ExposureTime</strong> (seconds) and <strong>FNumber</strong> → shutter speed and aperture strings.</li>
-<li><strong>SourceFile</strong> is used only to <strong>match</strong> each JSON row to a file in the open folder: the file’s base name <strong>without extension</strong> is compared to the last segment of <code>SourceFile</code> (also without extension), so <code>001.tif</code> in the log can align with <code>001.jpg</code> in the folder.</li>
-<li>Rows that do not match any file name are assigned to remaining images in <strong><code>ImageNumber</code></strong> ascending order. If nothing matches by name, every row is placed in that order against the folder list from top to bottom.</li>
-<li>The imported log’s display name comes from the <strong>JSON file name</strong>, not from fields such as <code>ReelName</code>.</li>
-</ul>
-<p><strong>Requirements:</strong></p>
-<ul>
-<li>The JSON array length must equal the number of images in the current folder.</li>
-<li>Two folder images must not share the same base name (ignoring extension), or matching is ambiguous.</li>
-</ul>
-<h3>Common notes</h3>
-<ul>
-<li>Import requires that the number of log rows (Excel or JSON) matches the number of images in the currently open folder.</li>
-</ul>
-<h2>File Formats</h2>
+<h2>Supported File Formats</h2>
 <p>EXIFmod works with JPEG, TIFF, and common RAW files.</p>
 <ul>
 <li>RAW: metadata goes into an XMP sidecar file next to each original file (so your original is left alone in the usual RAW sense).</li>
 <li>JPEG and TIFF: metadata is written directly into the file. EXIFmod will prompt you to create a backup, if you&#39;d like.</li>
+</ul>
+<h2>Using Film Roll Logs / Shot Logs</h2>
+<p>If you like to document your shots as you shoot, EXIFmod can import your shot log to automatically tag your photos after you develop and scan them.</p>
+<ul>
+<li>If you want to use an Excel spreadsheet for tracking your shots, click the <strong>File</strong> menu and choose <strong>Create Film Roll Log…</strong>. EXIFmod will create a spreadsheet for you. Feel free to add or remove rows, but <strong>do not</strong> change any of the columns (unless you want things to break).</li>
+<li>When importing a log to EXIFmod, make sure that the number of images in your folder is identical to the number of frames in your log. Also make absolutely sure that the order of images shown by EXIFmod exactly matches the order of frames in your log.</li>
+<li>During an import, if EXIFmod sees information it cannot automatically match to existing presets, it will prompt you to match them to your presets manually.</li>
+<li>In addition to Excel files, EXIFmod can also import JSON files exported from the <a href="https://lightme.site/">Lightme Logbook</a> app. Again, make certain that the order of your shots in Lightme Logbook matches the order of your files. If you are using index numbers in your filenames, EXIFmod will attempt to match your files with the Lightme log based on the index numbers.</li>
 </ul>
 
   </article>

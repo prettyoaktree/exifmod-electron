@@ -4,11 +4,11 @@ Headline changes in recent versions: major features and fixes that affect how yo
 
 ## 1.8.5
 
-**Film roll logs:** you can now create an Excel shot log from the app and use it to track your shots. When you're done shooting and developing, import your log back into EXIFmod to automatically tag your photos. If you're using the **Logbook** app on your phone, you can export your shot log to JSON and then import it to EXIFmod for quick tagging.
+**Film roll logs:** you can now create an Excel shot log from the app and use it to track your shots. When you're done shooting and developing, import your log back into EXIFmod to automatically tag your photos. If you're using the [Lightme Logbook](https://lightme.site/) app on your phone, you can export your shot log to JSON and then import it to EXIFmod for quick tagging.
 
 ## 1.8.1
 
-**F**ixed issues with keyboard navigation and app layout.
+Fixed issues with keyboard navigation and app layout.
 
 ## 1.8.0
 

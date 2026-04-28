@@ -2,8 +2,7 @@
 
 ## The preset catalog
 
-Think of presets as "bundles" of EXIF metadata tags that can be applied in bulk. EXIFmod provides 4 types of preset categories: 
-
+Think of presets as "bundles" of EXIF metadata tags that can be applied in bulk. EXIFmod provides 4 types of preset categories:
 
 | Category    | Presets in this category are used for...                                                                                                                                                                                                       |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -11,7 +10,6 @@ Think of presets as "bundles" of EXIF metadata tags that can be applied in bulk.
 | Lenses      | Identifying standalone lenses: make and model, lens mount.                                                                                                                                                                                     |
 | Film Stocks | Identifying film stocks: name and ISO/ASA rating (speed).                                                                                                                                                                                      |
 | Authors     | Your name and optional copyright (the app adds a " © year " when you use that field because it loves saving you time).                                                                                                                         |
-
 
 When you start EXIFmod for the first time, it will create a few sample presets to get you started. Change or remove them if you like.
 
