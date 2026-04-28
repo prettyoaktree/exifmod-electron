@@ -2,6 +2,7 @@
 
 import type { ConfigCatalog, CreatePresetInput, PresetRecord, UpdatePresetInput } from '../../shared/types'
 import type { UpdaterUiPayload } from '../../shared/updaterUi'
+import type { FilmRollLogCreateInput, FilmRollParsedLog } from '../../shared/filmRollLog'
 
 export interface ExifmodApi {
   getPaths: () => Promise<{ dataDir: string; dbPath: string; configDir: string }>
@@ -9,6 +10,7 @@ export interface ExifmodApi {
   preflight: () => Promise<string[]>
   openFolder: () => Promise<string | null>
   openFiles: () => Promise<string[]>
+  openFilmRollLog: () => Promise<string | null>
   resolveExiftool: () => Promise<string | null>
   validateExiftool: (path?: string) => Promise<string | null>
   loadCatalog: () => Promise<{ catalog: ConfigCatalog; loadIssues: string[] }>
@@ -39,6 +41,11 @@ export interface ExifmodApi {
   listImagesInDir: (dirPath: string) => Promise<string[]>
   isFile: (filePath: string) => Promise<boolean>
   readImageDataUrl: (filePath: string) => Promise<string>
+  createFilmRollLog: (input: FilmRollLogCreateInput) => Promise<{ canceled: true } | { canceled: false; filePath: string }>
+  parseFilmRollLog: (
+    filePath: string,
+    imageFilePaths: string[]
+  ) => Promise<{ ok: false; message: string } | { ok: true; parsed: FilmRollParsedLog }>
   ollamaDescribeImage: (
     filePath: string,
     opts?: { maxDescriptionUtf8Bytes?: number }
@@ -71,6 +78,8 @@ export interface ExifmodApi {
   onRememberedChoicesReset: (cb: () => void) => () => void
   onLaunchFromLrc: (cb: (fromLrc: boolean) => void) => () => void
   onStartupPath: (cb: (p: string) => void) => () => void
+  onFilmRollMenuCreate: (cb: () => void) => () => void
+  onFilmRollMenuImport: (cb: () => void) => () => void
   onOllamaLaunching: (cb: () => void) => () => void
   onAppCloseRequested: (cb: () => void) => () => void
   confirmAppClose: () => void

@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { ConfigCatalog, CreatePresetInput, PresetRecord, UpdatePresetInput } from '../shared/types.js'
 import type { UpdaterUiPayload } from '../shared/updaterUi.js'
+import type { FilmRollLogCreateInput, FilmRollParsedLog } from '../shared/filmRollLog.js'
 
 /** Paths sent before React subscribes (cold Open With: main emits on did-finish-load, listener was not ready yet). */
 const pendingStartupPaths: string[] = []
@@ -21,6 +22,7 @@ const api = {
   preflight: () => ipcRenderer.invoke('app:preflight') as Promise<string[]>,
   openFolder: () => ipcRenderer.invoke('dialog:openFolder') as Promise<string | null>,
   openFiles: () => ipcRenderer.invoke('dialog:openFiles') as Promise<string[]>,
+  openFilmRollLog: () => ipcRenderer.invoke('dialog:openFilmRollLog') as Promise<string | null>,
   resolveExiftool: () => ipcRenderer.invoke('exif:resolveTool') as Promise<string | null>,
   validateExiftool: (path?: string) => ipcRenderer.invoke('exif:validateTool', path) as Promise<string | null>,
   loadCatalog: () =>
@@ -66,6 +68,14 @@ const api = {
     ipcRenderer.invoke('fs:listImagesInDir', dirPath) as Promise<string[]>,
   isFile: (filePath: string) => ipcRenderer.invoke('fs:isFile', filePath) as Promise<boolean>,
   readImageDataUrl: (filePath: string) => ipcRenderer.invoke('fs:readImageDataUrl', filePath) as Promise<string>,
+  createFilmRollLog: (input: FilmRollLogCreateInput) =>
+    ipcRenderer.invoke('filmRoll:createLog', input) as Promise<
+      { canceled: true } | { canceled: false; filePath: string }
+    >,
+  parseFilmRollLog: (filePath: string, imageFilePaths: string[]) =>
+    ipcRenderer.invoke('filmRoll:parseLog', filePath, imageFilePaths) as Promise<
+      { ok: false; message: string } | { ok: true; parsed: FilmRollParsedLog }
+    >,
   ollamaDescribeImage: (filePath: string, opts?: { maxDescriptionUtf8Bytes?: number }) =>
     ipcRenderer.invoke('ollama:describeImage', filePath, opts ?? {}) as Promise<
       { ok: true; description: string; keywords: string[] } | { ok: false; error: string }
@@ -131,6 +141,16 @@ const api = {
     return () => {
       startupPathSubscribers.delete(cb)
     }
+  },
+  onFilmRollMenuCreate: (cb: () => void) => {
+    const fn = (): void => cb()
+    ipcRenderer.on('filmRoll:menuCreate', fn)
+    return () => ipcRenderer.removeListener('filmRoll:menuCreate', fn)
+  },
+  onFilmRollMenuImport: (cb: () => void) => {
+    const fn = (): void => cb()
+    ipcRenderer.on('filmRoll:menuImport', fn)
+    return () => ipcRenderer.removeListener('filmRoll:menuImport', fn)
   },
   onOllamaLaunching: (cb: () => void) => {
     const fn = (): void => cb()

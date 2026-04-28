@@ -332,6 +332,45 @@ button.btn-sm {
   white-space: nowrap;
 }
 
+.file-list-context-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 260;
+  background: transparent;
+}
+
+.file-list-context-menu {
+  position: fixed;
+  z-index: 261;
+  min-width: 12rem;
+  padding: 0.25rem 0;
+  margin: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+}
+
+.file-list-context-menu-item {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.45rem 0.85rem;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.file-list-context-menu-item:hover,
+.file-list-context-menu-item:focus {
+  background: #f4f4f6;
+  outline: none;
+}
+
 .badge {
   font-size: 0.65rem;
   font-weight: 600;
@@ -2180,6 +2219,68 @@ button.preset-slideout-close:focus-visible {
   min-width: 0;
 }
 
+.modal-film-roll-unknown-mapping table.mapping.film-roll-unknown-mapping-table {
+  width: 100%;
+  margin: 0.2rem 0 0;
+}
+
+/**
+ * Unknown-preset rows: icon-only + log value + arrow + preset select (50% table width).
+ * Global `col.mapping-col-*` widths assume a label column and a remove column — overridden here.
+ */
+.modal-film-roll-unknown-mapping .film-roll-unknown-mapping-table col.mapping-col-attribute {
+  width: 2rem;
+}
+
+.modal-film-roll-unknown-mapping .film-roll-unknown-mapping-table col.mapping-col-arrow {
+  /* Room for arrow hugging the value + padding before the dropdown */
+  width: 1.5rem;
+}
+
+.modal-film-roll-unknown-mapping .film-roll-unknown-mapping-table col.mapping-col-current {
+  width: calc(50% - 2rem - 1.5rem);
+}
+
+.modal-film-roll-unknown-mapping .film-roll-unknown-mapping-table col.mapping-col-new {
+  width: 50%;
+}
+
+.modal-film-roll-unknown-mapping .film-roll-unknown-mapping-table td,
+.modal-film-roll-unknown-mapping .film-roll-unknown-mapping-table th {
+  padding-left: 0.2rem;
+  padding-right: 0.2rem;
+}
+
+.modal-film-roll-unknown-mapping .film-roll-unknown-mapping-table td:first-child,
+.modal-film-roll-unknown-mapping .film-roll-unknown-mapping-table th:first-child {
+  padding-right: 0.05rem;
+}
+
+.modal-film-roll-unknown-mapping .film-roll-unknown-mapping-table td:nth-child(2),
+.modal-film-roll-unknown-mapping .film-roll-unknown-mapping-table th:nth-child(2) {
+  padding-left: 0.05rem;
+}
+
+.modal-film-roll-unknown-mapping .film-roll-unknown-mapping-table td.mapping-col-arrow-cell,
+.modal-film-roll-unknown-mapping .film-roll-unknown-mapping-table th.mapping-col-arrow-head {
+  text-align: left;
+  padding-left: 0;
+  padding-right: 0.75rem;
+}
+
+.modal-film-roll-unknown-mapping .film-roll-unknown-mapping-table td:nth-child(4),
+.modal-film-roll-unknown-mapping .film-roll-unknown-mapping-table th:nth-child(4) {
+  padding-left: 0.55rem;
+}
+
+.modal-film-roll-unknown-mapping .film-roll-unknown-map-icon-cell {
+  justify-content: flex-start;
+}
+
+.modal-app-message-detail {
+  white-space: pre-wrap;
+}
+
 .modal-preset-editor-content table.mapping.preset-modal-mapping {
   margin: 0;
 }
@@ -2356,6 +2457,42 @@ table.mapping.preset-modal-mapping .preset-modal-stack {
   font-size: 0.75rem;
   color: var(--muted);
   margin-bottom: 0.2rem;
+}
+
+.modal.modal-dialog-confirm.modal-film-roll {
+  width: min(44rem, calc(100vw - 2rem));
+  max-height: min(92vh, 52rem);
+  overflow: auto;
+}
+
+.modal.modal-preset-editor.modal-film-roll-editor {
+  width: min(560px, 94vw);
+}
+
+.film-roll-editor-fields {
+  margin: 0;
+}
+
+.film-roll-map-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0.35rem 0;
+}
+
+.film-roll-map-row > span {
+  font-size: 0.8125rem;
+}
+
+.film-roll-map-section {
+  margin-top: 0.8rem;
+  padding-top: 0.15rem;
+  border-top: 1px solid var(--border);
+}
+
+.film-roll-map-section .preset-editor-section-heading {
+  margin-bottom: 0.45rem;
 }
 
 .notes-area {

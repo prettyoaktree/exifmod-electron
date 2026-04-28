@@ -62,6 +62,16 @@ import {
 import { readImagePreviewDataUrl } from './previewImage.js'
 import { installLightroomPlugin } from './installLightroomPlugin.js'
 import type { CreatePresetInput, UpdatePresetInput } from '../shared/types.js'
+import type { FilmRollLogCreateInput } from '../shared/filmRollLog.js'
+import { isJsonLogPath, isXlsxPath } from '../shared/filmRollLog.js'
+import { compareNaturalPathBaseName } from '../shared/naturalSort.js'
+import {
+  buildFilmRollDefaultFileName,
+  parseFilmRollLogWorkbook,
+  validateFilmRollLogRowsForImport,
+  writeFilmRollLogWorkbook
+} from './filmRollSpreadsheet.js'
+import { parseFilmRollLogJson } from './filmRollJsonLog.js'
 import {
   dismissUpdaterToIdle,
   downloadPendingUpdate,
@@ -446,6 +456,11 @@ function createWindow(): void {
   })
 
   const helpMenuExtras: Electron.MenuItemConstructorOptions[] = []
+  const deliverFilmRollMenuAction = (action: 'create' | 'import'): void => {
+    const w = BrowserWindow.getFocusedWindow() ?? mainWindow
+    if (!w || w.isDestroyed()) return
+    w.webContents.send(action === 'create' ? 'filmRoll:menuCreate' : 'filmRoll:menuImport')
+  }
   if (process.platform === 'darwin') {
     helpMenuExtras.push({
       label: i18next.t('menu.installLrPlugin'),
@@ -477,6 +492,15 @@ function createWindow(): void {
         {
           label: i18next.t('menu.exportPresetDatabase'),
           click: () => void handleExportPresetDatabase()
+        },
+        { type: 'separator' },
+        {
+          label: i18next.t('filmRoll.createButton'),
+          click: () => deliverFilmRollMenuAction('create')
+        },
+        {
+          label: i18next.t('filmRoll.importButton'),
+          click: () => deliverFilmRollMenuAction('import')
         },
         { type: 'separator' },
         ...(process.platform === 'darwin' ? [] : [{ role: 'quit' as const }])
@@ -703,6 +727,55 @@ function setupIpc(): void {
     return r.filePaths
   })
 
+  ipcMain.handle('dialog:openFilmRollLog', async () => {
+    const win = mainWindow ?? BrowserWindow.getFocusedWindow()
+    const r = await dialog.showOpenDialog(win ?? undefined, {
+      properties: ['openFile'],
+      filters: [
+        {
+          name: i18next.t('filmRoll.logImportFiles'),
+          extensions: ['xlsx', 'json']
+        }
+      ]
+    })
+    if (r.canceled || !r.filePaths[0]) return null
+    return r.filePaths[0]
+  })
+
+  ipcMain.handle('filmRoll:createLog', async (_e, input: FilmRollLogCreateInput) => {
+    const win = mainWindow ?? BrowserWindow.getFocusedWindow()
+    const defaultPath = join(app.getPath('documents'), buildFilmRollDefaultFileName(input.logName))
+    const result = await dialog.showSaveDialog(win ?? undefined, {
+      title: i18next.t('filmRoll.createSaveDialogTitle'),
+      defaultPath,
+      filters: [{ name: i18next.t('filmRoll.xlsxFiles'), extensions: ['xlsx'] }],
+      ...(process.platform === 'darwin' ? { showOverwriteConfirmation: true } : {})
+    })
+    if (result.canceled || !result.filePath) return { canceled: true as const }
+    const finalPath = result.filePath.toLowerCase().endsWith('.xlsx') ? result.filePath : `${result.filePath}.xlsx`
+    writeFilmRollLogWorkbook(finalPath, input)
+    return { canceled: false as const, filePath: finalPath }
+  })
+
+  ipcMain.handle('filmRoll:parseLog', (_e, filePath: string, imageFilePaths: string[]) => {
+    try {
+      let parsed
+      if (isJsonLogPath(filePath)) {
+        parsed = parseFilmRollLogJson(filePath, imageFilePaths)
+      } else if (isXlsxPath(filePath)) {
+        parsed = parseFilmRollLogWorkbook(filePath)
+      } else {
+        return { ok: false as const, message: i18next.t('filmRoll.importInvalidFormat') }
+      }
+      const validation = validateFilmRollLogRowsForImport(parsed, imageFilePaths.length)
+      if (!validation.ok) return { ok: false as const, message: validation.message }
+      return { ok: true as const, parsed }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : i18next.t('filmRoll.importInvalidFormat')
+      return { ok: false as const, message }
+    }
+  })
+
   ipcMain.handle('exif:resolveTool', () => resolveExiftoolPath())
 
   ipcMain.handle('exif:validateTool', (_e, path?: string) => {
@@ -888,7 +961,7 @@ function setupIpc(): void {
       const st = statSync(targetPath)
       if (st.isDirectory()) {
         const out: string[] = []
-        for (const n of readdirSync(targetPath).sort()) {
+        for (const n of readdirSync(targetPath).sort(compareNaturalPathBaseName)) {
           const full = join(targetPath, n)
           try {
             if (statSync(full).isFile() && isSupportedImagePath(full)) out.push(full)
@@ -909,7 +982,7 @@ function setupIpc(): void {
     const out: string[] = []
     try {
       const names = readdirSync(dirPath)
-      for (const n of names.sort()) {
+      for (const n of names.sort(compareNaturalPathBaseName)) {
         const full = join(dirPath, n)
         try {
           if (statSync(full).isFile() && isSupportedImagePath(full)) out.push(full)
