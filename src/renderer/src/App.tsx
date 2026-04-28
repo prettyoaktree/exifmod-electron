@@ -8,6 +8,7 @@ import {
   type ReactElement,
   type ReactNode
 } from 'react'
+import { createPortal } from 'react-dom'
 import { anyStagedClear, mergeRemoveTriState, type RemoveTriState } from './metaRemoveTriState.js'
 import { useTranslation } from 'react-i18next'
 import { withCopyrightAsWrittenToExif } from '@shared/copyrightFormat.js'
@@ -441,6 +442,11 @@ export function App(): React.ReactElement {
     done: number
     total: number
   } | null>(null)
+  const [fileListContextMenu, setFileListContextMenu] = useState<null | {
+    clientX: number
+    clientY: number
+    rowIndex: number
+  }>(null)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
   const [quitConfirmOpen, setQuitConfirmOpen] = useState(false)
   const quitConfirmOpenRef = useRef(false)
@@ -1734,6 +1740,12 @@ export function App(): React.ReactElement {
       selectionAnchorRef.current = i
       return
     }
+    if (e.key === 'c' || e.key === 'C') {
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      e.preventDefault()
+      runFileListClearPending(null)
+      return
+    }
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
     const n = files.length
     if (!n) return
@@ -1969,6 +1981,67 @@ export function App(): React.ReactElement {
       return next
     })
   }, [files, metadataByPath])
+
+  const clearPendingForPaths = useCallback(
+    (paths: string[]) => {
+      if (!paths.length) return
+      setPendingByPath((prev) => {
+        const next = { ...prev }
+        for (const path of paths) {
+          const k = pathKey(path)
+          const md = metadataByPath[k] ?? {}
+          const desc = imageDescriptionFromMetadata(md)
+          const kw = keywordsFieldFromMetadata(md)
+          next[k] = {
+            ...emptyPending(),
+            notesBaseline: desc,
+            keywordsBaseline: kw,
+            keywordsText: formatDescriptiveKeywordsLine(kw)
+          }
+        }
+        return next
+      })
+    },
+    [metadataByPath]
+  )
+
+  /** Same scope rules as metadata staging: multi-select → all selected; one → that file; none → current row. Right-click passes row index so with no selection we clear that row. */
+  const resolveFileListClearPendingPaths = useCallback(
+    (contextRowIndex: number | null): string[] => {
+      if (contextRowIndex != null) {
+        if (selectedIndices.size > 1) {
+          return [...selectedIndices]
+            .filter((i) => i >= 0 && i < files.length)
+            .sort((a, b) => a - b)
+            .map((i) => files[i]!)
+        }
+        if (selectedIndices.size === 1) {
+          const idx = [...selectedIndices][0]!
+          return idx >= 0 && idx < files.length ? [files[idx]!] : []
+        }
+        return contextRowIndex >= 0 && contextRowIndex < files.length ? [files[contextRowIndex]!] : []
+      }
+      return getStagingPaths(files, selectedIndices, currentIndex)
+    },
+    [files, selectedIndices, currentIndex]
+  )
+
+  const runFileListClearPending = useCallback(
+    (contextRowIndex: number | null) => {
+      clearPendingForPaths(resolveFileListClearPendingPaths(contextRowIndex))
+    },
+    [clearPendingForPaths, resolveFileListClearPendingPaths]
+  )
+
+  useEffect(() => {
+    if (!fileListContextMenu) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setFileListContextMenu(null)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [fileListContextMenu])
 
   /** After describe `fetch failed`, re-check availability (uncached) and show drawer or no-install state. */
   const handleOllamaDescribeTransportFailure = useCallback(async (): Promise<boolean> => {
@@ -2360,6 +2433,7 @@ export function App(): React.ReactElement {
   )
 
   return (
+    <>
     <div className="app">
       <div className="app-body" ref={appBodyRef}>
         <div
@@ -2449,6 +2523,10 @@ export function App(): React.ReactElement {
                           role="option"
                           aria-selected={sel}
                           onClick={(e) => onRowClick(i, e)}
+                          onContextMenu={(e) => {
+                            e.preventDefault()
+                            setFileListContextMenu({ clientX: e.clientX, clientY: e.clientY, rowIndex: i })
+                          }}
                         >
                           <span className="file-list-name" title={base}>
                             {displayName}
@@ -3998,5 +4076,37 @@ export function App(): React.ReactElement {
       )}
       <TutorialModal open={tutorialOpen} firstRun={tutorialFirstRun} onRequestClose={closeTutorial} />
     </div>
+    {typeof document !== 'undefined' && fileListContextMenu
+      ? createPortal(
+          <>
+            <div
+              className="file-list-context-menu-backdrop"
+              role="presentation"
+              onMouseDown={() => setFileListContextMenu(null)}
+            />
+            <div
+              className="file-list-context-menu"
+              role="menu"
+              aria-label={t('ui.fileListContextMenu')}
+              style={{ left: fileListContextMenu.clientX, top: fileListContextMenu.clientY }}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                role="menuitem"
+                className="file-list-context-menu-item"
+                onClick={() => {
+                  runFileListClearPending(fileListContextMenu.rowIndex)
+                  setFileListContextMenu(null)
+                }}
+              >
+                {t('ui.clearPendingChanges')}
+              </button>
+            </div>
+          </>,
+          document.body
+        )
+      : null}
+    </>
   )
 }

@@ -166,6 +166,7 @@
     "presetMatchedLabel": "Matched preset: {{name}}",
     "inFileRawAttrs": "Found in file: {{summary}}",
     "fileListPendingChangesAria": "Pending changes: {{list}}",
+    "fileListContextMenu": "File list menu",
     "mappingArrowToNew": "To new value",
     "currentValue": "Current value",
     "currentValueEmpty": "—",

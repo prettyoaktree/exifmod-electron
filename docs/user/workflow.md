@@ -2,7 +2,7 @@
 
 1. Open a folder — you’ll see a list of supported image files.
 2. Select one or more files in the list.
-3. Review and edit metadata in the right-hand pane (use presets for camera, lens, film, author, and the other fields as needed). Your pending changes will be indicated in the file list as icons.
+3. Review and edit metadata in the right-hand pane (use presets for camera, lens, film, author, and the other fields as needed). Your pending changes will be indicated in the file list as icons. To clear pending edits for a subset of files only (without the confirmation used by **Clear Pending Changes** for the whole folder), right-click a row and choose **Clear Pending Changes** from the menu, or focus the list and press **C**: with several files selected, every selected file is reset; otherwise the sole selected or focused file is reset.
 4. Preview EXIF changes (optional) — if you’re the type of person who finds comfort in a well-formed tag list, this feature is for you. You're welcome.
 5. Write pending changes — that applies your edits to the selected files.
 

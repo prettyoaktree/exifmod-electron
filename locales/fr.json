@@ -166,6 +166,7 @@
     "presetMatchedLabel": "Préréglage reconnu : {{name}}",
     "inFileRawAttrs": "Présent dans le fichier : {{summary}}",
     "fileListPendingChangesAria": "Modifications en attente : {{list}}",
+    "fileListContextMenu": "Menu de la liste de fichiers",
     "mappingArrowToNew": "Vers la nouvelle valeur",
     "currentValue": "Valeur actuelle",
     "currentValueEmpty": "—",
