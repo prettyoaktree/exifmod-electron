@@ -44,7 +44,7 @@ export interface ExifmodApi {
   createFilmRollLog: (input: FilmRollLogCreateInput) => Promise<{ canceled: true } | { canceled: false; filePath: string }>
   parseFilmRollLog: (
     filePath: string,
-    expectedImageCount: number
+    imageFilePaths: string[]
   ) => Promise<{ ok: false; message: string } | { ok: true; parsed: FilmRollParsedLog }>
   ollamaDescribeImage: (
     filePath: string,

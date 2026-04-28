@@ -72,8 +72,8 @@ const api = {
     ipcRenderer.invoke('filmRoll:createLog', input) as Promise<
       { canceled: true } | { canceled: false; filePath: string }
     >,
-  parseFilmRollLog: (filePath: string, expectedImageCount: number) =>
-    ipcRenderer.invoke('filmRoll:parseLog', filePath, expectedImageCount) as Promise<
+  parseFilmRollLog: (filePath: string, imageFilePaths: string[]) =>
+    ipcRenderer.invoke('filmRoll:parseLog', filePath, imageFilePaths) as Promise<
       { ok: false; message: string } | { ok: true; parsed: FilmRollParsedLog }
     >,
   ollamaDescribeImage: (filePath: string, opts?: { maxDescriptionUtf8Bytes?: number }) =>

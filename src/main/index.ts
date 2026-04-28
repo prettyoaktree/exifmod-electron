@@ -63,6 +63,7 @@ import { readImagePreviewDataUrl } from './previewImage.js'
 import { installLightroomPlugin } from './installLightroomPlugin.js'
 import type { CreatePresetInput, UpdatePresetInput } from '../shared/types.js'
 import type { FilmRollLogCreateInput } from '../shared/filmRollLog.js'
+import { isJsonLogPath, isXlsxPath } from '../shared/filmRollLog.js'
 import { compareNaturalPathBaseName } from '../shared/naturalSort.js'
 import {
   buildFilmRollDefaultFileName,
@@ -70,6 +71,7 @@ import {
   validateFilmRollLogRowsForImport,
   writeFilmRollLogWorkbook
 } from './filmRollSpreadsheet.js'
+import { parseFilmRollLogJson } from './filmRollJsonLog.js'
 import {
   dismissUpdaterToIdle,
   downloadPendingUpdate,
@@ -731,8 +733,8 @@ function setupIpc(): void {
       properties: ['openFile'],
       filters: [
         {
-          name: i18next.t('filmRoll.xlsxFiles'),
-          extensions: ['xlsx']
+          name: i18next.t('filmRoll.logImportFiles'),
+          extensions: ['xlsx', 'json']
         }
       ]
     })
@@ -755,11 +757,23 @@ function setupIpc(): void {
     return { canceled: false as const, filePath: finalPath }
   })
 
-  ipcMain.handle('filmRoll:parseLog', (_e, filePath: string, expectedImageCount: number) => {
-    const parsed = parseFilmRollLogWorkbook(filePath)
-    const validation = validateFilmRollLogRowsForImport(parsed, expectedImageCount)
-    if (!validation.ok) return { ok: false as const, message: validation.message }
-    return { ok: true as const, parsed }
+  ipcMain.handle('filmRoll:parseLog', (_e, filePath: string, imageFilePaths: string[]) => {
+    try {
+      let parsed
+      if (isJsonLogPath(filePath)) {
+        parsed = parseFilmRollLogJson(filePath, imageFilePaths)
+      } else if (isXlsxPath(filePath)) {
+        parsed = parseFilmRollLogWorkbook(filePath)
+      } else {
+        return { ok: false as const, message: i18next.t('filmRoll.importInvalidFormat') }
+      }
+      const validation = validateFilmRollLogRowsForImport(parsed, imageFilePaths.length)
+      if (!validation.ok) return { ok: false as const, message: validation.message }
+      return { ok: true as const, parsed }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : i18next.t('filmRoll.importInvalidFormat')
+      return { ok: false as const, message }
+    }
   })
 
   ipcMain.handle('exif:resolveTool', () => resolveExiftoolPath())

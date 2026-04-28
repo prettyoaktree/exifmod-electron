@@ -1606,7 +1606,7 @@ export function App(): React.ReactElement {
       return
     }
     try {
-      const parsedResult = await api.parseFilmRollLog(filePath, files.length)
+      const parsedResult = await api.parseFilmRollLog(filePath, files)
       if (!parsedResult.ok) {
         showAppMessage('error', parsedResult.message)
         return
@@ -1631,7 +1631,7 @@ export function App(): React.ReactElement {
     } catch (e) {
       showAppMessage('error', unwrapIpcErrorMessage(e))
     }
-  }, [applyParsedFilmRoll, catalog, files.length, findUnknownPresetValues, openedFolderPath, showAppMessage, t])
+  }, [applyParsedFilmRoll, catalog, files, findUnknownPresetValues, openedFolderPath, showAppMessage, t])
 
   useEffect(() => {
     const api = window.exifmod
