@@ -2,6 +2,10 @@
 
 Headline changes in recent versions: major features and fixes that affect how you work in EXIFmod. Patch releases often include small fixes and polish that are not listed here. For the full list of every release, see [EXIFmod on GitHub Releases](https://github.com/prettyoaktree/exifmod/releases).
 
+## 1.8.5
+
+**1.8.5** — **Film roll logs:** create an Excel (`.xlsx`) shot log from the app, fill it in your spreadsheet, then import it into a folder of scans and map any unknown preset names when prompted. **Logbook JSON** exports also import: rows align to your file list by file name (matching the base name, ignoring extension) or by frame number where names do not line up. The file list gets a **Clear pending changes** command on the context menu, and the folder shortcut hint stays accurate.
+
 ## 1.8.1
 
 **1.8.1** — File list keyboard navigation now takes over cleanly after mouse selection, while keyboard multi-select with Space still works as expected. Preset-applied rows now use the same red “pending write” treatment as other real metadata changes, and metadata table column headers are easier to scan.
