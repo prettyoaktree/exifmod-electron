@@ -30,6 +30,7 @@ import {
 import { isOllamaTransportFailureError } from '@shared/ollamaNetErrors.js'
 import { OLLAMA_ERROR_ECHO_TEMPLATE, OLLAMA_ERROR_EMPTY_SOFT } from '@shared/ollamaResultCodes.js'
 import type { AiDescribeBusyState, CameraMetadata, ConfigCatalog } from '@shared/types.js'
+import type { FilmRollLogCreateInput, FilmRollParsedLog, FilmRollPresetCategory } from '@shared/filmRollLog.js'
 import type { PresetInitialDraft } from '@shared/presetDraftFromMetadata.js'
 import {
   analyzeCameraFirstStaging,
@@ -74,6 +75,7 @@ import { StatusFooter, type ApplicationPhase } from './StatusFooter.js'
 import type { UpdaterUiPayload } from '@shared/updaterUi.js'
 import { getStagingPaths } from '@shared/stagingPaths.js'
 import { diffHighlightsToIconCategories } from '@shared/pendingIconCategories.js'
+import { validateFilmRollAperture, validateFilmRollShutterSpeed } from '@shared/filmRollLog.js'
 import { measureTextWidthCanvas, pickMetadataHeadingText } from './metadataHeading.js'
 import { CategoryIcon, type MetaCategory } from './CategoryIcon.js'
 
@@ -190,6 +192,21 @@ function idKeyForCategory(cat: Cat): keyof PendingState {
 
 function categoryToClearKey(cat: Cat): 'clearCamera' | 'clearLens' | 'clearFilm' | 'clearAuthor' {
   return cat === 'Camera' ? 'clearCamera' : cat === 'Lens' ? 'clearLens' : cat === 'Film' ? 'clearFilm' : 'clearAuthor'
+}
+
+interface FilmRollCreateFormState {
+  logName: string
+  cameraPresetName: string
+  lensPresetName: string
+  filmPresetName: string
+  authorPresetName: string
+  frameCount: 12 | 24 | 36 | 72
+}
+
+interface UnknownPresetResolutionState {
+  filePath: string
+  parsed: FilmRollParsedLog
+  mappings: Record<FilmRollPresetCategory, Record<string, string>>
 }
 
 /** Values shown in New Value controls: when multiple files are staged, only show a pending value if it is identical on every staged file. */
@@ -332,6 +349,10 @@ export function App(): React.ReactElement {
     return 'author'
   }
 
+  const showAppMessage = useCallback((variant: 'info' | 'error', detail: string) => {
+    setAppMessageModal({ variant, detail })
+  }, [])
+
   const labelForMetaCategory = (c: MetaCategory): string => {
     switch (c) {
       case 'camera':
@@ -404,6 +425,18 @@ export function App(): React.ReactElement {
   const [preWriteBackupChoice, setPreWriteBackupChoice] = useState<'ask' | 'always' | 'never'>('ask')
   const [preWriteBackupPrefsLoaded, setPreWriteBackupPrefsLoaded] = useState(false)
   const [writeBackupRememberCheckbox, setWriteBackupRememberCheckbox] = useState(false)
+  const [filmRollCreateOpen, setFilmRollCreateOpen] = useState(false)
+  const [filmRollCreateError, setFilmRollCreateError] = useState<string | null>(null)
+  const [filmRollCreateForm, setFilmRollCreateForm] = useState<FilmRollCreateFormState>({
+    logName: '',
+    cameraPresetName: 'None',
+    lensPresetName: 'None',
+    filmPresetName: 'None',
+    authorPresetName: 'None',
+    frameCount: 36
+  })
+  const [unknownPresetResolution, setUnknownPresetResolution] = useState<UnknownPresetResolutionState | null>(null)
+  const [appMessageModal, setAppMessageModal] = useState<null | { variant: 'info' | 'error'; detail: string }>(null)
   const [metadataFolderReadProgress, setMetadataFolderReadProgress] = useState<{
     done: number
     total: number
@@ -1327,6 +1360,16 @@ export function App(): React.ReactElement {
     apertureLocked && cameraMetaForForm?.fixed_aperture_display != null
       ? cameraMetaForForm.fixed_aperture_display
       : formPending.fNumberText
+  const filmRollCreateLensFilter = useMemo(() => {
+    if (!catalog) return { allowed: ['None'], state: 'readonly' as const }
+    return filterLensValues(
+      catalog.lens_values,
+      filmRollCreateForm.cameraPresetName,
+      filmRollCreateForm.cameraPresetName,
+      catalog.camera_metadata_map,
+      catalog.lens_metadata_map
+    )
+  }, [catalog, filmRollCreateForm.cameraPresetName])
 
   const selectAllFiles = useCallback(() => {
     fileListSelectionFromPointerRef.current = false
@@ -1404,6 +1447,211 @@ export function App(): React.ReactElement {
     setPendingByPath({})
     setWriteDiffByPath({})
   }
+
+  const openFilmRollCreate = useCallback(() => {
+    if (!catalog) return
+    setFilmRollCreateError(null)
+    setFilmRollCreateForm((prev) => ({
+      ...prev,
+      cameraPresetName: catalog.camera_values[0] ?? 'None',
+      lensPresetName: catalog.lens_values[0] ?? 'None',
+      filmPresetName: catalog.film_values[0] ?? 'None',
+      authorPresetName: catalog.author_values[0] ?? 'None'
+    }))
+    setFilmRollCreateOpen(true)
+  }, [catalog])
+
+  const createFilmRollLog = useCallback(async () => {
+    const api = window.exifmod
+    if (!api) {
+      showAppMessage('error', t('ui.preloadUnavailable'))
+      return
+    }
+    if (!catalog) return
+    const logName = filmRollCreateForm.logName.trim()
+    if (!logName) {
+      setFilmRollCreateError(t('presetEditor.validationPresetNameRequired'))
+      return
+    }
+    setFilmRollCreateError(null)
+    const payload: FilmRollLogCreateInput = {
+      logName,
+      cameraPresetName: filmRollCreateForm.cameraPresetName,
+      lensPresetName: filmRollCreateForm.lensPresetName === 'None' ? null : filmRollCreateForm.lensPresetName,
+      filmPresetName: filmRollCreateForm.filmPresetName,
+      authorPresetName: filmRollCreateForm.authorPresetName === 'None' ? null : filmRollCreateForm.authorPresetName,
+      frameCount: filmRollCreateForm.frameCount
+    }
+    try {
+      const result = await api.createFilmRollLog(payload)
+      if (!result.canceled) {
+        setFilmRollCreateOpen(false)
+        setFilmRollCreateError(null)
+      }
+    } catch (e) {
+      showAppMessage('error', unwrapIpcErrorMessage(e))
+    }
+  }, [catalog, filmRollCreateForm, showAppMessage, t])
+
+  const findUnknownPresetValues = useCallback(
+    (parsed: FilmRollParsedLog): Record<FilmRollPresetCategory, string[]> => {
+      if (!catalog) return { camera: [], lens: [], film: [], author: [] }
+      const unknown: Record<FilmRollPresetCategory, Set<string>> = {
+        camera: new Set<string>(),
+        lens: new Set<string>(),
+        film: new Set<string>(),
+        author: new Set<string>()
+      }
+      const hasName = (category: FilmRollPresetCategory, value: string | null): boolean => {
+        if (!value || value === 'None') return true
+        if (category === 'camera') return catalog.camera_values.includes(value)
+        if (category === 'lens') return catalog.lens_values.includes(value)
+        if (category === 'film') return catalog.film_values.includes(value)
+        return catalog.author_values.includes(value)
+      }
+      const collect = (category: FilmRollPresetCategory, value: string | null): void => {
+        if (!value || value === 'None') return
+        if (!hasName(category, value)) unknown[category].add(value)
+      }
+      collect('camera', parsed.cameraPresetName)
+      collect('lens', parsed.lensPresetName)
+      collect('film', parsed.filmPresetName)
+      collect('author', parsed.authorPresetName)
+      for (const shot of parsed.shots) {
+        collect('camera', shot.cameraPresetName)
+        collect('lens', shot.lensPresetName)
+        collect('author', shot.authorPresetName)
+      }
+      return {
+        camera: [...unknown.camera],
+        lens: [...unknown.lens],
+        film: [...unknown.film],
+        author: [...unknown.author]
+      }
+    },
+    [catalog]
+  )
+
+  const resolvePresetNameToId = useCallback(
+    (category: FilmRollPresetCategory, name: string | null): number | null => {
+      if (!catalog || !name || name === 'None') return null
+      if (category === 'camera') return (catalog.camera_file_map[name] ?? null) as number | null
+      if (category === 'lens') return (catalog.lens_file_map[name] ?? null) as number | null
+      if (category === 'film') return (catalog.film_file_map[name] ?? null) as number | null
+      return (catalog.author_file_map[name] ?? null) as number | null
+    },
+    [catalog]
+  )
+
+  const applyParsedFilmRoll = useCallback(
+    (parsed: FilmRollParsedLog, mapping?: UnknownPresetResolutionState['mappings']) => {
+      const nextPending: Record<string, PendingState> = {}
+      for (let i = 0; i < files.length; i++) {
+        const path = files[i]
+        if (!path) continue
+        const shot = parsed.shots[i]
+        if (!shot) continue
+        const cameraName = mapping?.camera[shot.cameraPresetName] ?? shot.cameraPresetName
+        const lensName = shot.lensPresetName ? (mapping?.lens[shot.lensPresetName] ?? shot.lensPresetName) : null
+        const filmName = mapping?.film[parsed.filmPresetName] ?? parsed.filmPresetName
+        const authorSource = shot.authorPresetName ?? parsed.authorPresetName
+        const authorName = authorSource ? (mapping?.author[authorSource] ?? authorSource) : null
+        if (!validateFilmRollShutterSpeed(shot.shutterSpeed) || !validateFilmRollAperture(shot.aperture)) continue
+        const current = pendingByPath[pathKey(path)] ?? emptyPending()
+        nextPending[pathKey(path)] = {
+          ...current,
+          cameraId: resolvePresetNameToId('camera', cameraName),
+          lensId: resolvePresetNameToId('lens', lensName),
+          filmId: resolvePresetNameToId('film', filmName),
+          authorId: resolvePresetNameToId('author', authorName),
+          exposureTime: shot.shutterSpeed,
+          fNumberText: shot.aperture,
+          notesText: shot.description,
+          keywordsText: shot.keywords,
+          clearCamera: false,
+          clearLens: false,
+          clearFilm: false,
+          clearAuthor: false,
+          clearShutter: false,
+          clearAperture: false,
+          clearNotes: false,
+          clearKeywords: false
+        }
+      }
+      setPendingByPath((prev) => ({ ...prev, ...nextPending }))
+      showAppMessage('info', t('filmRoll.importApplied'))
+    },
+    [files, pendingByPath, resolvePresetNameToId, showAppMessage, t]
+  )
+
+  const importFilmRollLog = useCallback(async () => {
+    const api = window.exifmod
+    if (!api) {
+      showAppMessage('error', t('ui.preloadUnavailable'))
+      return
+    }
+    if (!openedFolderPath || files.length === 0) {
+      showAppMessage('error', t('filmRoll.importNoFolder'))
+      return
+    }
+    const filePath = await api.openFilmRollLog()
+    if (!filePath) {
+      showAppMessage('error', t('filmRoll.importNoFileChosen'))
+      return
+    }
+    try {
+      const parsedResult = await api.parseFilmRollLog(filePath, files.length)
+      if (!parsedResult.ok) {
+        showAppMessage('error', parsedResult.message)
+        return
+      }
+      const unknown = findUnknownPresetValues(parsedResult.parsed)
+      const hasUnknown = unknown.camera.length || unknown.lens.length || unknown.film.length || unknown.author.length
+      if (!hasUnknown) {
+        applyParsedFilmRoll(parsedResult.parsed)
+        return
+      }
+      const mappings: UnknownPresetResolutionState['mappings'] = {
+        camera: {},
+        lens: {},
+        film: {},
+        author: {}
+      }
+      for (const value of unknown.camera) mappings.camera[value] = catalog?.camera_values[0] ?? 'None'
+      for (const value of unknown.lens) mappings.lens[value] = catalog?.lens_values[0] ?? 'None'
+      for (const value of unknown.film) mappings.film[value] = catalog?.film_values[0] ?? 'None'
+      for (const value of unknown.author) mappings.author[value] = catalog?.author_values[0] ?? 'None'
+      setUnknownPresetResolution({ filePath, parsed: parsedResult.parsed, mappings })
+    } catch (e) {
+      showAppMessage('error', unwrapIpcErrorMessage(e))
+    }
+  }, [applyParsedFilmRoll, catalog, files.length, findUnknownPresetValues, openedFolderPath, showAppMessage, t])
+
+  useEffect(() => {
+    const api = window.exifmod
+    if (!api?.onFilmRollMenuCreate) return
+    return api.onFilmRollMenuCreate(() => {
+      openFilmRollCreate()
+    })
+  }, [openFilmRollCreate])
+
+  useEffect(() => {
+    const api = window.exifmod
+    if (!api?.onFilmRollMenuImport) return
+    return api.onFilmRollMenuImport(() => {
+      void importFilmRollLog()
+    })
+  }, [importFilmRollLog])
+
+  useEffect(() => {
+    if (!appMessageModal) return
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setAppMessageModal(null)
+    }
+    document.addEventListener('keydown', onEsc)
+    return () => document.removeEventListener('keydown', onEsc)
+  }, [appMessageModal])
 
   const folderTitle = useMemo(() => {
     if (!openedFolderPath) return ''
@@ -1591,7 +1839,7 @@ export function App(): React.ReactElement {
       setWriteBackupRememberCheckbox(false)
       const api = window.exifmod
       if (!api) {
-        alert(t('ui.preloadUnavailable'))
+        showAppMessage('error', t('ui.preloadUnavailable'))
         return
       }
       const total = todo.length
@@ -1614,12 +1862,13 @@ export function App(): React.ReactElement {
       })
       try {
         const results = await api.applyExifBatch(items)
+        const applyErrors: string[] = []
         for (const r of results) {
           if (r.ok) {
             ok++
             successfulPaths.push(r.path)
           } else {
-            alert(
+            applyErrors.push(
               t('ui.applyError', {
                 path: r.path,
                 message: r.error ?? 'unknown'
@@ -1627,8 +1876,11 @@ export function App(): React.ReactElement {
             )
           }
         }
+        if (applyErrors.length) {
+          showAppMessage('error', applyErrors.join('\n\n'))
+        }
       } catch (e) {
-        alert(unwrapIpcErrorMessage(e))
+        showAppMessage('error', unwrapIpcErrorMessage(e))
       } finally {
         stopBatchProgress()
       }
@@ -1660,13 +1912,13 @@ export function App(): React.ReactElement {
       }
       setCommitModal({ phase: 'done', ok, total })
     },
-    [t]
+    [showAppMessage, t]
   )
 
   const openWriteConfirm = useCallback(async () => {
     const api = window.exifmod
     if (!api) {
-      alert(t('ui.preloadUnavailable'))
+      showAppMessage('error', t('ui.preloadUnavailable'))
       return
     }
     const todo: { path: string; payload: Record<string, unknown> }[] = []
@@ -1675,7 +1927,7 @@ export function App(): React.ReactElement {
       if (!st) continue
       const { payload, err } = await buildMergedPayloadForState(st, path)
       if (err) {
-        alert(err)
+        showAppMessage('error', err)
         return
       }
       if (!payload || Object.keys(payload).length === 0) continue
@@ -1685,7 +1937,7 @@ export function App(): React.ReactElement {
       todo.push({ path, payload })
     }
     if (!todo.length) {
-      alert(t('ui.noStagedChanges'))
+      showAppMessage('info', t('ui.noStagedChanges'))
       return
     }
     if (api.getPreWriteBackupChoice) {
@@ -1697,7 +1949,7 @@ export function App(): React.ReactElement {
     }
     setWriteBackupRememberCheckbox(false)
     setWriteConfirmTodo(todo)
-  }, [files, pendingByPath, metadataByPath, buildMergedPayloadForState, t])
+  }, [files, pendingByPath, metadataByPath, buildMergedPayloadForState, showAppMessage, t])
 
   const onClearPending = useCallback(() => {
     setPendingByPath((prev) => {
@@ -1764,14 +2016,14 @@ export function App(): React.ReactElement {
     if (stagingPaths.length !== 1) return
     const api = window.exifmod
     if (!api?.ollamaDescribeImage) {
-      alert(t('ui.preloadUnavailable'))
+      showAppMessage('error', t('ui.preloadUnavailable'))
       return
     }
     const path = stagingPaths[0]!
     const st = pendingByPath[pathKey(path)]
     const maxDescriptionUtf8Bytes = st ? remainingUtf8BytesForAiDescription(effectiveDescriptionForAiRoom(st)) : 0
     if (maxDescriptionUtf8Bytes <= 0) {
-      alert(t('ui.aiDescribeNoRoom'))
+      showAppMessage('error', t('ui.aiDescribeNoRoom'))
       return
     }
     setAiDescribeBusy({ mode: 'single' })
@@ -1793,7 +2045,7 @@ export function App(): React.ReactElement {
             : r.error === OLLAMA_ERROR_ECHO_TEMPLATE
               ? t('ui.ollamaEchoTemplateFailure')
               : r.error
-        alert(t('ui.ollamaError', { message }))
+        showAppMessage('error', t('ui.ollamaError', { message }))
         return
       }
       applyOllamaResultToPending(path, r)
@@ -1804,13 +2056,21 @@ export function App(): React.ReactElement {
     if (describeSucceeded) {
       setOllamaGenerationCompleteMessage(t('ui.statusFooter.ollamaGenerationComplete'))
     }
-  }, [stagingPaths, pendingByPath, metadataByPath, t, applyOllamaResultToPending, handleOllamaDescribeTransportFailure])
+  }, [
+    stagingPaths,
+    pendingByPath,
+    metadataByPath,
+    t,
+    applyOllamaResultToPending,
+    handleOllamaDescribeTransportFailure,
+    showAppMessage
+  ])
 
   const runAiDescribeBatch = useCallback(
     async (paths: string[]) => {
       const api = window.exifmod
       if (!api?.ollamaDescribeImage) {
-        alert(t('ui.preloadUnavailable'))
+        showAppMessage('error', t('ui.preloadUnavailable'))
         return
       }
       const total = paths.length
@@ -1854,13 +2114,13 @@ export function App(): React.ReactElement {
         setOllamaGenerationCompleteMessage(t('ui.statusFooter.ollamaGenerationComplete'))
       }
     },
-    [t, metadataByPath, applyOllamaResultToPending, handleOllamaDescribeTransportFailure]
+    [t, metadataByPath, applyOllamaResultToPending, handleOllamaDescribeTransportFailure, showAppMessage]
   )
 
   const onAiButtonClick = useCallback(() => {
     const api = window.exifmod
     if (!api?.ollamaDescribeImage) {
-      alert(t('ui.preloadUnavailable'))
+      showAppMessage('error', t('ui.preloadUnavailable'))
       return
     }
     const targets = stagingPaths.filter((p) => {
@@ -1869,7 +2129,7 @@ export function App(): React.ReactElement {
       return st && remainingUtf8BytesForAiDescription(effectiveDescriptionForAiRoom(st)) > 0
     })
     if (!targets.length) {
-      alert(t('ui.aiDescribeNoRoom'))
+      showAppMessage('error', t('ui.aiDescribeNoRoom'))
       return
     }
     if (stagingPaths.length >= 2) {
@@ -1877,12 +2137,12 @@ export function App(): React.ReactElement {
       return
     }
     void runAiDescribeSingle()
-  }, [stagingPaths, pendingByPath, metadataByPath, t, runAiDescribeSingle])
+  }, [stagingPaths, pendingByPath, metadataByPath, t, runAiDescribeSingle, showAppMessage])
 
   const onOllamaInlineStart = useCallback(async () => {
     const api = window.exifmod
     if (!api?.ollamaTryStartServer) {
-      alert(t('ui.preloadUnavailable'))
+      showAppMessage('error', t('ui.preloadUnavailable'))
       return
     }
     setOllamaStartError(null)
@@ -1892,7 +2152,7 @@ export function App(): React.ReactElement {
       return
     }
     setOllamaStartError(r.error)
-  }, [t])
+  }, [showAppMessage, t])
 
   const onOllamaInlineDismiss = useCallback(() => {
     setOllamaStartError(null)
@@ -2886,6 +3146,285 @@ export function App(): React.ReactElement {
         onUpdaterLater={onUpdaterLater}
         onUpdaterCheck={updaterSupported ? () => void onUpdaterCheck() : undefined}
       />
+      {filmRollCreateOpen ? (
+        <div
+          className="modal-backdrop"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setFilmRollCreateOpen(false)
+          }}
+        >
+          <section className="modal modal-preset-editor modal-film-roll-editor">
+            <h3 className="modal-preset-editor-title">{t('filmRoll.createTitle')}</h3>
+            <div className="modal-preset-editor-content">
+              {filmRollCreateError ? <p className="preset-editor-error">{filmRollCreateError}</p> : null}
+              <section className="preset-editor-fields-section" aria-labelledby="film-roll-create-fields">
+                <table className="mapping preset-modal-mapping">
+                  <colgroup>
+                    <col className="preset-modal-col-field" />
+                    <col className="preset-modal-col-value" />
+                  </colgroup>
+                  <tbody>
+                    <tr>
+                      <td className="preset-modal-field-label">{t('filmRoll.logName')}</td>
+                      <td className="preset-modal-field-control">
+                        <input
+                          id="film-roll-log-name"
+                          className="input"
+                          value={filmRollCreateForm.logName}
+                          onChange={(e) => {
+                            setFilmRollCreateError(null)
+                            setFilmRollCreateForm((prev) => ({ ...prev, logName: e.target.value }))
+                          }}
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="preset-modal-field-label">{t('filmRoll.cameraPreset')}</td>
+                      <td className="preset-modal-field-control">
+                        <select
+                          id="film-roll-camera"
+                          className="input"
+                          value={filmRollCreateForm.cameraPresetName}
+                          onChange={(e) =>
+                            setFilmRollCreateForm((prev) => ({
+                              ...prev,
+                              cameraPresetName: e.target.value,
+                              lensPresetName: 'None'
+                            }))
+                          }
+                        >
+                          {catalog?.camera_values.map((v) => (
+                            <option key={`film-roll-camera-${v}`} value={v}>
+                              {v}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="preset-modal-field-label">{t('filmRoll.lensPresetOptional')}</td>
+                      <td className="preset-modal-field-control">
+                        <select
+                          id="film-roll-lens"
+                          className="input"
+                          value={filmRollCreateForm.lensPresetName}
+                          onChange={(e) => setFilmRollCreateForm((prev) => ({ ...prev, lensPresetName: e.target.value }))}
+                          disabled={filmRollCreateLensFilter.state === 'disabled'}
+                        >
+                          {filmRollCreateLensFilter.allowed.map((v) => (
+                            <option key={`film-roll-lens-${v}`} value={v}>
+                              {v}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="preset-modal-field-label">{t('filmRoll.filmPreset')}</td>
+                      <td className="preset-modal-field-control">
+                        <select
+                          id="film-roll-film"
+                          className="input"
+                          value={filmRollCreateForm.filmPresetName}
+                          onChange={(e) => setFilmRollCreateForm((prev) => ({ ...prev, filmPresetName: e.target.value }))}
+                        >
+                          {catalog?.film_values.map((v) => (
+                            <option key={`film-roll-film-${v}`} value={v}>
+                              {v}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="preset-modal-field-label">{t('filmRoll.authorPresetOptional')}</td>
+                      <td className="preset-modal-field-control">
+                        <select
+                          id="film-roll-author"
+                          className="input"
+                          value={filmRollCreateForm.authorPresetName}
+                          onChange={(e) => setFilmRollCreateForm((prev) => ({ ...prev, authorPresetName: e.target.value }))}
+                        >
+                          {catalog?.author_values.map((v) => (
+                            <option key={`film-roll-author-${v}`} value={v}>
+                              {v}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="preset-modal-field-label">{t('filmRoll.frameCount')}</td>
+                      <td className="preset-modal-field-control">
+                        <select
+                          id="film-roll-frame-count"
+                          className="input"
+                          value={filmRollCreateForm.frameCount}
+                          onChange={(e) =>
+                            setFilmRollCreateForm((prev) => ({
+                              ...prev,
+                              frameCount: Number(e.target.value) as 12 | 24 | 36 | 72
+                            }))
+                          }
+                        >
+                          {[12, 24, 36, 72].map((count) => (
+                            <option key={`film-roll-count-${count}`} value={count}>
+                              {count}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p className="preset-editor-hint">{t('filmRoll.formatHint')}</p>
+              </section>
+            </div>
+            <div className="modal-preset-editor-actions modal-confirm-actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setFilmRollCreateError(null)
+                  setFilmRollCreateOpen(false)
+                }}
+              >
+                {t('dialog.buttonCancel')}
+              </button>
+              <button type="button" className="btn btn-primary" onClick={() => void createFilmRollLog()}>
+                {t('filmRoll.createAction')}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+      {unknownPresetResolution ? (
+        <div className="modal-backdrop">
+          <section className="modal modal-preset-editor modal-film-roll-editor">
+            <h3 className="modal-preset-editor-title">{t('filmRoll.resolveUnknownTitle')}</h3>
+            <div className="modal-preset-editor-content modal-film-roll-unknown-mapping">
+              <p className="preset-editor-hint">{t('filmRoll.resolveUnknownDetail')}</p>
+              {(['camera', 'lens', 'film', 'author'] as FilmRollPresetCategory[]).map((category) => {
+                const unknownValues = Object.keys(unknownPresetResolution.mappings[category])
+                if (!unknownValues.length) return null
+                const options =
+                  category === 'camera'
+                    ? catalog?.camera_values ?? []
+                    : category === 'lens'
+                      ? catalog?.lens_values ?? []
+                      : category === 'film'
+                        ? catalog?.film_values ?? []
+                        : catalog?.author_values ?? []
+                const sectionTitle =
+                  category === 'camera'
+                    ? t('filmRoll.resolveCategoryCamera')
+                    : category === 'lens'
+                      ? t('filmRoll.resolveCategoryLens')
+                      : category === 'film'
+                        ? t('filmRoll.resolveCategoryFilm')
+                        : t('filmRoll.resolveCategoryAuthor')
+                const iconCategory: MetaCategory = category
+                return (
+                  <section key={`film-roll-unknown-${category}`} className="preset-editor-fields-section film-roll-map-section">
+                    <p className="preset-editor-section-heading">{sectionTitle}</p>
+                    <table className="mapping mapping-slim film-roll-unknown-mapping-table">
+                      <colgroup>
+                        <col className="mapping-col-attribute" />
+                        <col className="mapping-col-current" />
+                        <col className="mapping-col-arrow" />
+                        <col className="mapping-col-new" />
+                      </colgroup>
+                      <thead>
+                        <tr>
+                          <th scope="col" className="meta-mapping-floating-thead__attr">
+                            <span className="sr-only">{t('ui.attribute')}</span>
+                          </th>
+                          <th scope="col">
+                            <span className="sr-only">{t('ui.currentValue')}</span>
+                          </th>
+                          <th scope="col" className="mapping-col-arrow-head">
+                            <span className="sr-only">{t('ui.mappingArrowToNew')}</span>
+                          </th>
+                          <th scope="col">
+                            <span className="sr-only">{t('ui.newValue')}</span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {unknownValues.map((value) => (
+                          <tr key={`film-roll-map-${category}-${value}`}>
+                            <td>
+                              <span className="meta-row-label-with-icon film-roll-unknown-map-icon-cell" aria-label={labelForMetaCategory(iconCategory)}>
+                                <CategoryIcon category={iconCategory} size={13} />
+                              </span>
+                            </td>
+                            <td>
+                              <div className="in-file-attrs">
+                                <span className="in-file-attr-pill" title={value}>
+                                  <span className="in-file-attr-val">{value}</span>
+                                </span>
+                              </div>
+                            </td>
+                            <td className="mapping-col-arrow-cell" aria-hidden>
+                              <span className="meta-mapping-arrow" title={t('ui.mappingArrowToNew')}>
+                                →
+                              </span>
+                            </td>
+                            <td className="mapping-col-new-combo-cell">
+                              <select
+                                className="input"
+                                aria-label={t('filmRoll.resolveUnknownRowAria', { value })}
+                                value={unknownPresetResolution.mappings[category][value]}
+                                onChange={(e) =>
+                                  setUnknownPresetResolution((prev) => {
+                                    if (!prev) return prev
+                                    return {
+                                      ...prev,
+                                      mappings: {
+                                        ...prev.mappings,
+                                        [category]: {
+                                          ...prev.mappings[category],
+                                          [value]: e.target.value
+                                        }
+                                      }
+                                    }
+                                  })
+                                }
+                              >
+                                {options.map((option) => (
+                                  <option key={`film-roll-map-option-${category}-${value}-${option}`} value={option}>
+                                    {option}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </section>
+                )
+              })}
+            </div>
+            <div className="modal-preset-editor-actions modal-confirm-actions">
+              <button type="button" className="btn" onClick={() => setUnknownPresetResolution(null)}>
+                {t('dialog.buttonCancel')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  if (!unknownPresetResolution) return
+                  applyParsedFilmRoll(unknownPresetResolution.parsed, unknownPresetResolution.mappings)
+                  setUnknownPresetResolution(null)
+                }}
+              >
+                {t('filmRoll.resolveProceed')}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
       {showLrcDevelopSnapshotModal ? (
         <div
           className="modal-backdrop"
@@ -3277,13 +3816,13 @@ export function App(): React.ReactElement {
                     if (!c) return
                     const api = window.exifmod
                     if (!api) {
-                      alert(t('ui.preloadUnavailable'))
+                      showAppMessage('error', t('ui.preloadUnavailable'))
                       return
                     }
                     try {
                       await api.deletePreset(c.id)
                     } catch (e) {
-                      alert(unwrapIpcErrorMessage(e))
+                      showAppMessage('error', unwrapIpcErrorMessage(e))
                       setDeletePresetConfirm(null)
                       return
                     }
@@ -3346,13 +3885,13 @@ export function App(): React.ReactElement {
                     if (!mount) return
                     const api = window.exifmod
                     if (!api?.clearUnusedLensMount) {
-                      alert(t('ui.preloadUnavailable'))
+                      showAppMessage('error', t('ui.preloadUnavailable'))
                       return
                     }
                     try {
                       await api.clearUnusedLensMount(mount)
                     } catch (e) {
-                      alert(unwrapIpcErrorMessage(e))
+                      showAppMessage('error', unwrapIpcErrorMessage(e))
                       setClearUnusedLensMountConfirm(null)
                       return
                     }
@@ -3362,6 +3901,33 @@ export function App(): React.ReactElement {
                 }}
               >
                 {t('ui.clearUnusedLensMountConfirmButton')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {appMessageModal ? (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setAppMessageModal(null)
+          }}
+        >
+          <div
+            className="modal modal-dialog-confirm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="app-message-modal-title"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <h3 id="app-message-modal-title" className="modal-confirm-heading">
+              {appMessageModal.variant === 'error' ? t('ui.appMessageErrorTitle') : t('ui.appMessageInfoTitle')}
+            </h3>
+            <p className="modal-confirm-detail modal-app-message-detail">{appMessageModal.detail}</p>
+            <div className="modal-confirm-actions">
+              <button type="button" className="btn btn-primary" onClick={() => setAppMessageModal(null)}>
+                {t('ui.appMessageDismiss')}
               </button>
             </div>
           </div>
