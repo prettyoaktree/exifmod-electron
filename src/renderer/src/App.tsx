@@ -79,6 +79,7 @@ import { diffHighlightsToIconCategories } from '@shared/pendingIconCategories.js
 import { validateFilmRollAperture, validateFilmRollShutterSpeed } from '@shared/filmRollLog.js'
 import { measureTextWidthCanvas, pickMetadataHeadingText } from './metadataHeading.js'
 import { CategoryIcon, type MetaCategory } from './CategoryIcon.js'
+import type { LrPluginInstallResult } from '@shared/lrPluginInstallResult.js'
 
 const CATS: Cat[] = ['Camera', 'Lens', 'Film', 'Author']
 
@@ -90,6 +91,42 @@ const CAT_I18N: Record<Cat, 'category.camera' | 'category.lens' | 'category.film
   Lens: 'category.lens',
   Film: 'category.film',
   Author: 'category.author'
+}
+
+function lrcPluginInstallModalCopy(
+  t: (key: string, options?: Record<string, string>) => string,
+  r: LrPluginInstallResult
+): { title: string; detail: string } {
+  if (r.ok) {
+    return {
+      title: t('dialog.installLrPluginSuccessTitle'),
+      detail: r.isDev
+        ? t('dialog.installLrPluginSuccessDetailDev', { pathRelease: r.pathRelease, pathDev: r.pathDev ?? '' })
+        : t('dialog.installLrPluginSuccessDetail', { path: r.pathRelease })
+    }
+  }
+  switch (r.error) {
+    case 'unsupported':
+      return {
+        title: t('dialog.installLrPluginUnsupportedTitle'),
+        detail: t('dialog.installLrPluginUnsupportedDetail')
+      }
+    case 'missing_bundle':
+      return {
+        title: t('dialog.installLrPluginMissingTitle'),
+        detail: t('dialog.installLrPluginMissingDetail', { path: r.bundleName })
+      }
+    case 'missing_electron':
+      return {
+        title: t('dialog.installLrPluginMissingTitle'),
+        detail: t('dialog.installLrPluginDevElectronBinaryMissing', { path: r.path })
+      }
+    case 'io':
+      return {
+        title: t('dialog.installLrPluginFailedTitle'),
+        detail: t('dialog.installLrPluginFailedDetail', { message: r.message })
+      }
+  }
 }
 
 /** Main window tab order is only: file list → metadata fields (one roving group) → Clear pending → Write pending (see tab handlers). */
@@ -464,6 +501,8 @@ export function App(): React.ReactElement {
   }>(null)
   const [tutorialOpen, setTutorialOpen] = useState(false)
   const [tutorialFirstRun, setTutorialFirstRun] = useState(false)
+  /** Result of Help → Install Lightroom plug-in; shown as in-app modal (not a native message box). */
+  const [lrcPluginInstallResult, setLrcPluginInstallResult] = useState<LrPluginInstallResult | null>(null)
   /** True when argv included `--exifmod-from-lrc` (official Lightroom plug-ins only). */
   const [sessionFromLrcPlugin, setSessionFromLrcPlugin] = useState(false)
   const [lrcSnapshotPrefsLoaded, setLrcSnapshotPrefsLoaded] = useState(false)
@@ -1648,6 +1687,26 @@ export function App(): React.ReactElement {
       void importFilmRollLog()
     })
   }, [importFilmRollLog])
+
+  useEffect(() => {
+    const api = window.exifmod
+    if (!api?.onMenuInstallLrPlugin || !api?.installLrPlugin) return
+    return api.onMenuInstallLrPlugin(() => {
+      void (async () => {
+        setLrcPluginInstallResult(await api.installLrPlugin!())
+      })()
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!lrcPluginInstallResult) return
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setLrcPluginInstallResult(null)
+    }
+    document.addEventListener('keydown', onEsc)
+    return () => document.removeEventListener('keydown', onEsc)
+  }, [lrcPluginInstallResult])
 
   useEffect(() => {
     if (!appMessageModal) return
@@ -3984,6 +4043,42 @@ export function App(): React.ReactElement {
           </div>
         </div>
       ) : null}
+      {lrcPluginInstallResult
+        ? (() => {
+            const m = lrcPluginInstallModalCopy(t, lrcPluginInstallResult)
+            return (
+              <div
+                className="modal-backdrop"
+                role="presentation"
+                onMouseDown={(e) => {
+                  if (e.target === e.currentTarget) setLrcPluginInstallResult(null)
+                }}
+              >
+                <div
+                  className="modal modal-dialog-confirm"
+                  role="alertdialog"
+                  aria-modal="true"
+                  aria-labelledby="lrc-plugin-install-modal-title"
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <h3 id="lrc-plugin-install-modal-title" className="modal-confirm-heading">
+                    {m.title}
+                  </h3>
+                  <p className="modal-confirm-detail lr-plugin-install-modal-detail">{m.detail}</p>
+                  <div className="modal-confirm-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => setLrcPluginInstallResult(null)}
+                    >
+                      {t('ui.appMessageDismiss')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          })()
+        : null}
       {appMessageModal ? (
         <div
           className="modal-backdrop"

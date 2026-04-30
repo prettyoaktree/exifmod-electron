@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { ConfigCatalog, CreatePresetInput, PresetRecord, UpdatePresetInput } from '../shared/types.js'
+import type { LrPluginInstallResult } from '../shared/lrPluginInstallResult.js'
 import type { UpdaterUiPayload } from '../shared/updaterUi.js'
 import type { FilmRollLogCreateInput, FilmRollParsedLog } from '../shared/filmRollLog.js'
 
@@ -128,6 +129,14 @@ const api = {
     const fn = (): void => cb()
     ipcRenderer.on('session:rememberedChoicesReset', fn)
     return () => ipcRenderer.removeListener('session:rememberedChoicesReset', fn)
+  },
+  installLrPlugin: () => ipcRenderer.invoke('app:installLrPlugin') as Promise<LrPluginInstallResult>,
+  onMenuInstallLrPlugin: (cb: () => void) => {
+    const fn = (): void => {
+      cb()
+    }
+    ipcRenderer.on('lrc:menuInstallLrPlugin', fn)
+    return () => ipcRenderer.removeListener('lrc:menuInstallLrPlugin', fn)
   },
   onLaunchFromLrc: (cb: (fromLrc: boolean) => void) => {
     const fn = (_e: unknown, v: boolean): void => cb(v)

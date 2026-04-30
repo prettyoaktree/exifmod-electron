@@ -60,7 +60,7 @@ import {
   runOllamaStartupFlow
 } from './ollamaLifecycle.js'
 import { readImagePreviewDataUrl } from './previewImage.js'
-import { installLightroomPlugin } from './installLightroomPlugin.js'
+import { performLrPluginInstall } from './installLightroomPlugin.js'
 import type { CreatePresetInput, UpdatePresetInput } from '../shared/types.js'
 import type { FilmRollLogCreateInput } from '../shared/filmRollLog.js'
 import { isJsonLogPath, isXlsxPath } from '../shared/filmRollLog.js'
@@ -461,19 +461,19 @@ function createWindow(): void {
     if (!w || w.isDestroyed()) return
     w.webContents.send(action === 'create' ? 'filmRoll:menuCreate' : 'filmRoll:menuImport')
   }
-  if (process.platform === 'darwin') {
+  if (process.platform === 'darwin' || process.platform === 'win32') {
     helpMenuExtras.push({
       label: i18next.t('menu.installLrPlugin'),
-      click: () => void installLightroomPlugin(mainWindow)
+      click: () => {
+        const w = BrowserWindow.getFocusedWindow() ?? mainWindow
+        w?.webContents.send('lrc:menuInstallLrPlugin')
+      }
     })
-    if (isAutoUpdateSupported()) {
+  }
+  if (isAutoUpdateSupported()) {
+    if (helpMenuExtras.length > 0) {
       helpMenuExtras.push({ type: 'separator' })
-      helpMenuExtras.push({
-        label: i18next.t('menu.checkForUpdates'),
-        click: () => void manualCheckForUpdates(autoUpdateOpts)
-      })
     }
-  } else if (isAutoUpdateSupported()) {
     helpMenuExtras.push({
       label: i18next.t('menu.checkForUpdates'),
       click: () => void manualCheckForUpdates(autoUpdateOpts)
@@ -677,6 +677,8 @@ function setupIpc(): void {
   })
 
   ipcMain.handle('app:getUpdaterSupport', () => ({ supported: isAutoUpdateSupported() }))
+
+  ipcMain.handle('app:installLrPlugin', () => performLrPluginInstall())
 
   ipcMain.handle('updater:download', async () => {
     await downloadPendingUpdate()

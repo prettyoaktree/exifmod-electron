@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, cpSync, rmSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { app, dialog, type BrowserWindow } from 'electron'
-import { i18next } from './i18n.js'
+import { app } from 'electron'
+import type { LrPluginInstallResult } from '../shared/lrPluginInstallResult.js'
 
 export const PLUGIN_BUNDLE_RELEASE = 'EXIFmodOpen.lrplugin'
 export const PLUGIN_BUNDLE_DEV = 'EXIFmodOpenDev.lrplugin'
@@ -117,26 +117,18 @@ function isLightroomPluginInstallSupportedPlatform(): boolean {
   return process.platform === 'darwin' || process.platform === 'win32'
 }
 
-export async function installLightroomPlugin(win: BrowserWindow | null): Promise<void> {
+/**
+ * Installs the bundled LrC plug-in(s) into the user’s Adobe Modules folder. No UI; use the
+ * returned `LrPluginInstallResult` in the renderer (in-app modal).
+ */
+export async function performLrPluginInstall(): Promise<LrPluginInstallResult> {
   if (!isLightroomPluginInstallSupportedPlatform()) {
-    await dialog.showMessageBox(win ?? undefined, {
-      type: 'info',
-      title: i18next.t('dialog.installLrPluginUnsupportedTitle'),
-      message: i18next.t('dialog.installLrPluginUnsupportedTitle'),
-      detail: i18next.t('dialog.installLrPluginUnsupportedDetail')
-    })
-    return
+    return { ok: false, error: 'unsupported' }
   }
 
   const srcRelease = resolveBundledReleasePluginSource()
   if (!srcRelease) {
-    await dialog.showMessageBox(win ?? undefined, {
-      type: 'error',
-      title: i18next.t('dialog.installLrPluginMissingTitle'),
-      message: i18next.t('dialog.installLrPluginMissingTitle'),
-      detail: i18next.t('dialog.installLrPluginMissingDetail', { path: PLUGIN_BUNDLE_RELEASE })
-    })
-    return
+    return { ok: false, error: 'missing_bundle', bundleName: PLUGIN_BUNDLE_RELEASE }
   }
 
   const destParent = lightroomModulesDir()
@@ -158,13 +150,7 @@ export async function installLightroomPlugin(win: BrowserWindow | null): Promise
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    await dialog.showMessageBox(win ?? undefined, {
-      type: 'error',
-      title: i18next.t('dialog.installLrPluginFailedTitle'),
-      message: i18next.t('dialog.installLrPluginFailedTitle'),
-      detail: i18next.t('dialog.installLrPluginFailedDetail', { message: msg })
-    })
-    return
+    return { ok: false, error: 'io', message: msg }
   }
 
   const isDevInstall = !app.isPackaged
@@ -173,26 +159,14 @@ export async function installLightroomPlugin(win: BrowserWindow | null): Promise
   if (isDevInstall) {
     const srcDev = resolveBundledDevPluginSource()
     if (!srcDev) {
-      await dialog.showMessageBox(win ?? undefined, {
-        type: 'error',
-        title: i18next.t('dialog.installLrPluginMissingTitle'),
-        message: i18next.t('dialog.installLrPluginMissingTitle'),
-        detail: i18next.t('dialog.installLrPluginMissingDetail', { path: PLUGIN_BUNDLE_DEV })
-      })
-      return
+      return { ok: false, error: 'missing_bundle', bundleName: PLUGIN_BUNDLE_DEV }
     }
     destDev = lightroomModulesDestPath(PLUGIN_BUNDLE_DEV)
     try {
       const repoRoot = resolve(process.cwd())
       const electronBinary = resolveDevElectronBinary(repoRoot)
       if (!existsSync(electronBinary)) {
-        await dialog.showMessageBox(win ?? undefined, {
-          type: 'error',
-          title: i18next.t('dialog.installLrPluginMissingTitle'),
-          message: i18next.t('dialog.installLrPluginMissingTitle'),
-          detail: i18next.t('dialog.installLrPluginDevElectronBinaryMissing', { path: electronBinary })
-        })
-        return
+        return { ok: false, error: 'missing_electron', path: electronBinary }
       }
 
       rmSync(destDev, { recursive: true, force: true })
@@ -203,27 +177,14 @@ export async function installLightroomPlugin(win: BrowserWindow | null): Promise
       writeFileSync(luaPath, patched, 'utf8')
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      await dialog.showMessageBox(win ?? undefined, {
-        type: 'error',
-        title: i18next.t('dialog.installLrPluginFailedTitle'),
-        message: i18next.t('dialog.installLrPluginFailedTitle'),
-        detail: i18next.t('dialog.installLrPluginFailedDetail', { message: msg })
-      })
-      return
+      return { ok: false, error: 'io', message: msg }
     }
   }
 
-  const successDetail = isDevInstall
-    ? i18next.t('dialog.installLrPluginSuccessDetailDev', {
-        pathRelease: destRelease,
-        pathDev: destDev ?? ''
-      })
-    : i18next.t('dialog.installLrPluginSuccessDetail', { path: destRelease })
-
-  await dialog.showMessageBox(win ?? undefined, {
-    type: 'info',
-    title: i18next.t('dialog.installLrPluginSuccessTitle'),
-    message: i18next.t('dialog.installLrPluginSuccessTitle'),
-    detail: successDetail
-  })
+  return {
+    ok: true,
+    isDev: isDevInstall,
+    pathRelease: destRelease,
+    pathDev: destDev
+  }
 }

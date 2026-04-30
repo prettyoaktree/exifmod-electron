@@ -2065,6 +2065,10 @@ button.preset-slideout-close:focus-visible {
   color: var(--muted);
 }
 
+.lr-plugin-install-modal-detail {
+  white-space: pre-line;
+}
+
 .modal-confirm-actions {
   display: flex;
   justify-content: flex-end;

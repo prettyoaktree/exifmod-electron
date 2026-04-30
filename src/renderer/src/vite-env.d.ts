@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 import type { ConfigCatalog, CreatePresetInput, PresetRecord, UpdatePresetInput } from '../../shared/types'
+import type { LrPluginInstallResult } from '../../shared/lrPluginInstallResult'
 import type { UpdaterUiPayload } from '../../shared/updaterUi'
 import type { FilmRollLogCreateInput, FilmRollParsedLog } from '../../shared/filmRollLog'
 
@@ -76,6 +77,8 @@ export interface ExifmodApi {
   setPreWriteBackupChoice: (v: 'ask' | 'always' | 'never') => Promise<void>
   resetRememberedDialogChoices: () => Promise<void>
   onRememberedChoicesReset: (cb: () => void) => () => void
+  installLrPlugin: () => Promise<LrPluginInstallResult>
+  onMenuInstallLrPlugin: (cb: () => void) => () => void
   onLaunchFromLrc: (cb: (fromLrc: boolean) => void) => () => void
   onStartupPath: (cb: (p: string) => void) => () => void
   onFilmRollMenuCreate: (cb: () => void) => () => void
