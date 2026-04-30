@@ -1,8 +1,8 @@
 --[[
-  Opens the original file in EXIFmod (dev): LrShell.openPathsViaCommandLine (SDK 3.0+) runs
-  /usr/bin/open -n -a <Electron.app> --args --exifmod-from-lrc <repoRoot> <file>
-  Repo root must be absolute — `open` does not guarantee cwd is the project when using `.`.
-  `--exifmod-from-lrc` is added only by official plug-ins (this dev plug-in counts as such).
+  Opens the original file in EXIFmod (dev). Passes --exifmod-from-lrc so EXIFmod can treat the launch
+  as coming from Lightroom Classic.
+  macOS: LrShell.openPathsViaCommandLine with /usr/bin/open -n -a <Electron.app> --args --exifmod-from-lrc <repoRoot> <file>
+  Windows: LrShell.openPathsViaCommandLine with <electron.exe> and extra args before the file.
 ]]
 
 local LrDialogs = import 'LrDialogs'
@@ -23,12 +23,17 @@ end
 
 -- `-n` starts a new process so Electron’s `second-instance` runs and forwards argv to the already-running app.
 -- Without `-n`, macOS often only activates the front app and does not deliver `--args` / files to our handlers.
-local function buildOpenExtraArgs(electronAppPath, repoRoot)
+local function buildOpenExtraArgsMac(electronAppPath, repoRoot)
 	return '-n -a "'
 		.. escapeForDoubleQuotedShell(electronAppPath)
 		.. '" --args "--exifmod-from-lrc" "'
 		.. escapeForDoubleQuotedShell(repoRoot)
 		.. '"'
+end
+
+-- extraArgs: between exe and file paths (LrShell.openPathsViaCommandLine)
+local function buildOpenExtraArgsWin(repoRoot)
+	return '--exifmod-from-lrc "' .. escapeForDoubleQuotedShell(repoRoot) .. '"'
 end
 
 local function main()
@@ -57,12 +62,33 @@ local function main()
 		return
 	end
 
+	if WIN_ENV then
+		local electronExe = prefs.exifmodAppPath
+		if not electronExe or electronExe == '' then
+			electronExe = DEFAULT_ELECTRON_APP
+		end
+		if not LrFileUtils.exists(electronExe) then
+			LrDialogs.message(
+				'EXIFmod Dev',
+				'electron.exe was not found at:\n'
+					.. electronExe
+					.. '\n\nRe-run Help → Install Lightroom Classic Plugin from EXIFmod (dev), or set plug-in preference exifmodAppPath to your node_modules\\electron\\dist\\electron.exe.'
+			)
+			return
+		end
+		LrShell.openPathsViaCommandLine(
+			{ path },
+			electronExe,
+			buildOpenExtraArgsWin(DEFAULT_REPO_ROOT)
+		)
+		return
+	end
+
 	if not LrFileUtils.exists(OPEN_CMD) then
 		LrDialogs.message('EXIFmod Dev', 'Missing ' .. OPEN_CMD)
 		return
 	end
 
-	-- Optional override: path to Electron.app (same prefs key as release plug-in pattern).
 	local electronApp = prefs.exifmodAppPath
 	if not electronApp or electronApp == '' then
 		electronApp = DEFAULT_ELECTRON_APP
@@ -78,7 +104,7 @@ local function main()
 		return
 	end
 
-	LrShell.openPathsViaCommandLine({ path }, OPEN_CMD, buildOpenExtraArgs(electronApp, DEFAULT_REPO_ROOT))
+	LrShell.openPathsViaCommandLine({ path }, OPEN_CMD, buildOpenExtraArgsMac(electronApp, DEFAULT_REPO_ROOT))
 end
 
 LrTasks.startAsyncTask(function()

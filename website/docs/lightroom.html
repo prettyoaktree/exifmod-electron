@@ -34,8 +34,10 @@
   <main class="docs-wrap">
   <article class="md-content">
     <h1>Lightroom Classic</h1>
-<p>EXIFmod ships with a small Lightroom Classic plugin (Mac only for now). You can install it from the app’s Help menu.</p>
-<p>In Lightroom, select a file in the library, then use Library → Plug-in Extras → Open in EXIFmod to jump straight to that file in EXIFmod.</p>
+<p>EXIFmod ships with a small Lightroom Classic plugin. You can install it from the app’s <strong>Help</strong> menu on <strong>macOS</strong> and <strong>Windows</strong>.</p>
+<p>In Lightroom, select a file in the library, then use <strong>Library → Plug-in Extras → Open in EXIFmod</strong> to jump straight to that file in EXIFmod.</p>
+<p><strong>Install location (after using Help → Install…):</strong> on macOS, the plug-in lives under <code>~/Library/Application Support/Adobe/Lightroom/Modules/</code>. On Windows, under <code>%APPDATA%\Adobe\Lightroom\Modules\</code> (for example <code>C:\Users\You\AppData\Roaming\Adobe\Lightroom\Modules\</code>).</p>
+<p><strong>Default app path (release):</strong> the Lightroom plug-in does not know where EXIFmod is until you set it, but when you use <strong>Help → Install Lightroom Classic Plugin…</strong> from a <strong>packaged</strong> EXIFmod, the app bakes the <strong>path to the running build</strong> (macOS: the <code>EXIFmod.app</code> bundle; Windows: <code>EXIFmod.exe</code>) into the copied plug-in, so the usual per-user install location is detected automatically. If you copied the plug-in from the repo, skipped <strong>Help → Install…</strong>, or use a dev build, the old defaults still apply: <code>/Applications/EXIFmod.app</code> (macOS) and <code>%LOCALAPPDATA%\Programs\exifmod\EXIFmod.exe</code> (Windows) unless you set the plug-in preference <code>exifmodAppPath</code> in <strong>Plug-in Manager</strong> (path to the <code>.app</code> on macOS, or the <code>.exe</code> on Windows).</p>
 <h2>Important: don’t lose Lightroom’s work</h2>
 <p>Lightroom leans on metadata to remember your edits. If another app rewrites the same file’s metadata, Lightroom can get confused and you can lose edits if you’re not careful.</p>
 <p>Best approach</p>
@@ -44,7 +46,7 @@
 </ul>
 <p>If the photo is already developed in Lightroom</p>
 <ul>
-<li>Before you use EXIFmod, make a Develop snapshot (⌘N in Develop on a Mac) for each image you care about. When you’re done in EXIFmod, resync the folder in LrC, load metadata from files if Lightroom asks, then reapply the snapshots as needed. You might still need to nudge rotation, but your edits should come back.</li>
+<li>Before you use EXIFmod, make a <strong>Develop snapshot</strong> for each image you care about: <strong>Develop</strong> module → <strong>Develop</strong> menu → <strong>Snapshot</strong> (on macOS the shortcut is <strong>⌘N</strong>; on Windows use the menu or your localized shortcut). When you’re done in EXIFmod, resync the folder in LrC, load metadata from files if Lightroom asks, then reapply the snapshots as needed. You might still need to nudge rotation, but your edits should come back.</li>
 </ul>
 <p>This sounds fussy, but it’s a lot calmer than having Lightroom give you the silent treatment.</p>
 

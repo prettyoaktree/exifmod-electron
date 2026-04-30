@@ -10,7 +10,7 @@ return {
 	LrToolkitIdentifier = 'com.exifmod.lr.open',
 	LrPluginName = 'EXIFmod Open',
 	LrPluginInfoUrl = 'https://github.com/prettyoaktree/exifmod',
-	VERSION = { major = 1, minor = 0, revision = 4 },
+	VERSION = { major = 1, minor = 0, revision = 6 },
 
 	-- Library → Plug-in Extras only (see Lightroom Classic 15.2 SDK; LrFileMenuItems is not used here)
 	LrLibraryMenuItems = {
