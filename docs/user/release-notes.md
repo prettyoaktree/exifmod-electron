@@ -2,6 +2,10 @@
 
 Headline changes in recent versions: major features and fixes that affect how you work in EXIFmod. Patch releases often include small fixes and polish that are not listed here. For the full list of every release, see [EXIFmod on GitHub Releases](https://github.com/prettyoaktree/exifmod/releases).
 
+## 1.8.6
+
+**Lightroom Classic plug-in (Windows):** you can install the same **EXIFmod Open** plug-in on Windows and open the selected photo in EXIFmod. **Help → Install Lightroom Classic Plugin** now bakes the path to your running EXIFmod (and shows success or errors in a normal in-app window instead of a system alert). See the [user guide](lightroom.html) for details.
+
 ## 1.8.5
 
 **Film roll logs:** you can now create an Excel shot log from the app and use it to track your shots. When you're done shooting and developing, import your log back into EXIFmod to automatically tag your photos. If you're using the [Lightme Logbook](https://lightme.site/) app on your phone, you can export your shot log to JSON and then import it to EXIFmod for quick tagging.
